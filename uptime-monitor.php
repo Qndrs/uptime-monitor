@@ -1,4 +1,5 @@
 <?php
+namespace UptimeMonitor;
 /*
 Plugin Name: Uptime Monitor Extension for Get URL Cron
 Description: Extends Get URL Cron plugin to monitor website uptime and send alerts.
@@ -9,6 +10,7 @@ Author: Robert E. Kuunders, GPT
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
 /**
  * Class UptimeMonitor
  * Main plugin class for handling uptime monitoring.
@@ -233,7 +235,6 @@ class UptimeMonitorExtension {
 		$this->log_error( 'monitor_uptime_event triggered at ' . date( 'Y-m-d H:i:s' ) );
 		$urls = get_option( 'uptime_monitor_urls', [] );
 		$this->log_error( 'URLs to monitor: ' . print_r( $urls, true ) );
-
 		foreach ( $urls as $url_data ) {
 			for ($i = 0; $i < 3; $i++) {
 				$response = wp_remote_get($url_data['url'], ['timeout' => 10]);
@@ -243,19 +244,16 @@ class UptimeMonitorExtension {
 				$this->log_error( sprintf( __( 'Final HTTP request (tried 3 times) failed for %s: %s', 'uptime-monitor' ), $url_data['url'], $response->get_error_message() ) );
 				continue;
 			}
-
 			$status_code = wp_remote_retrieve_response_code( $response );
 			$this->log_error( 'HTTP status code for ' . $url_data['url'] . ': ' . $status_code );
 			if ( $status_code >= 200 AND $status_code < 300 ) {
 				$this->log_error( 'URL is up: ' . $url_data['url'] );
 			} else {
-				$this->log_error( 'URL is down: ' . $url_data['url'] );
+				$this->log_error( sprintf( __( 'URL %s is down. HTTP Status Code: %d', 'uptime-monitor' ), $url_data['url'], $status_code ) );
 				if ( $url_data['email'] ) {
-					$this->log_error( sprintf( __( 'URL %s is down. HTTP Status Code: %d', 'uptime-monitor' ), $url_data['url'], $status_code ) );
 					$this->send_email_alert( $url_data['url'], $status_code );
 				}
 				if ( $url_data['pushover'] ) {
-					$this->log_error( sprintf( __( 'URL %s is down. HTTP Status Code: %d', 'uptime-monitor' ), $url_data['url'], $status_code ) );
 					$this->send_pushover_alert( $url_data['url'], $status_code );
 				}
 			}
