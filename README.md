@@ -1,4 +1,4 @@
-=== Uptime Monitor Extension ===
+=== Simple Uptime Monitor ===
 Contributors: Robert E. Kuunders
 Tags: uptime, monitoring, notifications, pushover, email, status
 Requires at least: 6.0
@@ -12,7 +12,7 @@ Monitor the uptime of your websites and receive notifications via email or Pusho
 
 == Description ==
 
-**Uptime Monitor Extension** helps you monitor the uptime of your websites. The plugin periodically checks the HTTP status of configured URLs and notifies you if a website is down via email or Pushover.
+**Simple Uptime Monitor** helps you monitor the uptime of your websites. The plugin periodically checks the HTTP status of configured URLs and notifies you if a website is down via email or Pushover.
 
 **Key Features:**
 - Monitor multiple URLs.

@@ -1,9 +1,9 @@
 <?php
-namespace UptimeMonitor;
+namespace SimpleUptimeMonitor;
 /*
-Plugin Name: Uptime Monitor Extension for Get URL Cron
-Description: Extends Get URL Cron plugin to monitor website uptime and send alerts.
-Version: 2.4.0
+Plugin Name: Simple Uptime Monitor
+Description: Plugin to monitor website uptime and send alerts.
+Version: 2.5.0
 Author: Robert E. Kuunders, GPT
 */
 
@@ -12,10 +12,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Class UptimeMonitor
+ * Class SimpleUptimeMonitor
  * Main plugin class for handling uptime monitoring.
  */
-class UptimeMonitorExtension {
+class SimpleUptimeMonitor {
 	/**
 	 * Constructor.
 	 * Registers hooks for plugin functionality.
@@ -381,7 +381,7 @@ class UptimeMonitorExtension {
 
 }
 
-new UptimeMonitorExtension();
+new SimpleUptimeMonitor();
 
 /**
  * Adds a custom cron schedule interval.
