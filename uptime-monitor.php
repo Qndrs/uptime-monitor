@@ -25,6 +25,7 @@ class SimpleUptimeMonitor {
 		add_action( 'admin_menu', [ $this, 'add_menu_page' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_styles' ] );
 		add_action( 'monitor_uptime_event', [ $this, 'monitor_uptime' ] );
+		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 		register_activation_hook( __FILE__, [ $this, 'activate' ] );
 		register_deactivation_hook( __FILE__, [ $this, 'deactivate' ] );
 
@@ -32,6 +33,26 @@ class SimpleUptimeMonitor {
 		add_action( 'wp_ajax_add_uptime_url', [ $this, 'ajax_add_url' ] );
 		add_action( 'wp_ajax_delete_uptime_url', [ $this, 'ajax_delete_url' ] );
 	}
+	public function register_rest_routes(): void {
+		register_rest_route( 'uptime-monitor/v1', '/logs', [
+			'methods'  => 'GET',
+			'callback' => [ $this, 'get_logs' ],
+			'permission_callback' => function() {
+				return current_user_can( 'manage_options' );
+			},
+		]);
+	}
+	public function get_logs( $request ): WP_REST_Response {
+		$log_file = WP_CONTENT_DIR . '/logs/uptime-monitor.json';
+	
+		if ( ! file_exists( $log_file ) ) {
+			return new WP_REST_Response( [ 'message' => 'No logs available.' ], 404 );
+		}
+	
+		$logs = json_decode( file_get_contents( $log_file ), true );
+		return new WP_REST_Response( $logs, 200 );
+	}
+	
 	/**
 	 * Load the plugin textdomain for translations.
 	 */
@@ -232,24 +253,30 @@ class SimpleUptimeMonitor {
 	 * Handles the monitoring process for registered URLs.
 	 */
 	public function monitor_uptime():void  {
-		$this->log_error( 'monitor_uptime_event triggered at ' . date( 'Y-m-d H:i:s' ) );
+		$this->log_to_json( 'info', 'Cron job started.', [ 'task' => 'monitor_uptime_event' ] );
 		$urls = get_option( 'uptime_monitor_urls', [] );
-		$this->log_error( 'URLs to monitor: ' . print_r( $urls, true ) );
+		$this->log_to_json( 'info', 'URLs to monitor.', [ 'urls' => $urls ] );
+		
 		foreach ( $urls as $url_data ) {
 			for ($i = 0; $i < 3; $i++) {
 				$response = wp_remote_get($url_data['url'], ['timeout' => 10]);
-				if (!is_wp_error($response)) break;
+				if (!is_wp_error($response)) {
+					$this->log_to_json( 'info', 'Successful retry.', [ 'url' => $url_data['url'], 'attempt' => $i + 1 ] );
+					break;
+				}
 			}
 			if ( is_wp_error( $response ) ) {
-				$this->log_error( sprintf( __( 'Final HTTP request (tried 3 times) failed for %s: %s', 'uptime-monitor' ), $url_data['url'], $response->get_error_message() ) );
+				$this->log_to_json( 'error', 'Failed to fetch URL.', [ 'url' => $url_data['url'], 'error' => $response->get_error_message() ] );
 				continue;
 			}
 			$status_code = wp_remote_retrieve_response_code( $response );
-			$this->log_error( 'HTTP status code for ' . $url_data['url'] . ': ' . $status_code );
+			$this->log_to_json( 'info', 'HTTP status code received.', [ 'url' => $url_data['url'], 'status_code' => $status_code ] );
 			if ( $status_code >= 200 AND $status_code < 300 ) {
-				$this->log_error( 'URL is up: ' . $url_data['url'] );
+				$this->log_to_json( 'info', 'Url is up.', [ 'url' => $url_data['url'] ] );
+				
 			} else {
-				$this->log_error( sprintf( __( 'URL %s is down. HTTP Status Code: %d', 'uptime-monitor' ), $url_data['url'], $status_code ) );
+				$this->log_to_json( 'error', 'URL is down.', [ 'url' => $url_data['url'], 'status_code' => $status_code ] );
+
 				if ( $url_data['email'] ) {
 					$this->send_email_alert( $url_data['url'], $status_code );
 				}
@@ -321,6 +348,31 @@ class SimpleUptimeMonitor {
 		}
 		error_log( '[' . date( 'Y-m-d H:i:s' ) . '] ' . $message . PHP_EOL, 3, $log_file );
 	}
+	
+	private function log_to_json( $type, $message, $data = [] ): void {
+		$log_file = WP_CONTENT_DIR . '/logs/uptime-monitor.json';
+	
+		// Zorg dat de map bestaat
+		if ( ! file_exists( dirname( $log_file ) ) ) {
+			mkdir( dirname( $log_file ), 0755, true );
+		}
+	
+		// Bestaande logs ophalen
+		$logs = file_exists( $log_file ) ? json_decode( file_get_contents( $log_file ), true ) : [];
+	
+		// Nieuw logitem
+		$log_entry = [
+			'timestamp' => date( 'Y-m-d H:i:s' ),
+			'type'      => $type,
+			'message'   => $message,
+			'data'      => $data,
+		];
+	
+		// Toevoegen en opslaan
+		$logs[] = $log_entry;
+		file_put_contents( $log_file, json_encode( $logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
+	}
+	
 	/**
 	 * Handles adding a new URL via AJAX.
 	 *

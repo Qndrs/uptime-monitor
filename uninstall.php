@@ -8,7 +8,7 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 delete_option('uptime_monitor_urls');
 delete_option('uptime_monitor_interval');
 // Verwijder logbestand als het bestaat.
-$log_file = WP_CONTENT_DIR . '/logs/uptime-monitor.log';
+$log_file = WP_CONTENT_DIR . '/logs/uptime-monitor.json';
 if ( file_exists( $log_file ) ) {
 	unlink( $log_file );
 }
