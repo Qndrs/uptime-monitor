@@ -1,12 +1,12 @@
 === Simple Uptime Monitor ===
 Contributors: Robert E. Kuunders
-Tags: uptime, monitoring, notifications, pushover, email, status
+Tags: uptime, monitoring, notifications, pushover, email
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.0
-Stable tag: 2.4.0
-License: GPLv3 or later
-License URI: https://www.gnu.org/licenses/gpl-3.0.html
+Stable tag: 2.6.0
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Monitor the uptime of your websites and receive notifications via email or Pushover.
 
@@ -31,6 +31,7 @@ Monitor the uptime of your websites and receive notifications via email or Pusho
 1. Upload the plugin files to the `/wp-content/plugins/uptime-monitor` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. Navigate to "Uptime Monitor" in the WordPress admin menu to configure URLs and notification preferences.
+4. Set cron to run every minute (curl https://website.com/wp-cron.php > /dev/null 2>&1) if needed. Turn of pseudo cron in wp-config.php (define('DISABLE_WP_CRON', true);)
 
 == Frequently Asked Questions ==
 

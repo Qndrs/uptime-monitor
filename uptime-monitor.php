@@ -4,9 +4,11 @@ namespace SimpleUptimeMonitor;
 /*
 Plugin Name: Simple Uptime Monitor
 Description: Plugin to monitor website uptime and send alerts.
-Version: 2.5.0
+Version: 2.6.0
 Author: Robert E. Kuunders, GPT
 */
+
+use WP_REST_Response;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -37,39 +39,7 @@ class SimpleUptimeMonitor
         add_action('wp_ajax_delete_uptime_url', [$this, 'ajax_delete_url']);
     }
 
-    /**
-     * Registers REST API routes for the plugin.
-     *
-     * @return void
-     */
-    public function register_rest_routes(): void
-    {
-        register_rest_route('uptime-monitor/v1', '/logs', [
-            'methods' => 'GET',
-            'callback' => [$this, 'get_logs'],
-            'permission_callback' => function () {
-                return current_user_can('manage_options');
-            },
-        ]);
-    }
 
-    /**
-     * Retrieves logs from the uptime monitor log file.
-     *
-     *
-     * @return WP_REST_Response The response containing the log data or an error message and status code.
-     */
-    public function get_logs(): WP_REST_Response
-    {
-        $log_file = WP_CONTENT_DIR . '/logs/uptime-monitor.json';
-
-        if (!file_exists($log_file)) {
-            return new WP_REST_Response(['message' => 'No logs available.'], 404);
-        }
-
-        $logs = json_decode(file_get_contents($log_file), true);
-        return new WP_REST_Response($logs, 200);
-    }
 
     /**
      * Load the plugin textdomain for translations.
@@ -485,7 +455,40 @@ class SimpleUptimeMonitor
 }
 
 new SimpleUptimeMonitor();
+class UptimeMonitorLogsController extends WP_REST_Controller {
 
+	public function register_routes(): void {
+		register_rest_route('uptime-monitor/v1', '/logs', [
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => [$this, 'get_logs'],
+			'permission_callback' => [$this, 'check_permissions'],
+		]);
+	}
+
+	public function check_permissions(): bool {
+		return current_user_can('manage_options'); // Allow only admins
+	}
+
+	public function get_logs( WP_REST_Request $request ) {
+		$log_file = WP_CONTENT_DIR . '/logs/uptime-monitor.json';
+		if (!file_exists($log_file)) {
+			return new WP_Error(
+				'no_logs_found',
+				__('No logs found.', 'uptime-monitor'),
+				['status' => 404]
+			);
+		}
+
+		$logs = file_get_contents($log_file);
+		$logs_data = json_decode($logs, true);
+
+		return new WP_REST_Response($logs_data, 200);
+	}
+}
+add_action('rest_api_init', function() {
+	$controller = new UptimeMonitorLogsController();
+	$controller->register_routes();
+});
 /**
  * Adds a custom cron schedule interval.
  *
