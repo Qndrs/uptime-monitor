@@ -8,7 +8,12 @@ Version: 2.6.0
 Author: Robert E. Kuunders, GPT
 */
 
+use WP_REST_Controller;
 use WP_REST_Response;
+use WP_REST_Request;
+use WP_REST_Server;
+use WP_Error;
+
 
 if (!defined('ABSPATH')) {
     exit;
@@ -497,7 +502,7 @@ class SimpleUptimeMonitor
 }
 
 new SimpleUptimeMonitor();
-class UptimeMonitorLogsController extends WP_REST_Controller {
+class UptimeMonitorLogsController extends \WP_REST_Controller {
 
 	public function register_routes(): void {
 		register_rest_route('uptime-monitor/v1', '/logs', [
