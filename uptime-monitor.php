@@ -212,26 +212,60 @@ class SimpleUptimeMonitor
     public function render_settings_page(): void
     {
         // Opslaan van instellingen
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            check_admin_referer('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
+	    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+		    check_admin_referer('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
 
-            $monitor_interval = intval($_POST['monitor_interval']);
-            update_option('uptime_monitor_interval', $monitor_interval);
+		    if (!empty($_POST['import_json'])) {
+			    // IMPORT VAN JSON
+			    $json_input = stripslashes(trim($_POST['import_json']));
+			    $data = json_decode($json_input, true);
 
-            // Reschedule event
-            $timestamp = wp_next_scheduled('monitor_uptime_event');
-            if ($timestamp) {
-                wp_unschedule_event($timestamp, 'monitor_uptime_event');
-            }
-            wp_schedule_event(time(), 'uptime_monitor_interval', 'monitor_uptime_event');
+			    if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+				    echo '<div class="error"><p>' . esc_html__('Invalid JSON format.', 'uptime-monitor') . '</p></div>';
+			    } else {
+				    if (isset($data['settings']['monitor_interval'])) {
+					    update_option('uptime_monitor_interval', intval($data['settings']['monitor_interval']));
+				    }
+				    if (isset($data['urls']) && is_array($data['urls'])) {
+					    update_option('uptime_monitor_urls', $data['urls']);
+				    }
+				    // Herplan cronjob
+				    $timestamp = wp_next_scheduled('monitor_uptime_event');
+				    if ($timestamp) {
+					    wp_unschedule_event($timestamp, 'monitor_uptime_event');
+				    }
+				    wp_schedule_event(time(), 'uptime_monitor_interval', 'monitor_uptime_event');
+				    echo '<div class="updated"><p>' . esc_html__('Configuration imported successfully!', 'uptime-monitor') . '</p></div>';
+			    }
+		    } else {
+			    // STANDAARD INSTELLING OPSLAAN
+			    $monitor_interval = intval($_POST['monitor_interval']);
+			    update_option('uptime_monitor_interval', $monitor_interval);
 
-            echo '<div class="updated"><p>' . __('Settings saved!', 'uptime-monitor') . '</p></div>';
-        }
+			    $timestamp = wp_next_scheduled('monitor_uptime_event');
+			    if ($timestamp) {
+				    wp_unschedule_event($timestamp, 'monitor_uptime_event');
+			    }
+			    wp_schedule_event(time(), 'uptime_monitor_interval', 'monitor_uptime_event');
+
+			    echo '<div class="updated"><p>' . __('Settings saved!', 'uptime-monitor') . '</p></div>';
+		    }
+	    }
+
 
         // Huidige instellingen ophalen
-        $monitor_interval = get_option('uptime_monitor_interval', 120);
+	    $monitor_interval = get_option('uptime_monitor_interval', 120);
+	    $urls = get_option('uptime_monitor_urls', []);
 
-        echo '<div class="wrap">';
+	    $export_data = [
+		    'settings' => [ 'monitor_interval' => $monitor_interval ],
+		    'urls'     => $urls,
+	    ];
+
+	    $json_export = json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+
+	    echo '<div class="wrap">';
         echo '<h1>' . __('Uptime Monitor Settings', 'uptime-monitor') . '</h1>';
         echo "<p>" . __('Pushover credentials are securely managed via your wp-config.php file. Contact your site administrator to update these values.', 'uptime-monitor') . "</p>";
         echo "<pre>define('PUSHOVER_USER_KEY', 'your-pushover-user-key');define('PUSHOVER_API_TOKEN', 'your-pushover-api-token');</pre>";
@@ -245,7 +279,15 @@ class SimpleUptimeMonitor
         echo '</tr>';
         echo '</table>';
 
-        echo '<p><input type="submit" class="button button-primary" value="' . __('Save Settings', 'uptime-monitor') . '"></p>';
+	    echo '<h2>' . __('Export Configuration', 'uptime-monitor') . '</h2>';
+	    echo '<textarea readonly rows="10" style="width:100%; font-family:monospace;">' . esc_textarea($json_export) . '</textarea>';
+
+	    echo '<h2>' . __('Import Configuration', 'uptime-monitor') . '</h2>';
+	    echo '<p>' . __('Paste a previously exported JSON configuration below.', 'uptime-monitor') . '</p>';
+	    echo '<textarea name="import_json" rows="10" style="width:100%; font-family:monospace;"></textarea>';
+
+
+	    echo '<p><input type="submit" class="button button-primary" value="' . __('Save Settings', 'uptime-monitor') . '"></p>';
         echo '</form>';
         echo '</div>';
     }
