@@ -232,6 +232,11 @@ class SimpleUptimeMonitor
 					    update_option('uptime_monitor_interval', intval($data['settings']['monitor_interval']));
 				    }
 				    if (isset($data['urls']) && is_array($data['urls'])) {
+					    foreach ($data['urls'] as &$url) {
+						    if (!isset($url['enabled'])) {
+							    $url['enabled'] = true;
+						    }
+					    }
 					    update_option('uptime_monitor_urls', $data['urls']);
 				    }
 				    // Herplan cronjob
@@ -307,7 +312,11 @@ class SimpleUptimeMonitor
         $this->log_to_json('info', 'URLs to monitor.', ['urls' => $urls]);
 
         foreach ($urls as $url_data) {
-            for ($i = 0; $i < 3; $i++) {
+	        if (isset($url_data['enabled']) && $url_data['enabled'] === false) {
+		        $this->log_to_json('info', 'Monitoring disabled for URL.', ['url' => $url_data['url']]);
+		        continue;
+	        }
+	        for ($i = 0; $i < 3; $i++) {
                 $response = wp_remote_get($url_data['url'], ['timeout' => 10]);
                 if (!is_wp_error($response)) {
                     $this->log_to_json('info', 'Successful retry.', ['url' => $url_data['url'], 'attempt' => $i + 1]);
@@ -467,6 +476,7 @@ class SimpleUptimeMonitor
             'url' => $new_url,
             'email' => $email_alert,
             'pushover' => $pushover_alert,
+	        'enabled' => true,
         ];
         update_option('uptime_monitor_urls', $urls);
         wp_send_json_success(['urls' => $urls]);
