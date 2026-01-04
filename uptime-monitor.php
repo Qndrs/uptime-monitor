@@ -551,7 +551,7 @@ class SimpleUptimeMonitor
 }
 
 new SimpleUptimeMonitor();
-class UptimeMonitorLogsController extends \WP_REST_Controller {
+class UptimeMonitorLogsController extends WP_REST_Controller {
 	/**
 	 * Registers REST API routes for the Uptime Monitor.
 	 *
