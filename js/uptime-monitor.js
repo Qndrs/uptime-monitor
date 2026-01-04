@@ -78,3 +78,20 @@ jQuery(document).ready(function ($) {
         }
     }
 });
+jQuery(document).on('change', '.toggle-monitoring', function () {
+    const id = jQuery(this).data('id');
+    const enabled = jQuery(this).is(':checked') ? 1 : 0;
+
+    jQuery.post(uptimeMonitorAjax.ajax_url, {
+        action: 'toggle_uptime_monitoring',
+        id: id,
+        enabled: enabled,
+        nonce: uptimeMonitorAjax.nonce
+    }, function (response) {
+        if (response.success) {
+            console.log('Monitoring status updated');
+        } else {
+            alert(uptimeMonitorL10n.error_generic);
+        }
+    });
+});

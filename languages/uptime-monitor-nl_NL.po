@@ -3,113 +3,123 @@ msgstr ""
 "Project-Id-Version: Uptime Monitor Extension for Get URL Cron\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-12-30 05:43+0000\n"
-"PO-Revision-Date: 2024-12-31 07:57+0000\n"
+"PO-Revision-Date: 2026-01-04 11:51+0000\n"
 "Last-Translator: Robert Kuunders\n"
 "Language-Team: Nederlands\n"
-"Language: nl-NL\n"
+"Language: nl_NL\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Loco https://localise.biz/\n"
-"X-Loco-Version: 2.6.14; wp-6.7.1\n"
+"X-Loco-Version: 2.8.0; wp-6.9; php-8.3.29\n"
 "X-Domain: uptime-monitor"
 
-#: uptime-monitor.php:102
+#: uptime-monitor.php:125
 msgid "A general error occurred. Please try again."
 msgstr "Er is een algemene fout opgetreden. Probeer het opnieuw."
 
-#: uptime-monitor.php:174
+#: uptime-monitor.php:199
 msgid "Actions"
 msgstr "Bewerkingen"
 
-#: uptime-monitor.php:168
+#: uptime-monitor.php:193
 msgid "Add URL"
 msgstr "URL toevoegen"
 
-#: uptime-monitor.php:101
+#: uptime-monitor.php:124
 msgid "An error occurred: "
 msgstr "Er is een fout opgetreden:"
 
-#: uptime-monitor.php:104 uptime-monitor.php:181
+#: uptime-monitor.php:379
+msgid "Cannot send alert due to missing credentials."
+msgstr "Melding kan niet verzonden worden vanwege ontbrekende credentials."
+
+#: uptime-monitor.php:251
+msgid "Configuration imported successfully!"
+msgstr "Configuratie succesvol geïmporteerd."
+
+#: uptime-monitor.php:127 uptime-monitor.php:209
 msgid "Delete"
 msgstr "Verwijderen"
 
-#: uptime-monitor.php:106 uptime-monitor.php:179 uptime-monitor.php:180
+#: uptime-monitor.php:129 uptime-monitor.php:204 uptime-monitor.php:205
 msgid "Disabled"
 msgstr "Uitgeschakeld"
 
-#: uptime-monitor.php:165
+#: uptime-monitor.php:190
 msgid "Email Alert"
-msgstr "E-mailalarm"
+msgstr "E-mail alarm"
 
-#: uptime-monitor.php:174
+#: uptime-monitor.php:199
 msgid "Email Alerts"
-msgstr "E-mailalarmen"
+msgstr "E-mail alarmen"
 
-#: uptime-monitor.php:105 uptime-monitor.php:179 uptime-monitor.php:180
+#: uptime-monitor.php:128 uptime-monitor.php:204 uptime-monitor.php:205
 msgid "Enabled"
 msgstr "Ingeschakeld"
 
-#: uptime-monitor.php:399
+#: uptime-monitor.php:580
 msgid "Every %d seconds"
 msgstr "Iedere %d seconden"
 
-#: uptime-monitor.php:172
+#: uptime-monitor.php:197
 msgid "Existing URLs"
 msgstr "Huidige URL's"
 
-#. Description of the plugin
-#, fuzzy
-#| msgid ""
-#| "Inspired on the Get URL Cron plugin to monitor website uptime and send "
-#| "alerts."
-msgid "Extends Get URL Cron plugin to monitor website uptime and send alerts."
-msgstr ""
-"Geïnspireerd door de Get URL Cron-plugin uit om website-uptime te monitoren "
-"en meldingen te sturen."
+#: uptime-monitor.php:295
+msgid "Export Configuration"
+msgstr "Exporteer instellingen."
 
-#: uptime-monitor.php:244
-#, php-format
-msgid "Final HTTP request (tried 3 times) failed for %s: %s"
-msgstr "Uiteindelijke HTTP-verzoek (3 keer geprobeerd) is mislukt voor %s: %s"
+#: uptime-monitor.php:298
+msgid "Import Configuration"
+msgstr "Importeer instellingen."
 
-#: uptime-monitor.php:128
+#: uptime-monitor.php:232
+msgid "Invalid JSON format."
+msgstr "Ongeldig JSON format."
+
+#: uptime-monitor.php:153
 msgid "Invalid URL:"
 msgstr "Ongeldige URL:"
 
-#: uptime-monitor.php:160
+#: uptime-monitor.php:185
 msgid "Manage URLs"
 msgstr "Beheer URL's"
 
-#: uptime-monitor.php:221
+#: uptime-monitor.php:290
 msgid "Monitor Interval (seconds)"
 msgstr "Monitor interval (seconden)"
 
-#: uptime-monitor.php:103
+#: uptime-monitor.php:199
+msgid "Monitoring Enabled"
+msgstr "Monitoring ingeschakeld"
+
+#: uptime-monitor.php:552
+msgid "No logs found."
+msgstr "Geen log aangetroffen."
+
+#: uptime-monitor.php:126
 msgid "No URLs available. Add one!"
 msgstr "Geen URL's beschikbaar. Voeg er een toe!"
 
-#: uptime-monitor.php:166
+#: uptime-monitor.php:299
+msgid "Paste a previously exported JSON configuration below."
+msgstr "Plak een JSON instellingen structuur hieronder."
+
+#. Description of the plugin
+msgid "Plugin to monitor website uptime and send alerts."
+msgstr "Plugin om websites te monitoren en alarmmeldingen te versturen."
+
+#: uptime-monitor.php:191
 msgid "Pushover Alert"
 msgstr "Pushover-alarm"
 
-#: uptime-monitor.php:174
+#: uptime-monitor.php:199
 msgid "Pushover Alerts"
 msgstr "Pushover-alarmen"
 
-#: uptime-monitor.php:308
-#, php-format
-msgid "Pushover API responded with code: %d for URL: %s"
-msgstr "Pushover API reageerde met code: %d voor URL: %s"
-
-#: uptime-monitor.php:285
-#, php-format
-msgid "Pushover credentials are missing. Cannot send alert for URL: %s"
-msgstr ""
-"Pushover-gegevens ontbreken. Versturen van alarm niet gelukt voor URL: %s"
-
-#: uptime-monitor.php:214
+#: uptime-monitor.php:283
 msgid ""
 "Pushover credentials are securely managed via your wp-config.php file. "
 "Contact your site administrator to update these values."
@@ -117,70 +127,60 @@ msgstr ""
 "Pushover-gegevens staan in wp-config.php. De beheerder van de website kan "
 "deze voor je in het bestand plaatsen."
 
-#: uptime-monitor.php:304
-#, php-format
-msgid "Pushover notification failed for URL %s: %s"
-msgstr "Pushover-melding mislukt voor URL %s: %s"
-
 #. Author of the plugin
 msgid "Robert E. Kuunders, GPT"
 msgstr "Robert E. Kuunders, GPT"
 
-#: uptime-monitor.php:226
+#: uptime-monitor.php:303
 msgid "Save Settings"
 msgstr "Instellingen opslaan"
 
-#: uptime-monitor.php:74 uptime-monitor.php:75
+#: uptime-monitor.php:95 uptime-monitor.php:96
 msgid "Settings"
 msgstr "Instellingen"
 
-#: uptime-monitor.php:206
+#: uptime-monitor.php:264
 msgid "Settings saved!"
 msgstr "Instellingen opgeslagen!"
 
-#: uptime-monitor.php:271 uptime-monitor.php:289
+#. Name of the plugin
+msgid "Simple Uptime Monitor"
+msgstr "Eenvoudige Uptime monitor."
+
+#: uptime-monitor.php:361 uptime-monitor.php:384
 #, php-format
 msgid "The website %s is down. HTTP Status Code: %d."
 msgstr "Website %s lijkt offline. HTTP-statuscode: %d"
 
-#: uptime-monitor.php:65 uptime-monitor.php:66
+#: uptime-monitor.php:86 uptime-monitor.php:87
 msgid "Uptime Monitor"
 msgstr "Uptime Monitor"
 
-#. Name of the plugin
-msgid "Uptime Monitor Extension for Get URL Cron"
-msgstr "Uptime Monitor"
-
-#: uptime-monitor.php:213
+#: uptime-monitor.php:282
 msgid "Uptime Monitor Settings"
 msgstr "Uptime Monitor Instellingen"
 
-#: uptime-monitor.php:164 uptime-monitor.php:174
+#: uptime-monitor.php:189 uptime-monitor.php:199
 msgid "URL"
 msgstr "URL"
 
-#: uptime-monitor.php:252
-#, php-format
-msgid "URL %s is down. HTTP Status Code: %d"
-msgstr "URL %s lijkt offline. Statuscode: %d"
-
-#: uptime-monitor.php:99 uptime-monitor.php:140
+#: uptime-monitor.php:122 uptime-monitor.php:165
 msgid "URL added successfully!"
 msgstr "URL succesvol toegevoegd!"
 
-#: uptime-monitor.php:100 uptime-monitor.php:155
+#: uptime-monitor.php:123 uptime-monitor.php:180
 msgid "URL deleted successfully!"
 msgstr "URL succesvol verwijderd!"
 
-#: uptime-monitor.php:132
+#: uptime-monitor.php:157
 msgid "URL is not reachable (status code:"
 msgstr "URL is niet bereikbaar. (statuscode:"
 
-#: uptime-monitor.php:290
+#: uptime-monitor.php:385
 msgid "Website Down Alert"
 msgstr "Website down-alarm"
 
-#: uptime-monitor.php:270
+#: uptime-monitor.php:360
 #, php-format
 msgid "Website Down Alert: %s"
 msgstr "Website down-alarm: %s"

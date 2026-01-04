@@ -1,12 +1,27 @@
 <?php
 
 namespace SimpleUptimeMonitor;
-/*
-Plugin Name: Simple Uptime Monitor
-Description: Plugin to monitor website uptime and send alerts.
-Version: 2.6.0
-Author: Robert E. Kuunders, GPT
-*/
+/**
+ * Plugin Name: Simple Uptime Monitor
+ * Plugin URI: https://github.com/qndrs/uptime-monitor
+ * Description: Monitor de beschikbaarheid van websites en ontvang meldingen via e-mail of Pushover. Beheer eenvoudig meerdere URL's vanuit het WordPress-beheerpaneel, met logging, JSON-import/export, REST-ondersteuning en intervalinstellingen.
+ * Version: 3.0.0
+ * Author: Robert E. Kuunders, GPT
+ * Author URI: https://qndrs.nl
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: uptime-monitor
+ * Domain Path: /languages
+ *
+ * Features:
+ * - E-mail en Pushover notificaties bij downtime
+ * - Cron-gebaseerde monitoring (instelbaar interval)
+ * - Beheerbare URL-lijst met aan/uit schakelaar
+ * - JSON-configuratie export en import
+ * - REST endpoint voor logbestanden (alleen voor admins)
+ * - Meertalige ondersteuning (Loco Translate compatibel)
+ * - Custom client plugin mogelijk voor firewall-omzeiling
+ */
 
 use WP_REST_Controller;
 use WP_REST_Response;
@@ -35,13 +50,12 @@ class SimpleUptimeMonitor
         add_action('admin_menu', [$this, 'add_menu_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
         add_action('monitor_uptime_event', [$this, 'monitor_uptime']);
-        add_action('rest_api_init', [$this, 'register_rest_routes']);
         register_activation_hook(__FILE__, [$this, 'activate']);
         register_deactivation_hook(__FILE__, [$this, 'deactivate']);
-
         // AJAX hooks
         add_action('wp_ajax_add_uptime_url', [$this, 'ajax_add_url']);
         add_action('wp_ajax_delete_uptime_url', [$this, 'ajax_delete_url']);
+	    add_action('wp_ajax_toggle_uptime_monitoring', [$this, 'ajax_toggle_monitoring']);
     }
 
 
@@ -196,14 +210,17 @@ class SimpleUptimeMonitor
 
         echo '<h2>' . __('Existing URLs', 'uptime-monitor') . '</h2>';
         echo '<table class="widefat fixed uptime-monitor-table">';
-        echo '<thead><tr><th>' . __('URL', 'uptime-monitor') . '</th><th>' . __('Email Alerts', 'uptime-monitor') . '</th><th>' . __('Pushover Alerts', 'uptime-monitor') . '</th><th>' . __('Actions', 'uptime-monitor') . '</th></tr></thead>';
+        echo '<thead><tr><th>' . __('URL', 'uptime-monitor') . '</th><th>' . __('Email Alerts', 'uptime-monitor') . '</th><th>' . __('Pushover Alerts', 'uptime-monitor') . '</th><th>' . __('Monitoring Enabled', 'uptime-monitor') . '</th><th>' . __('Actions', 'uptime-monitor') . '</th></tr></thead>';
         echo '<tbody>';
         foreach ($urls as $index => $url_data) {
             echo '<tr>';
             echo '<td>' . esc_html($url_data['url']) . '</td>';
             echo '<td>' . ($url_data['email'] ? __('Enabled', 'uptime-monitor') : __('Disabled', 'uptime-monitor')) . '</td>';
             echo '<td>' . ($url_data['pushover'] ? __('Enabled', 'uptime-monitor') : __('Disabled', 'uptime-monitor')) . '</td>';
-            echo '<td><button class="button delete-url" data-id="' . esc_attr($url_data['id']) . '">' . __('Delete', 'uptime-monitor') . '</button></td>';
+	        echo '<td>';
+	        echo '<input type="checkbox" class="toggle-monitoring" data-id="' . esc_attr($url_data['id']) . '" ' . ($url_data['enabled'] ? 'checked' : '') . '>';
+	        echo '</td>';
+	        echo '<td><button class="button delete-url" data-id="' . esc_attr($url_data['id']) . '">' . __('Delete', 'uptime-monitor') . '</button></td>';
             echo '</tr>';
         }
         echo '</tbody>';
@@ -422,7 +439,7 @@ class SimpleUptimeMonitor
      *
      * @return void
      */
-    private function log_to_json($type, $message, $data = []): void
+    public static function log_to_json($type, $message, $data = []): void
     {
         $log_file = WP_CONTENT_DIR . '/logs/uptime-monitor.json';
 
@@ -508,24 +525,69 @@ class SimpleUptimeMonitor
         }
         wp_send_json_error(['message' => 'URL not found.']);
     }
+	/**
+	 * Handles AJAX request to toggle monitoring for a specific URL.
+	 *
+	 * This function updates the 'active' flag of a monitored URL identified by its ID.
+	 *
+	 * @return void Outputs a JSON response with updated URLs or an error message.
+	 */
+	public function ajax_toggle_monitoring(): void {
+		check_ajax_referer('uptime_monitor_nonce', 'nonce');
 
+		$id = sanitize_text_field($_POST['id']);
+		$enabled = isset($_POST['enabled']) && $_POST['enabled'] == 1;
+		$urls = get_option('uptime_monitor_urls', []);
+
+		foreach ($urls as &$url_data) {
+			if ($url_data['id'] === $id) {
+				$url_data['enabled'] = $enabled;
+				update_option('uptime_monitor_urls', $urls);
+				wp_send_json_success();
+			}
+		}
+		wp_send_json_error(['message' => 'URL not found']);
+	}
 }
 
 new SimpleUptimeMonitor();
 class UptimeMonitorLogsController extends \WP_REST_Controller {
-
+	/**
+	 * Registers REST API routes for the Uptime Monitor.
+	 *
+	 * This method defines the /uptime-monitor/v1/logs endpoint for retrieving log entries.
+	 *
+	 * @return void
+	 */
 	public function register_routes(): void {
 		register_rest_route('uptime-monitor/v1', '/logs', [
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => [$this, 'get_logs'],
-			'permission_callback' => [$this, 'check_permissions'],
+			'permission_callback' => [$this, 'check_permissions'], // '__return_true' when checking route
 		]);
 	}
-
+	/**
+	 * Checks if the current user has permission to access the REST API endpoint.
+	 *
+	 * @return bool True if the user has 'manage_options' capability, false otherwise.
+	 */
 	public function check_permissions(): bool {
+		SimpleUptimeMonitor::log_to_json(
+			'debug',
+			'Check_permissions called.',
+			[ 'user_id' => get_current_user_id(),
+			  'is_user_logged_in' => is_user_logged_in(),
+			  'current_user' => wp_get_current_user()
+			]
+		);
 		return current_user_can('manage_options'); // Allow only admins
 	}
-
+	/**
+	 * Handles REST API request to fetch the uptime log data.
+	 *
+	 * @param WP_REST_Request $request The REST API request.
+	 * @return WP_REST_Response|WP_Error The log data as a REST response or an error if the log file is missing.
+	 */
 	public function get_logs( WP_REST_Request $request ) {
 		$log_file = WP_CONTENT_DIR . '/logs/uptime-monitor.json';
 		if (!file_exists($log_file)) {

@@ -1,120 +1,171 @@
-![WordPress version](https://img.shields.io/badge/WordPress-6.7-blue)
+# Simple Uptime Monitor
+
+![WordPress version](https://img.shields.io/badge/WordPress-6.9-blue)
 ![PHP version](https://img.shields.io/badge/PHP-8.0+-blue)
 ![License](https://img.shields.io/badge/license-GPLv2%2B-green)
-=== Simple Uptime Monitor ===
-Contributors: Robert E. Kuunders
-Tags: uptime, monitoring, notifications, pushover, email, cron, rest-api, json, wordpress-plugin, export, import, json-export
-Requires at least: 6.0
-Tested up to: 6.7
-Requires PHP: 8.0+
-Stable tag: 2.8.0
-License: GPLv2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Monitor the uptime of your websites and receive notifications via email or Pushover.
+## Plugin Metadata
 
-== Description ==
-**Simple Uptime Monitor** tracks the availability of websites using WordPress cron. It can notify administrators via email and/or Pushover when a site is down. Sites can be managed through an admin interface, and status logs are stored as JSON files for external analysis or REST access.
+- **Contributors:** Robert E. Kuunders  
+- **Tags:** uptime, monitoring, notifications, pushover, email, cron, rest-api, json, wordpress-plugin, export, import, json-export  
+- **Requires at least:** WordPress 6.0  
+- **Tested up to:** WordPress 6.9  
+- **Requires PHP:** 8.0+  
+- **Stable tag:** 3.0.0  
+- **License:** GPLv2 or later  
+- **License URI:** https://www.gnu.org/licenses/gpl-2.0.html  
 
-Now includes:
-- Pushover & email alerting
-- Multi-language support
-- JSON logging
-- REST endpoint for logs (authenticated)
-- Customizable cron interval
-- Admin UI for adding/removing sites
-- Export & import of settings and monitored URLs
-- Option to temporarily disable monitoring per URL
-- Client integration for behind-firewall sites
+---
 
-**Features**
-- Monitor multiple sites from a single dashboard.
-- Notify via email or Pushover.
-- JSON log format for external integrations.
-- REST API for accessing logs externally.
-- Adjustable cron intervals per WordPress settings.
-- Multi-language ready.
-- Export/import settings via JSON.
-- Toggle monitoring on/off per URL.
+## Description
 
-**Use Cases:**
-- Monitor the availability of your websites.
-- Get instant alerts when a website is down.
-- View status history and uptime performance in the admin dashboard.
+**Simple Uptime Monitor** is a lightweight yet powerful plugin to monitor the uptime and availability of external websites. Get real-time alerts via email or Pushover when a site is down, directly from your WordPress dashboard. All status checks are stored as structured JSON logs for analysis or REST access.
 
-== Installation ==
+### 🔧 Features
 
-1. Upload the plugin files to the `/wp-content/plugins/uptime-monitor` directory, or install the plugin through the WordPress plugins screen directly.
-2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Navigate to "Uptime Monitor" in the WordPress admin menu to configure URLs and notification preferences.
-4. Set cron to run every minute (curl https://website.com/wp-cron.php > /dev/null 2>&1) if needed. Turn of pseudo cron in wp-config.php (define('DISABLE_WP_CRON', true);)
+- 📡 Monitor multiple external websites from your WordPress dashboard.
+- 🔔 Get alerts via email and/or Pushover when a URL is unreachable.
+- 🛠 Temporarily disable monitoring per URL.
+- 📤 Export and 📥 import configuration using JSON.
+- 🔁 Adjust the monitoring interval via admin settings.
+- 🗂 REST API endpoint to retrieve logs.
+- 🌐 Supports multilingual usage.
+- 🔒 Includes client plugin support for sites behind firewalls.
+- 🧾 Logs are stored in JSON format for better interoperability.
 
-== Frequently Asked Questions ==
+### ✅ Use Cases
 
-= How can I add or remove URLs? =
-You can add or remove URLs directly from the admin interface under the "Uptime Monitor" section.
+- Uptime monitoring for multiple client or business websites.
+- Integration with external dashboards using JSON or REST.
+- Receive immediate notifications during outages.
+- Monitor internal firewalled services with client-side pings.
 
-= What kind of notifications are supported? =
-Currently, the plugin supports email notifications and Pushover notifications. You can enable or disable these for each URL individually.
+---
 
-= Can I customize the check interval? =
-Yes, you can configure the monitoring interval via the settings page. By default, the interval is set to 2 minutes.
+## Installation
 
-= Where are the logs stored? =
-Logs are stored in the `wp-content/logs/uptime-monitor.log` file.
+1. Upload the plugin to `/wp-content/plugins/uptime-monitor` or install it via the WordPress plugin directory.
+2. Activate the plugin via the **Plugins** menu in WordPress.
+3. Go to **Uptime Monitor** in the admin menu to start adding URLs.
+4. Configure notifications per URL (email or Pushover).
+5. (Optional) Add this cron command on your server:  
+   ```bash
+   curl https://yourwebsite.com/wp-cron.php > /dev/null 2>&1
+   ```  
+   Also set in `wp-config.php`:
+   ```php
+   define('DISABLE_WP_CRON', true);
+   ```
+### REST API: Fetch logs
 
-= How do I set up Pushover notifications? =
-Add the following to your `wp-config.php` file:
+**Endpoint**:  
+`GET /wp-json/uptime-monitor/v1/logs`
+
+**Authentication**:  
+Use Basic Auth with your WordPress username and an [Application Password](https://wordpress.org/support/article/application-passwords/)
+
+**Response**:  
+JSON array of log entries:
+```json
+[
+   {
+      "timestamp": "2026-01-04 13:53:44",
+      "type": "info",
+      "message": "Cron job started.",
+      "data": {
+         "task": "monitor_uptime_event"
+      }
+   }
+]
+```
+---
+
+## Frequently Asked Questions
+
+### How do I add or remove URLs?
+
+Go to the **Uptime Monitor** page in the WordPress admin and use the form to manage your list.
+
+### How can I get alerts when a site is down?
+
+Enable email and/or Pushover alerts per URL.
+
+### How do I configure Pushover?
+
+Add the following constants in `wp-config.php`:
+
 ```php
-define('PUSHOVER_USER_KEY', 'your-pushover-user-key');
-define('PUSHOVER_API_TOKEN', 'your-pushover-api-token');
+define('PUSHOVER_USER_KEY', 'your-user-key');
+define('PUSHOVER_API_TOKEN', 'your-api-token');
 ```
 
-= Can I export or import my monitored URLs and settings? =
-Yes! You can copy/paste JSON data in the settings panel to export or import your configuration.
+### Where are logs stored?
 
-= Can I disable monitoring for specific URLs temporarily? =
-Yes, there is a toggle per URL that allows you to disable monitoring without deleting the URL.
+In `wp-content/logs/uptime-monitor.json`.
 
-= Can this plugin monitor websites behind firewalls? =
-You can optionally install a lightweight client plugin on the monitored site that pings this monitor proactively.
+### What is the endpoint for reading the logfile?
 
-== Screenshots ==
+At: `/wp-json/uptime-monitor/v1/logs`.
 
-Admin Dashboard: Add and manage URLs with options for email and Pushover notifications.
-Uptime Logs: View detailed logs of uptime and downtime events.
-== Changelog ==
+### Can I export/import my configuration?
 
-= 2.8.0 =
-- Added JSON import/export functionality via settings panel.
-- Added option to disable monitoring per URL.
-- Added REST API endpoint for external access to logs.
-- Introduced client plugin architecture for behind-firewall monitoring (preparation).
-- Improved logging format to JSON.
-- Various code refactors and improved plugin structure.
+Yes! Use the settings page to copy and paste your entire configuration in JSON.
 
-= 2.0.0 =
+### Can this monitor sites behind firewalls?
 
-Added namespace for improved organization.
-Enhanced AJAX functionality for better user experience.
-Added support for translations.
-= 1.5.0 =
+Yes, with a lightweight client plugin installed on the target site, it can actively ping your monitor.
 
-Introduced Pushover notifications.
-Added detailed logging of events.
-= 1.0.0 =
+### Can I disable monitoring temporarily?
 
-Initial release: Monitor URLs and receive email notifications.
-== Upgrade Notice ==
+Yes. Use the checkbox per URL to toggle monitoring on or off.
 
-= 2.0.0 = Namespace support added. Ensure your Pushover credentials are correctly set in wp-config.php.
+---
 
-== License ==
+## Screenshots
 
-This plugin is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later version.
+1. Dashboard to manage URLs and settings  
+2. Settings panel with JSON export/import  
+3. JSON log file example  
+4. REST API output for external integrations  
 
-This plugin is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+---
 
-== Notes ==
+## Changelog
 
-For feature requests, bug reports, or contributions, please visit the [GitHub repository](https://github.com/qndrs/uptime-monitor).
+### 3.0.0
+- Updated language files (NL)
+- Extended logging for REST access
+
+### 2.9.0
+- Added toggle per URL to disable/enable monitoring.
+- Improved REST implementation and JSON logging.
+- Added JSON import/export for full configuration.
+- Refined multilingual support and translation strings.
+
+### 2.8.0
+- Introduced JSON import/export UI.
+- REST endpoint for authenticated log retrieval.
+- Initial support for client plugin architecture.
+
+### 2.0.0
+- Namespacing and code restructuring.
+- Support for multi-language strings and error handling.
+
+### 1.5.0
+- Added Pushover notifications.
+- Improved logging of events and errors.
+
+### 1.0.0
+- Initial release: monitor uptime and get email alerts.
+
+---
+
+## License
+
+This plugin is open-source software licensed under [GPLv2 or later](https://www.gnu.org/licenses/gpl-2.0.html).
+
+---
+
+## Contributing
+
+Feedback, bug reports or feature requests? Visit the [GitHub repository](https://github.com/qndrs/uptime-monitor).
