@@ -42,19 +42,20 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Inhoud: cron-fix, security checks, datamigratie, UI-consistentie en loggingfixes.
   - Klaar wanneer: changelog, plugin header en Git tag `v3.0.1` kloppen.
 
-- [ ] Voeg basistests toe.
+- [x] Voeg basistests toe.
   - Focus: data-normalisatie, importvalidatie, loglimieten en REST-permissies.
   - Klaar wanneer: tests lokaal reproduceerbaar draaien.
 
-- [ ] Draai WordPress Plugin Check en los blokkerende meldingen op.
+- [x] Draai WordPress Plugin Check en los blokkerende meldingen op.
   - Focus: security, escaping, internationalization en plugin metadata.
+  - Status: cleanup toegepast voor escaping, input handling, i18n, readme.txt en loggingopslag; hercontrole zonder fouten afgerond.
   - Klaar wanneer: geen kritieke meldingen meer openstaan.
 
-- [ ] Herstel README encoding en inhoud.
+- [x] Herstel README encoding en inhoud.
   - Probleem: emoji/UTF-8 tekst is beschadigd.
   - Klaar wanneer: README leesbaar is en alleen features claimt die echt bestaan.
 
-- [ ] Automatiseer het releasepakket.
+- [x] Automatiseer het releasepakket.
   - Probleem: `uptime-monitor.zip` kan verouderen.
   - Klaar wanneer: zip-build reproduceerbaar is en `.git`, `.idea` en tijdelijke bestanden uitsluit.
 
