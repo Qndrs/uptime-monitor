@@ -13,3 +13,5 @@ delete_option('uptime_monitor_incidents');
 delete_option('uptime_monitor_retry_attempts');
 delete_option('uptime_monitor_request_timeout');
 delete_option('uptime_monitor_down_status_codes');
+delete_option('uptime_monitor_pushover_user_key');
+delete_option('uptime_monitor_pushover_api_token');

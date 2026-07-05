@@ -12,7 +12,7 @@ Monitor external websites from WordPress and receive downtime alerts by email or
 
 == Description ==
 
-Simple Uptime Monitor checks external URLs from the WordPress dashboard. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, and an authenticated REST endpoint for logs.
+Simple Uptime Monitor checks external URLs from the WordPress dashboard. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, configurable Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, and an authenticated REST endpoint for logs.
 
 == Installation ==
 
@@ -27,7 +27,9 @@ For more reliable checks, configure a real server cron to call `wp-cron.php`.
 
 = How do I configure Pushover? =
 
-Add these constants to `wp-config.php`:
+Configure Pushover credentials from the plugin settings page. Stored credentials are masked and are not included in JSON exports.
+
+You can also add these constants to `wp-config.php`; constants take precedence over stored settings:
 
 `define('PUSHOVER_USER_KEY', 'your-user-key');`
 `define('PUSHOVER_API_TOKEN', 'your-api-token');`

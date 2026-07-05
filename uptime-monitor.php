@@ -116,6 +116,56 @@ class SimpleUptimeMonitor
         return $this->sanitize_status_code_ranges(get_option('uptime_monitor_down_status_codes', self::DEFAULT_DOWN_STATUS_CODES));
     }
 
+    private function get_pushover_user_key(): string
+    {
+        if (defined('PUSHOVER_USER_KEY') && (string)PUSHOVER_USER_KEY !== '') {
+            return sanitize_text_field((string)PUSHOVER_USER_KEY);
+        }
+
+        return sanitize_text_field((string)get_option('uptime_monitor_pushover_user_key', ''));
+    }
+
+    private function get_pushover_api_token(): string
+    {
+        if (defined('PUSHOVER_API_TOKEN') && (string)PUSHOVER_API_TOKEN !== '') {
+            return sanitize_text_field((string)PUSHOVER_API_TOKEN);
+        }
+
+        return sanitize_text_field((string)get_option('uptime_monitor_pushover_api_token', ''));
+    }
+
+    private function has_pushover_credentials(): bool
+    {
+        return $this->get_pushover_user_key() !== '' && $this->get_pushover_api_token() !== '';
+    }
+
+    private function pushover_uses_constants(): bool
+    {
+        return (defined('PUSHOVER_USER_KEY') && (string)PUSHOVER_USER_KEY !== '')
+            || (defined('PUSHOVER_API_TOKEN') && (string)PUSHOVER_API_TOKEN !== '');
+    }
+
+    private function save_pushover_settings_from_post(): void
+    {
+        if (isset($_POST['clear_pushover_user_key'])) {
+            delete_option('uptime_monitor_pushover_user_key');
+        } else {
+            $posted_user_key = isset($_POST['pushover_user_key']) ? sanitize_text_field(wp_unslash($_POST['pushover_user_key'])) : '';
+            if ($posted_user_key !== '') {
+                update_option('uptime_monitor_pushover_user_key', $posted_user_key, false);
+            }
+        }
+
+        if (isset($_POST['clear_pushover_api_token'])) {
+            delete_option('uptime_monitor_pushover_api_token');
+        } else {
+            $posted_api_token = isset($_POST['pushover_api_token']) ? sanitize_text_field(wp_unslash($_POST['pushover_api_token'])) : '';
+            if ($posted_api_token !== '') {
+                update_option('uptime_monitor_pushover_api_token', $posted_api_token, false);
+            }
+        }
+    }
+
     private function sanitize_status_code_ranges($value): string
     {
         $tokens = preg_split('/[\s,]+/', (string)$value, -1, PREG_SPLIT_NO_EMPTY);
@@ -898,10 +948,26 @@ class SimpleUptimeMonitor
                 update_option('uptime_monitor_request_timeout', $request_timeout);
                 $down_status_codes = isset($_POST['down_status_codes']) ? sanitize_text_field(wp_unslash($_POST['down_status_codes'])) : self::DEFAULT_DOWN_STATUS_CODES;
                 update_option('uptime_monitor_down_status_codes', $this->sanitize_status_code_ranges($down_status_codes));
+                $this->save_pushover_settings_from_post();
 
                 $this->reschedule_monitoring();
 
-			    echo '<div class="updated"><p>' . esc_html__('Settings saved!', 'uptime-monitor') . '</p></div>';
+                if (isset($_POST['test_pushover'])) {
+                    $test_sent = $this->has_pushover_credentials()
+                        && $this->send_pushover_message(
+                            home_url('/'),
+                            __('Uptime Monitor Test', 'uptime-monitor'),
+                            __('This is a test notification from Simple Uptime Monitor.', 'uptime-monitor')
+                        );
+
+                    if ($test_sent) {
+                        echo '<div class="updated"><p>' . esc_html__('Settings saved and Pushover test notification sent.', 'uptime-monitor') . '</p></div>';
+                    } else {
+                        echo '<div class="error"><p>' . esc_html__('Settings saved, but the Pushover test notification failed. Check your credentials and logs.', 'uptime-monitor') . '</p></div>';
+                    }
+                } else {
+			        echo '<div class="updated"><p>' . esc_html__('Settings saved!', 'uptime-monitor') . '</p></div>';
+                }
 		    }
 	    }
 
@@ -911,6 +977,10 @@ class SimpleUptimeMonitor
         $retry_attempts = $this->get_retry_attempts();
         $request_timeout = $this->get_request_timeout();
         $down_status_codes = $this->get_down_status_codes();
+        $stored_pushover_user_key = (string)get_option('uptime_monitor_pushover_user_key', '');
+        $stored_pushover_api_token = (string)get_option('uptime_monitor_pushover_api_token', '');
+        $pushover_user_key_placeholder = $stored_pushover_user_key !== '' ? __('Configured', 'uptime-monitor') : '';
+        $pushover_api_token_placeholder = $stored_pushover_api_token !== '' ? __('Configured', 'uptime-monitor') : '';
 	    $urls = $this->normalize_stored_urls();
 
 	    $export_data = [
@@ -928,11 +998,10 @@ class SimpleUptimeMonitor
 
 	    echo '<div class="wrap">';
         echo '<h1>' . esc_html__('Uptime Monitor Settings', 'uptime-monitor') . '</h1>';
-        echo '<p>' . esc_html__('Pushover credentials are securely managed via your wp-config.php file. Contact your site administrator to update these values.', 'uptime-monitor') . '</p>';
-        echo "<pre>define('PUSHOVER_USER_KEY', 'your-pushover-user-key');define('PUSHOVER_API_TOKEN', 'your-pushover-api-token');</pre>";
         echo '<form method="post">';
         wp_nonce_field('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
 
+        echo '<h2>' . esc_html__('Monitoring Settings', 'uptime-monitor') . '</h2>';
         echo '<table class="form-table">';
         echo '<tr>';
         echo '<th scope="row"><label for="monitor_interval">' . esc_html__('Monitor Interval (seconds)', 'uptime-monitor') . '</label></th>';
@@ -952,6 +1021,33 @@ class SimpleUptimeMonitor
         echo '<p class="description">' . esc_html__('Use comma-separated HTTP status codes or ranges. Default: 100-199,300-599.', 'uptime-monitor') . '</p></td>';
         echo '</tr>';
         echo '</table>';
+
+        echo '<h2>' . esc_html__('Pushover Configuration', 'uptime-monitor') . '</h2>';
+        if ($this->pushover_uses_constants()) {
+            echo '<p>' . esc_html__('Pushover constants are defined in wp-config.php and take precedence over stored settings.', 'uptime-monitor') . '</p>';
+        } else {
+            echo '<p>' . esc_html__('Store Pushover credentials here when file access to wp-config.php is not available.', 'uptime-monitor') . '</p>';
+        }
+        echo '<pre>' . esc_html("define('PUSHOVER_USER_KEY', 'your-pushover-user-key');define('PUSHOVER_API_TOKEN', 'your-pushover-api-token');") . '</pre>';
+        echo '<table class="form-table">';
+        echo '<tr>';
+        echo '<th scope="row"><label for="pushover_user_key">' . esc_html__('Pushover User Key', 'uptime-monitor') . '</label></th>';
+        echo '<td><input type="password" id="pushover_user_key" name="pushover_user_key" value="" placeholder="' . esc_attr($pushover_user_key_placeholder) . '" class="regular-text" autocomplete="new-password">';
+        if ($stored_pushover_user_key !== '') {
+            echo '<p><label><input type="checkbox" name="clear_pushover_user_key" value="1"> ' . esc_html__('Clear stored user key', 'uptime-monitor') . '</label></p>';
+        }
+        echo '</td>';
+        echo '</tr>';
+        echo '<tr>';
+        echo '<th scope="row"><label for="pushover_api_token">' . esc_html__('Pushover API Token', 'uptime-monitor') . '</label></th>';
+        echo '<td><input type="password" id="pushover_api_token" name="pushover_api_token" value="" placeholder="' . esc_attr($pushover_api_token_placeholder) . '" class="regular-text" autocomplete="new-password">';
+        if ($stored_pushover_api_token !== '') {
+            echo '<p><label><input type="checkbox" name="clear_pushover_api_token" value="1"> ' . esc_html__('Clear stored API token', 'uptime-monitor') . '</label></p>';
+        }
+        echo '</td>';
+        echo '</tr>';
+        echo '</table>';
+        echo '<p><button type="submit" class="button" name="test_pushover" value="1">' . esc_html__('Send Pushover Test', 'uptime-monitor') . '</button></p>';
 
 	    echo '<h2>' . esc_html__('Export Configuration', 'uptime-monitor') . '</h2>';
 	    echo '<textarea readonly rows="10" style="width:100%; font-family:monospace;">' . esc_textarea($json_export) . '</textarea>';
@@ -1115,17 +1211,17 @@ class SimpleUptimeMonitor
         $this->send_pushover_message($url, __('Website Recovered', 'uptime-monitor'), $message);
     }
 
-    private function send_pushover_message($url, string $title, string $message): void
+    private function send_pushover_message($url, string $title, string $message): bool
     {
-        $user_key = defined('PUSHOVER_USER_KEY') ? PUSHOVER_USER_KEY : '';
-        $api_token = defined('PUSHOVER_API_TOKEN') ? PUSHOVER_API_TOKEN : '';
+        $user_key = $this->get_pushover_user_key();
+        $api_token = $this->get_pushover_api_token();
 
         if (!$user_key || !$api_token) {
             $this->log_to_json('error', 'Pushover credentials are missing.', [
                 'url' => $url,
                 'error' => __('Cannot send alert due to missing credentials.', 'uptime-monitor'),
             ]);
-            return;
+            return false;
         }
 
         $post_data = [
@@ -1144,6 +1240,7 @@ class SimpleUptimeMonitor
                 'url' => $url,
                 'error' => $response->get_error_message(),
             ]);
+            return false;
         } else {
             $response_code = wp_remote_retrieve_response_code($response);
             if ($response_code != 200) {
@@ -1151,11 +1248,13 @@ class SimpleUptimeMonitor
                     'url' => $url,
                     'status_code' => $response_code,
                 ]);
+                return false;
             } else {
                 $this->log_to_json('info', 'Pushover notification sent successfully.', [
                     'url' => $url,
                     'status_code' => $response_code,
                 ]);
+                return true;
             }
         }
     }

@@ -14,7 +14,7 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 - Huidige SSH-account heeft geen shell; server-side Git deploy is daarmee nog niet mogelijk.
 - Releasepakket is lokaal reproduceerbaar via `scripts/build-release.ps1`.
 - Lokale releasechecks draaien via `scripts/check-release.ps1`.
-- Volgende inhoudelijke fase: Pushover-configuratie afronden en daarna het dashboard/API-werk uitwerken.
+- Volgende inhoudelijke fase: dashboard/API-werk uitwerken.
 
 ## 1. Stabilisatie
 
@@ -91,12 +91,13 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Mogelijk: stuur ook bericht wanneer een down URL weer up is.
   - Status: per URL wordt incident-state bijgehouden; bij herstel wordt een eenmalige herstelmelding verstuurd en de incidentstatus gereset.
 
-- [ ] Werk Pushover-configuratie uit.
+- [x] Werk Pushover-configuratie uit.
   - Huidig: `PUSHOVER_USER_KEY` en `PUSHOVER_API_TOKEN` moeten in `wp-config.php` staan.
   - Voorstel: sla credentials op als WordPress options in de database via de settingspagina, met gemaskeerde invoervelden en een testknop.
   - Veiligheid: exporteer secrets niet in de gewone JSON-configuratie, log ze nooit, en bescherm opslag met nonce/capability checks.
   - Compatibiliteit: blijf `wp-config.php` constants ondersteunen als fallback of expliciete override voor bestaande installaties.
   - Klaar wanneer: een beheerder Pushover kan configureren zonder bestandstoegang en bestaande configuraties blijven werken.
+  - Status: credentials kunnen via de settingspagina worden opgeslagen en getest; `wp-config.php` constants blijven voorrang houden en secrets worden niet geexporteerd.
 
 - [x] Voeg alert throttling toe.
   - Mogelijk: voorkom herhaalde meldingen bij elke cron-run zolang dezelfde storing voortduurt.

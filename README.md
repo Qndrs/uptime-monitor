@@ -21,11 +21,11 @@ Simple Uptime Monitor is a lightweight WordPress plugin for monitoring external 
 
 - Monitor multiple external websites from the WordPress dashboard.
 - Enable or disable monitoring per URL.
-- Send downtime alerts by email and/or Pushover.
+- Send downtime and recovery alerts by email and/or Pushover.
 - Show per-URL status history, uptime percentages, and response times.
 - Send recovery alerts when an incident is resolved.
 - Throttle repeated downtime alerts during the same incident.
-- Configure the monitoring interval, retry attempts, timeout, and down status codes from the settings page.
+- Configure the monitoring interval, retry attempts, timeout, down status codes, and Pushover credentials from the settings page.
 - Export and import plugin configuration as JSON.
 - Store structured logs in the WordPress database with an entry limit.
 - Read logs through an authenticated REST endpoint.
@@ -51,7 +51,9 @@ define('DISABLE_WP_CRON', true);
 
 ## Pushover
 
-Pushover credentials are configured in `wp-config.php`:
+Pushover credentials can be stored from the plugin settings page. Stored credentials are masked in the admin UI and are not included in JSON configuration exports.
+
+You can also define credentials in `wp-config.php`. Constants take precedence over stored settings:
 
 ```php
 define('PUSHOVER_USER_KEY', 'your-user-key');
