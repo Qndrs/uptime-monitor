@@ -368,6 +368,72 @@
     justify-content: flex-end;
 }
 
+.uptime-rest-token {
+    background: #ffffff;
+    border: 1px solid var(--ump-border);
+    border-left: 5px solid var(--ump-info);
+    border-radius: 6px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    margin-top: 12px;
+    padding: 14px;
+}
+
+.uptime-rest-token__main {
+    align-items: start;
+    display: grid;
+    gap: 8px;
+}
+
+.uptime-rest-token__main p {
+    color: var(--ump-muted);
+    margin: 0;
+}
+
+.uptime-rest-token__main code,
+.uptime-rest-token__generated code {
+    background: #f6f7f7;
+    border: 1px solid var(--ump-border);
+    border-radius: 4px;
+    display: block;
+    overflow-wrap: anywhere;
+    padding: 7px 8px;
+}
+
+.uptime-rest-token__meta {
+    font-size: 12px;
+}
+
+.uptime-rest-token__generated {
+    background: rgba(34, 113, 177, 0.07);
+    border: 1px solid rgba(34, 113, 177, 0.25);
+    border-radius: 6px;
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+}
+
+.uptime-rest-token__actions {
+    align-content: start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.uptime-monitor-dashboard .uptime-delete-button {
+    border-color: rgba(180, 35, 24, 0.35);
+    color: var(--ump-down);
+}
+
+.uptime-monitor-dashboard .uptime-delete-button:hover,
+.uptime-monitor-dashboard .uptime-delete-button:focus {
+    background: var(--ump-down);
+    border-color: var(--ump-down);
+    color: #ffffff;
+}
+
 .uptime-settings-textarea {
     min-height: 210px;
     resize: vertical;
@@ -706,11 +772,13 @@
 
     .uptime-settings-grid,
     .uptime-settings-io-grid,
-    .uptime-rest-endpoint {
+    .uptime-rest-endpoint,
+    .uptime-rest-token {
         grid-template-columns: 1fr;
     }
 
-    .uptime-rest-endpoint__actions {
+    .uptime-rest-endpoint__actions,
+    .uptime-rest-token__actions {
         justify-content: flex-start;
     }
 

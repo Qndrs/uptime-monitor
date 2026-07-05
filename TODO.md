@@ -118,8 +118,9 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Mogelijk: `GET /status`, `GET /status/{id}` en gefilterde logresponses.
   - Status: `GET /wp-json/uptime-monitor/v1/status` en `GET /wp-json/uptime-monitor/v1/status/{id}` toegevoegd met admin-authenticatie, zonder secrets in responses. De instellingenpagina toont een compacte REST API-viewer met open/copy acties.
 
-- [ ] Onderzoek API-token toegang voor externe dashboards.
+- [x] Onderzoek API-token toegang voor externe dashboards.
   - Mogelijk: read-only token naast WordPress admin authenticatie.
+  - Status: read-only tokenbeheer toegevoegd aan de REST API-viewer. Tokens worden alleen eenmalig getoond, gehasht opgeslagen en geven uitsluitend toegang tot de statusroutes via Bearer-token of `X-Uptime-Monitor-Token`.
 
 - [ ] Voeg logfilters en paginering toe.
   - Mogelijk: filter op URL, type, datumrange en limiet.

@@ -451,3 +451,42 @@ msgstr "Status van één gemonitorde URL op basis van ID."
 
 msgid "URL status"
 msgstr "URL-status"
+
+msgid "Authorization: Bearer your-token"
+msgstr "Authorization: Bearer jouw-token"
+
+msgid "Copy this token now. It will not be shown again."
+msgstr "Kopieer dit token nu. Het wordt niet opnieuw getoond."
+
+msgid "Created: %s"
+msgstr "Aangemaakt: %s"
+
+msgid "Current token ends with %s."
+msgstr "Huidig token eindigt op %s."
+
+msgid "Generate token"
+msgstr "Token genereren"
+
+msgid "No token configured"
+msgstr "Geen token geconfigureerd"
+
+msgid "Read-only API token"
+msgstr "Read-only API-token"
+
+msgid "Read-only API token generated. Copy it now; it will not be shown again."
+msgstr "Read-only API-token gegenereerd. Kopieer het nu; het wordt niet opnieuw getoond."
+
+msgid "Read-only API token revoked."
+msgstr "Read-only API-token ingetrokken."
+
+msgid "Revoke token"
+msgstr "Token intrekken"
+
+msgid "Rotate token"
+msgstr "Token vernieuwen"
+
+msgid "Token configured"
+msgstr "Token geconfigureerd"
+
+msgid "Use this token for external dashboards that only need the status endpoints."
+msgstr "Gebruik dit token voor externe dashboards die alleen de status-endpoints nodig hebben."

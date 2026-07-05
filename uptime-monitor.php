@@ -146,6 +146,48 @@ class SimpleUptimeMonitor
             || (defined('PUSHOVER_API_TOKEN') && (string)PUSHOVER_API_TOKEN !== '');
     }
 
+    private function get_read_api_token_hash(): string
+    {
+        return (string)get_option('uptime_monitor_read_api_token_hash', '');
+    }
+
+    private function has_read_api_token(): bool
+    {
+        return $this->get_read_api_token_hash() !== '';
+    }
+
+    private function create_read_api_token(): string
+    {
+        $token = 'sum_' . wp_generate_password(40, false, false);
+        update_option('uptime_monitor_read_api_token_hash', $this->hash_read_api_token($token), false);
+        update_option('uptime_monitor_read_api_token_last4', substr($token, -4), false);
+        update_option('uptime_monitor_read_api_token_created_at', gmdate('Y-m-d H:i:s'), false);
+
+        return $token;
+    }
+
+    private function clear_read_api_token(): void
+    {
+        delete_option('uptime_monitor_read_api_token_hash');
+        delete_option('uptime_monitor_read_api_token_last4');
+        delete_option('uptime_monitor_read_api_token_created_at');
+    }
+
+    private function hash_read_api_token(string $token): string
+    {
+        return hash_hmac('sha256', $token, wp_salt('auth'));
+    }
+
+    private function verify_read_api_token(string $token): bool
+    {
+        $token_hash = $this->get_read_api_token_hash();
+        if ($token === '' || $token_hash === '') {
+            return false;
+        }
+
+        return hash_equals($token_hash, $this->hash_read_api_token($token));
+    }
+
     private function save_pushover_settings_from_post(): void
     {
         $nonce = isset($_POST['uptime_monitor_settings_nonce']) ? sanitize_text_field(wp_unslash($_POST['uptime_monitor_settings_nonce'])) : '';
@@ -874,9 +916,41 @@ class SimpleUptimeMonitor
         ]);
     }
 
-    public function rest_check_permissions(): bool
+    public function rest_check_permissions(\WP_REST_Request $request = null): bool
     {
-        return current_user_can('manage_options');
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        return $request instanceof \WP_REST_Request && $this->request_has_valid_read_api_token($request);
+    }
+
+    private function request_has_valid_read_api_token(\WP_REST_Request $request): bool
+    {
+        $token = trim((string)$request->get_header('x_uptime_monitor_token'));
+
+        if ($token === '') {
+            $authorization = trim((string)$request->get_header('authorization'));
+            if (stripos($authorization, 'Bearer ') === 0) {
+                $token = trim(substr($authorization, 7));
+            }
+        }
+
+        if ($token === '' && isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authorization = trim(sanitize_text_field(wp_unslash($_SERVER['HTTP_AUTHORIZATION'])));
+            if (stripos($authorization, 'Bearer ') === 0) {
+                $token = trim(substr($authorization, 7));
+            }
+        }
+
+        if ($token === '' && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $authorization = trim(sanitize_text_field(wp_unslash($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])));
+            if (stripos($authorization, 'Bearer ') === 0) {
+                $token = trim(substr($authorization, 7));
+            }
+        }
+
+        return $this->verify_read_api_token($token);
     }
 
     public function rest_get_status(\WP_REST_Request $request): \WP_REST_Response
@@ -1395,11 +1469,19 @@ class SimpleUptimeMonitor
     public function render_settings_page(): void
     {
         $request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
+        $generated_read_api_token = '';
         // Opslaan van instellingen
 	    if ($request_method === 'POST') {
 		    check_admin_referer('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
 
-            $import_json = isset($_POST['import_json']) ? sanitize_textarea_field(wp_unslash($_POST['import_json'])) : '';
+            if (isset($_POST['generate_read_api_token'])) {
+                $generated_read_api_token = $this->create_read_api_token();
+                echo '<div class="updated"><p>' . esc_html__('Read-only API token generated. Copy it now; it will not be shown again.', 'uptime-monitor') . '</p></div>';
+            } elseif (isset($_POST['clear_read_api_token'])) {
+                $this->clear_read_api_token();
+                echo '<div class="updated"><p>' . esc_html__('Read-only API token revoked.', 'uptime-monitor') . '</p></div>';
+            } else {
+                $import_json = isset($_POST['import_json']) ? sanitize_textarea_field(wp_unslash($_POST['import_json'])) : '';
 		    if ($import_json !== '') {
 			    // IMPORT VAN JSON
 			    $json_input = trim($import_json);
@@ -1464,6 +1546,7 @@ class SimpleUptimeMonitor
 			        echo '<div class="updated"><p>' . esc_html__('Settings saved!', 'uptime-monitor') . '</p></div>';
                 }
 		    }
+            }
 	    }
 
 
@@ -1494,6 +1577,11 @@ class SimpleUptimeMonitor
         $pushover_status = $this->pushover_uses_constants()
             ? __('wp-config.php constants', 'uptime-monitor')
             : ($this->has_pushover_credentials() ? __('Configured in database', 'uptime-monitor') : __('Not configured', 'uptime-monitor'));
+        $read_api_token_last4 = (string)get_option('uptime_monitor_read_api_token_last4', '');
+        $read_api_token_created_at = (string)get_option('uptime_monitor_read_api_token_created_at', '');
+        $read_api_token_configured = $this->has_read_api_token();
+        $read_api_token_status = $read_api_token_configured ? __('Token configured', 'uptime-monitor') : __('No token configured', 'uptime-monitor');
+        $read_api_token_created_display = $read_api_token_created_at !== '' ? $this->format_history_timestamp($read_api_token_created_at) : '';
 
 	    echo '<div class="wrap uptime-monitor-admin uptime-monitor-dashboard uptime-monitor-settings-page">';
         echo '<div class="uptime-dashboard-header">';
@@ -1532,6 +1620,36 @@ class SimpleUptimeMonitor
         $this->render_rest_endpoint_row(__('Overall status', 'uptime-monitor'), __('Complete monitor status response.', 'uptime-monitor'), $status_endpoint);
         $this->render_rest_endpoint_row(__('URL status', 'uptime-monitor'), __('Single monitored URL status by ID.', 'uptime-monitor'), $status_detail_endpoint);
         $this->render_rest_endpoint_row(__('Logs', 'uptime-monitor'), __('Existing admin-only log endpoint.', 'uptime-monitor'), $logs_endpoint);
+        echo '</div>';
+        echo '<div class="uptime-rest-token">';
+        echo '<div class="uptime-rest-token__main">';
+        echo '<strong>' . esc_html__('Read-only API token', 'uptime-monitor') . '</strong>';
+        echo '<span class="uptime-chip' . ($read_api_token_configured ? '' : ' is-warning') . '">' . esc_html($read_api_token_status) . '</span>';
+        echo '<p>' . esc_html__('Use this token for external dashboards that only need the status endpoints.', 'uptime-monitor') . '</p>';
+        echo '<code>' . esc_html__('Authorization: Bearer your-token', 'uptime-monitor') . '</code>';
+        if ($read_api_token_configured && $read_api_token_last4 !== '') {
+            /* translators: %s: Last four characters of the read-only API token. */
+            echo '<p class="uptime-rest-token__meta">' . esc_html(sprintf(__('Current token ends with %s.', 'uptime-monitor'), $read_api_token_last4)) . '</p>';
+        }
+        if ($read_api_token_created_display !== '') {
+            /* translators: %s: Token creation date. */
+            echo '<p class="uptime-rest-token__meta">' . esc_html(sprintf(__('Created: %s', 'uptime-monitor'), $read_api_token_created_display)) . '</p>';
+        }
+        if ($generated_read_api_token !== '') {
+            echo '<div class="uptime-rest-token__generated">';
+            echo '<strong>' . esc_html__('Copy this token now. It will not be shown again.', 'uptime-monitor') . '</strong>';
+            echo '<code>' . esc_html($generated_read_api_token) . '</code>';
+            echo '<button type="button" class="button uptime-copy-endpoint" data-copy-value="' . esc_attr($generated_read_api_token) . '"><span class="dashicons dashicons-clipboard" aria-hidden="true"></span>' . esc_html__('Copy', 'uptime-monitor') . '</button>';
+            echo '</div>';
+        }
+        echo '</div>';
+        echo '<form method="post" class="uptime-rest-token__actions">';
+        wp_nonce_field('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
+        echo '<button type="submit" class="button button-primary" name="generate_read_api_token" value="1"><span class="dashicons dashicons-update" aria-hidden="true"></span>' . esc_html($read_api_token_configured ? __('Rotate token', 'uptime-monitor') : __('Generate token', 'uptime-monitor')) . '</button>';
+        if ($read_api_token_configured) {
+            echo '<button type="submit" class="button uptime-delete-button" name="clear_read_api_token" value="1"><span class="dashicons dashicons-trash" aria-hidden="true"></span>' . esc_html__('Revoke token', 'uptime-monitor') . '</button>';
+        }
+        echo '</form>';
         echo '</div>';
         echo '</section>';
 
