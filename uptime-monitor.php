@@ -147,6 +147,11 @@ class SimpleUptimeMonitor
 
     private function save_pushover_settings_from_post(): void
     {
+        $nonce = isset($_POST['uptime_monitor_settings_nonce']) ? sanitize_text_field(wp_unslash($_POST['uptime_monitor_settings_nonce'])) : '';
+        if (!wp_verify_nonce($nonce, 'uptime_monitor_settings_nonce_action')) {
+            return;
+        }
+
         if (isset($_POST['clear_pushover_user_key'])) {
             delete_option('uptime_monitor_pushover_user_key');
         } else {
@@ -309,7 +314,12 @@ class SimpleUptimeMonitor
      */
     public function enqueue_styles($hook_suffix): void
     {
-        if ($hook_suffix === 'toplevel_page_uptime-monitor') {
+        $plugin_pages = [
+            'toplevel_page_uptime-monitor',
+            'uptime-monitor_page_uptime-monitor-settings',
+        ];
+
+        if (in_array($hook_suffix, $plugin_pages, true)) {
             // Enqueue admin styles
             wp_enqueue_style('uptime-monitor-styles', plugin_dir_url(__FILE__) . 'css/uptime-monitor.css', [], self::VERSION);
             // Enqueue admin scripts
@@ -344,6 +354,17 @@ class SimpleUptimeMonitor
                 'trend_slower' => __('Slower', 'uptime-monitor'),
                 'trend_stable' => __('Stable', 'uptime-monitor'),
                 'uptime' => __('Uptime', 'uptime-monitor'),
+                'status_paused' => __('Paused', 'uptime-monitor'),
+                'status_unknown' => __('Unknown', 'uptime-monitor'),
+                'status_degraded' => __('Degraded', 'uptime-monitor'),
+                'operational' => __('Operational', 'uptime-monitor'),
+                'incident_active' => __('Incident active', 'uptime-monitor'),
+                'no_incident' => __('No incident', 'uptime-monitor'),
+                'incident_open' => __('Incident open', 'uptime-monitor'),
+                'no_alerts' => __('No alerts', 'uptime-monitor'),
+                'details' => __('Details', 'uptime-monitor'),
+                'hide_details' => __('Hide details', 'uptime-monitor'),
+                'monitoring' => __('Monitoring', 'uptime-monitor'),
             ]);
         }
     }
@@ -383,10 +404,12 @@ class SimpleUptimeMonitor
 
     private function add_status_history_to_urls(array $urls): array
     {
+        $incidents = $this->get_incidents();
         foreach ($urls as &$url_data) {
             $history = $this->get_status_history_for_url($url_data['id']);
             $url_data['history'] = $history;
             $url_data['uptime'] = $this->get_uptime_percentages($history);
+            $url_data['dashboard'] = $this->get_url_dashboard_data($url_data, $history, $incidents);
         }
         unset($url_data);
 
@@ -583,9 +606,38 @@ class SimpleUptimeMonitor
 
     private function format_history_timestamp(string $timestamp): string
     {
-        $formatted = get_date_from_gmt($timestamp, get_option('date_format') . ' ' . get_option('time_format'));
+        $epoch = $this->history_timestamp_to_epoch($timestamp);
+        if ($epoch === null) {
+            return $timestamp . ' UTC';
+        }
+
+        $formatted = $this->format_epoch_for_display($epoch);
 
         return $formatted ?: $timestamp . ' UTC';
+    }
+
+    private function format_epoch_for_display(int $epoch): string
+    {
+        $format = get_option('date_format') . ' ' . get_option('time_format');
+        $offset = $this->get_display_timezone_offset($epoch);
+
+        return date_i18n($format, $epoch + $offset, true);
+    }
+
+    private function get_display_timezone_offset(int $epoch): int
+    {
+        $timezone_name = get_option('timezone_string');
+        if (!is_string($timezone_name) || $timezone_name === '' || $timezone_name === 'UTC') {
+            $timezone_name = 'Europe/Amsterdam';
+        }
+
+        $timezone = timezone_open($timezone_name);
+        $datetime = date_create('@' . $epoch);
+        if ($timezone === false || $datetime === false) {
+            return 2 * HOUR_IN_SECONDS;
+        }
+
+        return timezone_offset_get($timezone, $datetime);
     }
 
     private function get_status_label(string $status): string
@@ -598,6 +650,203 @@ class SimpleUptimeMonitor
             default:
                 return __('Error', 'uptime-monitor');
         }
+    }
+
+    private function get_dashboard_status_label(string $status): string
+    {
+        switch ($status) {
+            case 'up':
+                return __('Up', 'uptime-monitor');
+            case 'down':
+                return __('Down', 'uptime-monitor');
+            case 'paused':
+                return __('Paused', 'uptime-monitor');
+            case 'degraded':
+                return __('Degraded', 'uptime-monitor');
+            default:
+                return __('Unknown', 'uptime-monitor');
+        }
+    }
+
+    private function get_latest_history_entry(array $history): ?array
+    {
+        if (empty($history)) {
+            return null;
+        }
+
+        return $this->normalize_status_history_entry($history[count($history) - 1]);
+    }
+
+    private function get_url_dashboard_data(array $url_data, array $history, array $incidents): array
+    {
+        $url_id = isset($url_data['id']) ? sanitize_key($url_data['id']) : '';
+        $latest = $this->get_latest_history_entry($history);
+        $incident_open = $url_id !== '' && isset($incidents[$url_id]);
+        $incident = $incident_open && is_array($incidents[$url_id]) ? $incidents[$url_id] : [];
+        $status = 'unknown';
+
+        if (isset($url_data['enabled']) && $url_data['enabled'] === false) {
+            $status = 'paused';
+        } elseif ($incident_open) {
+            $status = 'down';
+        } elseif ($latest !== null) {
+            $status = $latest['status'] === 'up' ? 'up' : 'down';
+            if ($status === 'up' && $latest['response_time_ms'] !== null && $latest['response_time_ms'] >= 1000) {
+                $status = 'degraded';
+            }
+        }
+
+        $average_response_time_ms = $this->get_average_response_time_ms($history);
+        $average_response_display = '';
+        if ($average_response_time_ms !== null) {
+            /* translators: %d: Average response time in milliseconds. */
+            $average_response_display = sprintf(__('Avg %d ms', 'uptime-monitor'), $average_response_time_ms);
+        }
+
+        return [
+            'status' => $status,
+            'status_label' => $this->get_dashboard_status_label($status),
+            'latest' => $latest,
+            'average_response_time_ms' => $average_response_time_ms,
+            'average_response_time_display' => $average_response_display,
+            'incident_open' => $incident_open,
+            'incident_label' => $incident_open ? __('Incident open', 'uptime-monitor') : __('No incident', 'uptime-monitor'),
+            'incident_duration_display' => $this->get_incident_duration_display($incident),
+            'notifications_label' => $this->get_notifications_label($url_data),
+        ];
+    }
+
+    private function get_incident_duration_display(array $incident): string
+    {
+        $down_since = isset($incident['down_since']) ? sanitize_text_field($incident['down_since']) : '';
+        if ($down_since === '') {
+            return '';
+        }
+
+        $down_since_epoch = $this->history_timestamp_to_epoch($down_since);
+        if ($down_since_epoch === null) {
+            return '';
+        }
+
+        /* translators: %s: Human-readable incident duration. */
+        return sprintf(__('Down for %s', 'uptime-monitor'), human_time_diff($down_since_epoch, time()));
+    }
+
+    private function get_notifications_label(array $url_data): string
+    {
+        $channels = [];
+        if (!empty($url_data['email'])) {
+            $channels[] = __('Email', 'uptime-monitor');
+        }
+        if (!empty($url_data['pushover'])) {
+            $channels[] = __('Pushover', 'uptime-monitor');
+        }
+
+        return !empty($channels) ? implode(', ', $channels) : __('No alerts', 'uptime-monitor');
+    }
+
+    private function get_dashboard_summary(array $urls): array
+    {
+        $urls = $this->add_status_history_to_urls($urls);
+        $total = count($urls);
+        $up = 0;
+        $down = 0;
+        $paused = 0;
+        $degraded = 0;
+        $incident_count = 0;
+        $email_count = 0;
+        $pushover_count = 0;
+        $response_times = [];
+        $uptime_24h = [];
+        $latest_timestamp = null;
+
+        foreach ($urls as $url_data) {
+            $dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
+            $status = isset($dashboard['status']) ? $dashboard['status'] : 'unknown';
+
+            if ($status === 'up') {
+                $up++;
+            } elseif ($status === 'down') {
+                $down++;
+            } elseif ($status === 'paused') {
+                $paused++;
+            } elseif ($status === 'degraded') {
+                $degraded++;
+            }
+
+            if (!empty($dashboard['incident_open'])) {
+                $incident_count++;
+            }
+            if (!empty($url_data['email'])) {
+                $email_count++;
+            }
+            if (!empty($url_data['pushover'])) {
+                $pushover_count++;
+            }
+            if (isset($dashboard['average_response_time_ms']) && $dashboard['average_response_time_ms'] !== null) {
+                $response_times[] = $dashboard['average_response_time_ms'];
+            }
+            if (isset($url_data['uptime']['24h']['percentage']) && $url_data['uptime']['24h']['percentage'] !== null) {
+                $uptime_24h[] = $url_data['uptime']['24h']['percentage'];
+            }
+            if (isset($dashboard['latest']['timestamp'])) {
+                $timestamp = $this->history_timestamp_to_epoch((string)$dashboard['latest']['timestamp']);
+                if ($timestamp !== null && ($latest_timestamp === null || $timestamp > $latest_timestamp)) {
+                    $latest_timestamp = $timestamp;
+                }
+            }
+        }
+
+        $active = max(0, $total - $paused);
+        $health_percentage = $active > 0 ? round((($up + $degraded) / $active) * 100, 1) : null;
+        $average_response = !empty($response_times) ? (int)round(array_sum($response_times) / count($response_times)) : null;
+        $average_uptime_24h = !empty($uptime_24h) ? round(array_sum($uptime_24h) / count($uptime_24h), 1) : null;
+        $overall_status = $down > 0 ? 'incident' : ($degraded > 0 ? 'degraded' : 'operational');
+        $next_check = wp_next_scheduled(self::CRON_HOOK);
+        $average_response_display = __('No data', 'uptime-monitor');
+        if ($average_response !== null) {
+            /* translators: %d: Average response time in milliseconds. */
+            $average_response_display = sprintf(__('Avg %d ms', 'uptime-monitor'), $average_response);
+        }
+
+        return [
+            'urls' => $urls,
+            'total' => $total,
+            'active' => $active,
+            'up' => $up,
+            'down' => $down,
+            'paused' => $paused,
+            'degraded' => $degraded,
+            'incidents' => $incident_count,
+            'email_count' => $email_count,
+            'pushover_count' => $pushover_count,
+            'health_percentage' => $health_percentage,
+            'health_display' => $health_percentage !== null ? number_format_i18n($health_percentage, 1) . '%' : __('No data', 'uptime-monitor'),
+            'average_response_ms' => $average_response,
+            'average_response_display' => $average_response_display,
+            'uptime_24h' => $average_uptime_24h,
+            'uptime_24h_display' => $average_uptime_24h !== null ? number_format_i18n($average_uptime_24h, 1) . '%' : __('No data', 'uptime-monitor'),
+            'latest_check_display' => $latest_timestamp !== null ? $this->format_epoch_for_display($latest_timestamp) : __('No checks yet.', 'uptime-monitor'),
+            'next_check_display' => $next_check ? $this->format_epoch_for_display($next_check) : __('Not scheduled', 'uptime-monitor'),
+            'overall_status' => $overall_status,
+            'overall_label' => $overall_status === 'incident'
+                ? __('Incident active', 'uptime-monitor')
+                : ($overall_status === 'degraded' ? __('Degraded', 'uptime-monitor') : __('Operational', 'uptime-monitor')),
+        ];
+    }
+
+    private function get_dashboard_ajax_payload(array $urls): array
+    {
+        $dashboard = $this->get_dashboard_summary($urls);
+
+        ob_start();
+        $this->render_dashboard_overview($dashboard);
+        $dashboard_html = ob_get_clean();
+
+        return [
+            'urls' => $dashboard['urls'],
+            'dashboard_html' => $dashboard_html,
+        ];
     }
 
     private function get_average_response_time_ms(array $history): ?int
@@ -788,6 +1037,135 @@ class SimpleUptimeMonitor
         echo '</ol>';
     }
 
+    private function render_dashboard_overview(array $dashboard): void
+    {
+        $overall_status = isset($dashboard['overall_status']) ? sanitize_key($dashboard['overall_status']) : 'operational';
+        $status_class = $overall_status === 'incident' ? 'down' : ($overall_status === 'degraded' ? 'degraded' : 'up');
+
+        echo '<section class="uptime-statusbar is-' . esc_attr($status_class) . '" aria-label="' . esc_attr__('Monitoring summary', 'uptime-monitor') . '">';
+        echo '<div class="uptime-statusbar__state">';
+        echo '<span class="uptime-status-light is-' . esc_attr($status_class) . '" aria-hidden="true"></span>';
+        echo '<strong>' . esc_html($dashboard['overall_label']) . '</strong>';
+        echo '</div>';
+        echo '<span><strong>' . esc_html((string)$dashboard['total']) . '</strong> ' . esc_html__('monitored', 'uptime-monitor') . '</span>';
+        echo '<span><strong>' . esc_html((string)$dashboard['up']) . '</strong> ' . esc_html__('up', 'uptime-monitor') . '</span>';
+        echo '<span><strong>' . esc_html((string)$dashboard['down']) . '</strong> ' . esc_html__('down', 'uptime-monitor') . '</span>';
+        echo '<span><strong>' . esc_html((string)$dashboard['paused']) . '</strong> ' . esc_html__('paused', 'uptime-monitor') . '</span>';
+        echo '<span>' . esc_html__('Last check:', 'uptime-monitor') . ' <strong>' . esc_html($dashboard['latest_check_display']) . '</strong></span>';
+        echo '</section>';
+
+        echo '<section class="uptime-metric-grid" aria-label="' . esc_attr__('Monitoring metrics', 'uptime-monitor') . '">';
+        /* translators: 1: Active incidents, 2: Active URLs. */
+        $health_meta = sprintf(__('Active incidents: %1$d; active URLs: %2$d', 'uptime-monitor'), (int)$dashboard['incidents'], (int)$dashboard['active']);
+        $this->render_dashboard_metric(__('Current health', 'uptime-monitor'), $dashboard['health_display'], $health_meta);
+        $this->render_dashboard_metric(__('Average response', 'uptime-monitor'), $dashboard['average_response_display'], __('Across URLs with history', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('24h uptime', 'uptime-monitor'), $dashboard['uptime_24h_display'], __('Average over recent checks', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Notifications', 'uptime-monitor'), (string)$dashboard['email_count'] . ' / ' . (string)$dashboard['pushover_count'], __('Email / Pushover enabled', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Next check', 'uptime-monitor'), $dashboard['next_check_display'], __('Scheduled WordPress cron', 'uptime-monitor'));
+        echo '</section>';
+    }
+
+    private function render_dashboard_metric(string $label, string $value, string $meta): void
+    {
+        echo '<article class="uptime-metric-card">';
+        echo '<span class="uptime-metric-card__label">' . esc_html($label) . '</span>';
+        echo '<strong class="uptime-metric-card__value">' . esc_html($value) . '</strong>';
+        echo '<span class="uptime-metric-card__meta">' . esc_html($meta) . '</span>';
+        echo '</article>';
+    }
+
+    private function render_url_dashboard_rows(array $urls): void
+    {
+        echo '<section class="uptime-url-list" aria-label="' . esc_attr__('Monitored URLs', 'uptime-monitor') . '">';
+        if (empty($urls)) {
+            echo '<div class="uptime-empty-state">' . esc_html__('No URLs available. Add one!', 'uptime-monitor') . '</div>';
+        } else {
+            foreach ($urls as $url_data) {
+                $this->render_url_dashboard_row($url_data);
+            }
+        }
+        echo '</section>';
+    }
+
+    private function render_url_dashboard_row(array $url_data): void
+    {
+        $history = isset($url_data['history']) && is_array($url_data['history']) ? $url_data['history'] : [];
+        $dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
+        $status = isset($dashboard['status']) ? sanitize_key($dashboard['status']) : 'unknown';
+        $status_label = isset($dashboard['status_label']) ? $dashboard['status_label'] : $this->get_dashboard_status_label($status);
+        $latest = isset($dashboard['latest']) && is_array($dashboard['latest']) ? $dashboard['latest'] : null;
+        $url = isset($url_data['url']) ? esc_url_raw($url_data['url']) : '';
+        $host = $url !== '' ? wp_parse_url($url, PHP_URL_HOST) : '';
+        $title = is_string($host) && $host !== '' ? $host : $url;
+        $enabled = !isset($url_data['enabled']) || (bool)$url_data['enabled'];
+        $incident_open = !empty($dashboard['incident_open']);
+        $notifications_label = isset($dashboard['notifications_label']) ? $dashboard['notifications_label'] : $this->get_notifications_label($url_data);
+        $incident_label = isset($dashboard['incident_label']) ? $dashboard['incident_label'] : __('No incident', 'uptime-monitor');
+        $incident_duration_display = isset($dashboard['incident_duration_display']) ? (string)$dashboard['incident_duration_display'] : '';
+
+        echo '<article class="uptime-url-row is-' . esc_attr($status) . '">';
+        echo '<div class="uptime-url-status">';
+        echo '<span class="uptime-status-light is-' . esc_attr($status) . '" aria-hidden="true"></span>';
+        echo '<strong>' . esc_html($status_label) . '</strong>';
+        echo '</div>';
+
+        echo '<div class="uptime-url-identity">';
+        echo '<strong>' . esc_html($title) . '</strong>';
+        if ($url !== '') {
+            echo '<a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer">' . esc_html($url) . '</a>';
+        }
+        echo '</div>';
+
+        echo '<div class="uptime-url-current">';
+        if ($latest !== null) {
+            $status_code = isset($latest['status_code']) && $latest['status_code'] !== null ? absint($latest['status_code']) : 0;
+            $response_time_ms = isset($latest['response_time_ms']) && $latest['response_time_ms'] !== null ? absint($latest['response_time_ms']) : null;
+            $timestamp = isset($latest['timestamp']) ? (string)$latest['timestamp'] : '';
+            $display_timestamp = isset($latest['display_timestamp']) ? (string)$latest['display_timestamp'] : $timestamp;
+
+            if ($status_code > 0) {
+                /* translators: %d: HTTP status code. */
+                echo '<span class="uptime-chip">' . esc_html(sprintf(__('HTTP %d', 'uptime-monitor'), $status_code)) . '</span>';
+            }
+            if ($response_time_ms !== null) {
+                /* translators: %d: Response time in milliseconds. */
+                echo '<span class="uptime-chip">' . esc_html(sprintf(__('%d ms', 'uptime-monitor'), $response_time_ms)) . '</span>';
+            }
+            if ($timestamp !== '') {
+                echo '<time class="uptime-chip uptime-chip-muted" datetime="' . esc_attr($timestamp) . '">' . esc_html($display_timestamp) . '</time>';
+            }
+        } else {
+            echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('No checks yet.', 'uptime-monitor') . '</span>';
+        }
+        echo '</div>';
+
+        echo '<div class="uptime-url-metrics">';
+        $this->render_uptime_summary($history);
+        if (!empty($dashboard['average_response_time_display'])) {
+            echo '<span class="uptime-response-average">' . esc_html($dashboard['average_response_time_display']) . '</span>';
+        }
+        echo '</div>';
+
+        echo '<div class="uptime-url-alerts">';
+        echo '<span class="uptime-chip' . ($notifications_label === __('No alerts', 'uptime-monitor') ? ' is-warning' : '') . '">' . esc_html($notifications_label) . '</span>';
+        echo '<span class="uptime-chip' . ($incident_open ? ' is-danger' : ' uptime-chip-muted') . '">' . esc_html($incident_label) . '</span>';
+        if ($incident_duration_display !== '') {
+            echo '<span class="uptime-chip is-danger">' . esc_html($incident_duration_display) . '</span>';
+        }
+        echo '</div>';
+
+        echo '<div class="uptime-url-actions">';
+        echo '<label class="uptime-toggle"><input type="checkbox" class="toggle-monitoring" data-id="' . esc_attr($url_data['id']) . '" ' . checked($enabled, true, false) . '> <span>' . esc_html__('Monitoring', 'uptime-monitor') . '</span></label>';
+        echo '<button type="button" class="button toggle-history" aria-expanded="false"><span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span><span class="uptime-action-label">' . esc_html__('Details', 'uptime-monitor') . '</span></button>';
+        echo '<button type="button" class="button delete-url uptime-delete-button" data-id="' . esc_attr($url_data['id']) . '">' . esc_html__('Delete', 'uptime-monitor') . '</button>';
+        echo '</div>';
+
+        echo '<div class="uptime-url-history" hidden>';
+        $this->render_status_history_cell($history);
+        echo '</div>';
+        echo '</article>';
+    }
+
     /**
      * Renders the admin page for managing monitored URLs.
      */
@@ -854,43 +1232,27 @@ class SimpleUptimeMonitor
             settings_errors('uptime_monitor');
         }
 
-        echo '<div class="wrap uptime-monitor-admin">';
-        echo '<h1>' . esc_html__('Manage URLs', 'uptime-monitor') . '</h1>';
-        echo '<form id="uptime-monitor-form" method="post" class="uptime-monitor-form">';
+        $dashboard = $this->get_dashboard_summary($urls);
+        $urls = $dashboard['urls'];
+
+        echo '<div class="wrap uptime-monitor-admin uptime-monitor-dashboard">';
+        echo '<div class="uptime-dashboard-header">';
+        echo '<h1>' . esc_html__('Uptime Monitor', 'uptime-monitor') . '</h1>';
+        echo '</div>';
+
+        $this->render_dashboard_overview($dashboard);
+
+        echo '<form id="uptime-monitor-form" method="post" class="uptime-monitor-form uptime-add-url-panel">';
         wp_nonce_field('uptime_monitor_nonce_action', 'uptime_monitor_nonce_field');
-        echo '<table class="form-table">';
-        echo '<tr><td><label for="url">' . esc_html__('URL', 'uptime-monitor') . '</label><input type="text" id="url" name="url" required>';
-        echo '<label for="email_alert">' . esc_html__('Email Alert', 'uptime-monitor') . '</label><input type="checkbox" id="email_alert" name="email_alert" value="1">';
-        echo '<label for="pushover_alert">' . esc_html__('Pushover Alert', 'uptime-monitor') . '</label><input type="checkbox" id="pushover_alert" name="pushover_alert" value="1"></td>';
-        echo '</table>';
-        echo '<p><input type="submit" class="button button-primary" value="' . esc_attr__('Add URL', 'uptime-monitor') . '"></p>';
+        echo '<label class="screen-reader-text" for="url">' . esc_html__('URL', 'uptime-monitor') . '</label>';
+        echo '<input type="url" id="url" name="url" placeholder="https://example.com" required>';
+        echo '<label><input type="checkbox" id="email_alert" name="email_alert" value="1"> ' . esc_html__('Email Alert', 'uptime-monitor') . '</label>';
+        echo '<label><input type="checkbox" id="pushover_alert" name="pushover_alert" value="1"> ' . esc_html__('Pushover Alert', 'uptime-monitor') . '</label>';
+        echo '<input type="submit" class="button button-primary" value="' . esc_attr__('Add URL', 'uptime-monitor') . '">';
         echo '</form>';
 
-
-        echo '<h2>' . esc_html__('Existing URLs', 'uptime-monitor') . '</h2>';
-        echo '<table class="widefat fixed uptime-monitor-table">';
-        echo '<thead><tr><th>' . esc_html__('URL', 'uptime-monitor') . '</th><th>' . esc_html__('Email Alerts', 'uptime-monitor') . '</th><th>' . esc_html__('Pushover Alerts', 'uptime-monitor') . '</th><th>' . esc_html__('Monitoring Enabled', 'uptime-monitor') . '</th><th>' . esc_html__('Status History', 'uptime-monitor') . '</th><th>' . esc_html__('Actions', 'uptime-monitor') . '</th></tr></thead>';
-        echo '<tbody>';
-        if (empty($urls)) {
-            echo '<tr><td colspan="6">' . esc_html__('No URLs available. Add one!', 'uptime-monitor') . '</td></tr>';
-        } else {
-            foreach ($urls as $index => $url_data) {
-                echo '<tr>';
-                echo '<td>' . esc_html($url_data['url']) . '</td>';
-                echo '<td>' . ($url_data['email'] ? esc_html__('Enabled', 'uptime-monitor') : esc_html__('Disabled', 'uptime-monitor')) . '</td>';
-                echo '<td>' . ($url_data['pushover'] ? esc_html__('Enabled', 'uptime-monitor') : esc_html__('Disabled', 'uptime-monitor')) . '</td>';
-                echo '<td>';
-                echo '<input type="checkbox" class="toggle-monitoring" data-id="' . esc_attr($url_data['id']) . '" ' . checked($url_data['enabled'], true, false) . '>';
-                echo '</td>';
-                echo '<td>';
-                $this->render_status_history_cell($this->get_status_history_for_url($url_data['id']));
-                echo '</td>';
-                echo '<td><button class="button delete-url" data-id="' . esc_attr($url_data['id']) . '">' . esc_html__('Delete', 'uptime-monitor') . '</button></td>';
-                echo '</tr>';
-            }
-        }
-        echo '</tbody>';
-        echo '</table>';
+        echo '<h2>' . esc_html__('Monitored URLs', 'uptime-monitor') . '</h2>';
+        $this->render_url_dashboard_rows($urls);
         echo '</div>';
     }
 
@@ -996,68 +1358,119 @@ class SimpleUptimeMonitor
 	    $json_export = json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 
-	    echo '<div class="wrap">';
+        $pushover_status = $this->pushover_uses_constants()
+            ? __('wp-config.php constants', 'uptime-monitor')
+            : ($this->has_pushover_credentials() ? __('Configured in database', 'uptime-monitor') : __('Not configured', 'uptime-monitor'));
+
+	    echo '<div class="wrap uptime-monitor-admin uptime-monitor-dashboard uptime-monitor-settings-page">';
+        echo '<div class="uptime-dashboard-header">';
         echo '<h1>' . esc_html__('Uptime Monitor Settings', 'uptime-monitor') . '</h1>';
-        echo '<form method="post">';
+        echo '</div>';
+
+        echo '<section class="uptime-statusbar uptime-settings-statusbar is-up" aria-label="' . esc_attr__('Settings summary', 'uptime-monitor') . '">';
+        echo '<div class="uptime-statusbar__state">';
+        echo '<span class="uptime-status-light is-up" aria-hidden="true"></span>';
+        echo '<strong>' . esc_html__('Configuration panel', 'uptime-monitor') . '</strong>';
+        echo '</div>';
+        echo '<span><strong>' . esc_html((string)count($urls)) . '</strong> ' . esc_html__('monitored URLs', 'uptime-monitor') . '</span>';
+        echo '<span>' . esc_html__('Interval:', 'uptime-monitor') . ' <strong>' . esc_html((string)$monitor_interval) . 's</strong></span>';
+        echo '<span>' . esc_html__('Retries:', 'uptime-monitor') . ' <strong>' . esc_html((string)$retry_attempts) . '</strong></span>';
+        echo '<span>' . esc_html__('Timeout:', 'uptime-monitor') . ' <strong>' . esc_html((string)$request_timeout) . 's</strong></span>';
+        echo '<span>' . esc_html__('Pushover:', 'uptime-monitor') . ' <strong>' . esc_html($pushover_status) . '</strong></span>';
+        echo '</section>';
+
+        echo '<section class="uptime-metric-grid uptime-settings-metrics" aria-label="' . esc_attr__('Current settings', 'uptime-monitor') . '">';
+        $this->render_dashboard_metric(__('Monitor interval', 'uptime-monitor'), (string)$monitor_interval . 's', __('Minimum 60 seconds', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Retry attempts', 'uptime-monitor'), (string)$retry_attempts, __('Before status is final', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Request timeout', 'uptime-monitor'), (string)$request_timeout . 's', __('Per HTTP attempt', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Down codes', 'uptime-monitor'), $down_status_codes, __('HTTP status ranges', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Pushover', 'uptime-monitor'), $pushover_status, __('Credential source', 'uptime-monitor'));
+        echo '</section>';
+
+        echo '<form method="post" class="uptime-settings-form">';
         wp_nonce_field('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
 
+        echo '<div class="uptime-settings-grid">';
+        echo '<section class="uptime-settings-panel">';
+        echo '<div class="uptime-settings-panel__header">';
         echo '<h2>' . esc_html__('Monitoring Settings', 'uptime-monitor') . '</h2>';
-        echo '<table class="form-table">';
-        echo '<tr>';
-        echo '<th scope="row"><label for="monitor_interval">' . esc_html__('Monitor Interval (seconds)', 'uptime-monitor') . '</label></th>';
-        echo '<td><input type="number" id="monitor_interval" name="monitor_interval" value="' . esc_attr($monitor_interval) . '" min="60" step="60"></td>';
-        echo '</tr>';
-        echo '<tr>';
-        echo '<th scope="row"><label for="retry_attempts">' . esc_html__('Retry Attempts', 'uptime-monitor') . '</label></th>';
-        echo '<td><input type="number" id="retry_attempts" name="retry_attempts" value="' . esc_attr($retry_attempts) . '" min="1" max="10" step="1"></td>';
-        echo '</tr>';
-        echo '<tr>';
-        echo '<th scope="row"><label for="request_timeout">' . esc_html__('Request Timeout (seconds)', 'uptime-monitor') . '</label></th>';
-        echo '<td><input type="number" id="request_timeout" name="request_timeout" value="' . esc_attr($request_timeout) . '" min="1" max="60" step="1"></td>';
-        echo '</tr>';
-        echo '<tr>';
-        echo '<th scope="row"><label for="down_status_codes">' . esc_html__('Down Status Codes', 'uptime-monitor') . '</label></th>';
-        echo '<td><input type="text" id="down_status_codes" name="down_status_codes" value="' . esc_attr($down_status_codes) . '" class="regular-text">';
-        echo '<p class="description">' . esc_html__('Use comma-separated HTTP status codes or ranges. Default: 100-199,300-599.', 'uptime-monitor') . '</p></td>';
-        echo '</tr>';
-        echo '</table>';
+        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Cron and HTTP checks', 'uptime-monitor') . '</span>';
+        echo '</div>';
+        echo '<div class="uptime-settings-fields">';
+        echo '<div class="uptime-settings-field">';
+        echo '<label for="monitor_interval">' . esc_html__('Monitor Interval (seconds)', 'uptime-monitor') . '</label>';
+        echo '<input type="number" id="monitor_interval" name="monitor_interval" value="' . esc_attr($monitor_interval) . '" min="60" step="60">';
+        echo '<p class="description">' . esc_html__('How often WordPress cron should schedule monitoring checks.', 'uptime-monitor') . '</p>';
+        echo '</div>';
+        echo '<div class="uptime-settings-field">';
+        echo '<label for="retry_attempts">' . esc_html__('Retry Attempts', 'uptime-monitor') . '</label>';
+        echo '<input type="number" id="retry_attempts" name="retry_attempts" value="' . esc_attr($retry_attempts) . '" min="1" max="10" step="1">';
+        echo '<p class="description">' . esc_html__('Extra attempts before a URL is considered down.', 'uptime-monitor') . '</p>';
+        echo '</div>';
+        echo '<div class="uptime-settings-field">';
+        echo '<label for="request_timeout">' . esc_html__('Request Timeout (seconds)', 'uptime-monitor') . '</label>';
+        echo '<input type="number" id="request_timeout" name="request_timeout" value="' . esc_attr($request_timeout) . '" min="1" max="60" step="1">';
+        echo '<p class="description">' . esc_html__('Maximum wait time per HTTP request attempt.', 'uptime-monitor') . '</p>';
+        echo '</div>';
+        echo '<div class="uptime-settings-field is-wide">';
+        echo '<label for="down_status_codes">' . esc_html__('Down Status Codes', 'uptime-monitor') . '</label>';
+        echo '<input type="text" id="down_status_codes" name="down_status_codes" value="' . esc_attr($down_status_codes) . '" class="regular-text">';
+        echo '<p class="description">' . esc_html__('Use comma-separated HTTP status codes or ranges. Default: 100-199,300-599.', 'uptime-monitor') . '</p>';
+        echo '</div>';
+        echo '</div>';
+        echo '</section>';
 
+        echo '<section class="uptime-settings-panel">';
+        echo '<div class="uptime-settings-panel__header">';
         echo '<h2>' . esc_html__('Pushover Configuration', 'uptime-monitor') . '</h2>';
+        echo '<span class="uptime-chip' . ($this->has_pushover_credentials() ? '' : ' is-warning') . '">' . esc_html($pushover_status) . '</span>';
+        echo '</div>';
         if ($this->pushover_uses_constants()) {
-            echo '<p>' . esc_html__('Pushover constants are defined in wp-config.php and take precedence over stored settings.', 'uptime-monitor') . '</p>';
+            echo '<p class="uptime-settings-note">' . esc_html__('Pushover constants are defined in wp-config.php and take precedence over stored settings.', 'uptime-monitor') . '</p>';
         } else {
-            echo '<p>' . esc_html__('Store Pushover credentials here when file access to wp-config.php is not available.', 'uptime-monitor') . '</p>';
+            echo '<p class="uptime-settings-note">' . esc_html__('Store Pushover credentials here when file access to wp-config.php is not available.', 'uptime-monitor') . '</p>';
         }
-        echo '<pre>' . esc_html("define('PUSHOVER_USER_KEY', 'your-pushover-user-key');define('PUSHOVER_API_TOKEN', 'your-pushover-api-token');") . '</pre>';
-        echo '<table class="form-table">';
-        echo '<tr>';
-        echo '<th scope="row"><label for="pushover_user_key">' . esc_html__('Pushover User Key', 'uptime-monitor') . '</label></th>';
-        echo '<td><input type="password" id="pushover_user_key" name="pushover_user_key" value="" placeholder="' . esc_attr($pushover_user_key_placeholder) . '" class="regular-text" autocomplete="new-password">';
+        echo '<pre class="uptime-settings-code">' . esc_html("define('PUSHOVER_USER_KEY', 'your-pushover-user-key');\ndefine('PUSHOVER_API_TOKEN', 'your-pushover-api-token');") . '</pre>';
+        echo '<div class="uptime-settings-fields">';
+        echo '<div class="uptime-settings-field is-wide">';
+        echo '<label for="pushover_user_key">' . esc_html__('Pushover User Key', 'uptime-monitor') . '</label>';
+        echo '<input type="password" id="pushover_user_key" name="pushover_user_key" value="" placeholder="' . esc_attr($pushover_user_key_placeholder) . '" class="regular-text" autocomplete="new-password">';
         if ($stored_pushover_user_key !== '') {
-            echo '<p><label><input type="checkbox" name="clear_pushover_user_key" value="1"> ' . esc_html__('Clear stored user key', 'uptime-monitor') . '</label></p>';
+            echo '<label class="uptime-settings-checkbox"><input type="checkbox" name="clear_pushover_user_key" value="1"> ' . esc_html__('Clear stored user key', 'uptime-monitor') . '</label>';
         }
-        echo '</td>';
-        echo '</tr>';
-        echo '<tr>';
-        echo '<th scope="row"><label for="pushover_api_token">' . esc_html__('Pushover API Token', 'uptime-monitor') . '</label></th>';
-        echo '<td><input type="password" id="pushover_api_token" name="pushover_api_token" value="" placeholder="' . esc_attr($pushover_api_token_placeholder) . '" class="regular-text" autocomplete="new-password">';
+        echo '</div>';
+        echo '<div class="uptime-settings-field is-wide">';
+        echo '<label for="pushover_api_token">' . esc_html__('Pushover API Token', 'uptime-monitor') . '</label>';
+        echo '<input type="password" id="pushover_api_token" name="pushover_api_token" value="" placeholder="' . esc_attr($pushover_api_token_placeholder) . '" class="regular-text" autocomplete="new-password">';
         if ($stored_pushover_api_token !== '') {
-            echo '<p><label><input type="checkbox" name="clear_pushover_api_token" value="1"> ' . esc_html__('Clear stored API token', 'uptime-monitor') . '</label></p>';
+            echo '<label class="uptime-settings-checkbox"><input type="checkbox" name="clear_pushover_api_token" value="1"> ' . esc_html__('Clear stored API token', 'uptime-monitor') . '</label>';
         }
-        echo '</td>';
-        echo '</tr>';
-        echo '</table>';
-        echo '<p><button type="submit" class="button" name="test_pushover" value="1">' . esc_html__('Send Pushover Test', 'uptime-monitor') . '</button></p>';
+        echo '</div>';
+        echo '</div>';
+        echo '<div class="uptime-settings-actions"><button type="submit" class="button" name="test_pushover" value="1"><span class="dashicons dashicons-megaphone" aria-hidden="true"></span>' . esc_html__('Send Pushover Test', 'uptime-monitor') . '</button></div>';
+        echo '</section>';
+        echo '</div>';
 
-	    echo '<h2>' . esc_html__('Export Configuration', 'uptime-monitor') . '</h2>';
-	    echo '<textarea readonly rows="10" style="width:100%; font-family:monospace;">' . esc_textarea($json_export) . '</textarea>';
+        echo '<section class="uptime-settings-panel uptime-settings-panel-wide">';
+        echo '<div class="uptime-settings-panel__header">';
+        echo '<h2>' . esc_html__('Configuration Import / Export', 'uptime-monitor') . '</h2>';
+        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Secrets excluded', 'uptime-monitor') . '</span>';
+        echo '</div>';
+        echo '<div class="uptime-settings-io-grid">';
+        echo '<div class="uptime-settings-field is-wide">';
+	    echo '<label for="uptime_export_json">' . esc_html__('Export Configuration', 'uptime-monitor') . '</label>';
+	    echo '<textarea id="uptime_export_json" readonly rows="10" class="uptime-settings-textarea">' . esc_textarea($json_export) . '</textarea>';
+        echo '</div>';
+        echo '<div class="uptime-settings-field is-wide">';
+	    echo '<label for="import_json">' . esc_html__('Import Configuration', 'uptime-monitor') . '</label>';
+	    echo '<textarea id="import_json" name="import_json" rows="10" class="uptime-settings-textarea" placeholder="' . esc_attr__('Paste a previously exported JSON configuration here.', 'uptime-monitor') . '"></textarea>';
+        echo '</div>';
+        echo '</div>';
+        echo '</section>';
 
-	    echo '<h2>' . esc_html__('Import Configuration', 'uptime-monitor') . '</h2>';
-	    echo '<p>' . esc_html__('Paste a previously exported JSON configuration below.', 'uptime-monitor') . '</p>';
-	    echo '<textarea name="import_json" rows="10" style="width:100%; font-family:monospace;"></textarea>';
-
-
-	    echo '<p><input type="submit" class="button button-primary" value="' . esc_attr__('Save Settings', 'uptime-monitor') . '"></p>';
+	    echo '<div class="uptime-settings-savebar">';
+        echo '<button type="submit" class="button button-primary"><span class="dashicons dashicons-saved" aria-hidden="true"></span>' . esc_html__('Save Settings', 'uptime-monitor') . '</button>';
+        echo '</div>';
         echo '</form>';
         echo '</div>';
     }
@@ -1332,7 +1745,7 @@ class SimpleUptimeMonitor
         ];
         $urls = $this->normalize_urls($urls);
         update_option('uptime_monitor_urls', $urls);
-        wp_send_json_success(['urls' => $this->add_status_history_to_urls($urls)]);
+        wp_send_json_success($this->get_dashboard_ajax_payload($urls));
     }
 
     /**
@@ -1362,7 +1775,7 @@ class SimpleUptimeMonitor
                 update_option('uptime_monitor_urls', $urls);
                 $this->delete_status_history_for_url($id_to_delete);
                 $this->delete_incident_for_url($id_to_delete);
-                wp_send_json_success(['urls' => $this->add_status_history_to_urls($urls)]);
+                wp_send_json_success($this->get_dashboard_ajax_payload($urls));
             }
         }
         wp_send_json_error(['message' => __('URL not found.', 'uptime-monitor')], 404);
@@ -1389,7 +1802,7 @@ class SimpleUptimeMonitor
 			if ($url_data['id'] === $id) {
 				$url_data['enabled'] = $enabled;
 				update_option('uptime_monitor_urls', $urls);
-				wp_send_json_success(['urls' => $this->add_status_history_to_urls($urls)]);
+				wp_send_json_success($this->get_dashboard_ajax_payload($urls));
 			}
 		}
 		wp_send_json_error(['message' => __('URL not found.', 'uptime-monitor')], 404);

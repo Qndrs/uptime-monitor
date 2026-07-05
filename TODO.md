@@ -109,9 +109,10 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 
 ## 4. Dashboard En REST
 
-- [ ] Bouw een compact statusdashboard.
+- [x] Bouw een compact statusdashboard.
   - Mogelijk: groen/rood/oranje status, laatst gecontroleerd, downtime-duur en snelle acties.
   - Ontwerpnotitie: zie `docs/dashboard-design.md` voor dashboard-MVP, visuele richting en latere uitbreidingen.
+  - Status: de oude URL-tabel is vervangen door een compact statusdashboard met globale statusbalk, metric cards, statuslampen per URL, actuele checkinformatie, downtime-duur bij open incidenten, notificatie/incidentbadges, snelle acties en inklapbare history.
 
 - [ ] Breid de REST API uit met status-endpoints.
   - Mogelijk: `GET /status`, `GET /status/{id}` en gefilterde logresponses.

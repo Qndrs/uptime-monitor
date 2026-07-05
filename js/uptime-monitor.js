@@ -10,12 +10,18 @@ jQuery(document).ready(function ($) {
         if (status === 'down') {
             return uptimeMonitorL10n.status_down;
         }
+        if (status === 'paused') {
+            return uptimeMonitorL10n.status_paused;
+        }
+        if (status === 'degraded') {
+            return uptimeMonitorL10n.status_degraded;
+        }
 
-        return uptimeMonitorL10n.status_error;
+        return uptimeMonitorL10n.status_unknown || uptimeMonitorL10n.status_error;
     }
 
     function getStatusClass(status) {
-        return ['up', 'down', 'error'].indexOf(status) !== -1 ? status : 'error';
+        return ['up', 'down', 'error', 'paused', 'degraded', 'unknown'].indexOf(status) !== -1 ? status : 'unknown';
     }
 
     function renderStatusCode(statusCode) {
@@ -168,13 +174,127 @@ jQuery(document).ready(function ($) {
         return `${renderUptimeSummary(uptime)}${renderResponseSummary(history)}<ol class="uptime-history-list">${items}</ol>`;
     }
 
-    // Add URL via AJAX
+    function getHost(url) {
+        try {
+            return new URL(url).host;
+        } catch (error) {
+            return url || '';
+        }
+    }
+
+    function getDashboard(urlData) {
+        return urlData.dashboard && typeof urlData.dashboard === 'object' ? urlData.dashboard : {};
+    }
+
+    function renderCurrentCheck(dashboard) {
+        const latest = dashboard.latest && typeof dashboard.latest === 'object' ? dashboard.latest : null;
+        if (!latest) {
+            return `<span class="uptime-chip uptime-chip-muted">${escapeHtml(uptimeMonitorL10n.no_history)}</span>`;
+        }
+
+        const statusCode = parseInt(latest.status_code, 10);
+        const responseTime = parseInt(latest.response_time_ms, 10);
+        const timestamp = latest.timestamp || '';
+        const displayTimestamp = latest.display_timestamp || timestamp;
+
+        return `
+            ${statusCode ? `<span class="uptime-chip">${escapeHtml(uptimeMonitorL10n.http_status.replace('%d', statusCode))}</span>` : ''}
+            ${!isNaN(responseTime) ? `<span class="uptime-chip">${escapeHtml(uptimeMonitorL10n.response_time_ms.replace('%d', responseTime))}</span>` : ''}
+            ${timestamp ? `<time class="uptime-chip uptime-chip-muted" datetime="${escapeHtml(timestamp)}">${escapeHtml(displayTimestamp)}</time>` : ''}
+        `;
+    }
+
+    function renderUrlRow(urlData) {
+        const dashboard = getDashboard(urlData);
+        const status = getStatusClass(dashboard.status || 'unknown');
+        const statusLabel = dashboard.status_label || getStatusLabel(status);
+        const notificationsLabel = dashboard.notifications_label || uptimeMonitorL10n.no_alerts;
+        const incidentOpen = !!dashboard.incident_open;
+        const incidentLabel = dashboard.incident_label || (incidentOpen ? uptimeMonitorL10n.incident_open : uptimeMonitorL10n.no_incident);
+        const incidentDuration = dashboard.incident_duration_display || '';
+        const checked = urlData.enabled ? 'checked' : '';
+        const url = urlData.url || '';
+        const title = getHost(url);
+        const averageResponse = dashboard.average_response_time_display
+            ? `<span class="uptime-response-average">${escapeHtml(dashboard.average_response_time_display)}</span>`
+            : '';
+
+        return `
+            <article class="uptime-url-row is-${status}">
+                <div class="uptime-url-status">
+                    <span class="uptime-status-light is-${status}" aria-hidden="true"></span>
+                    <strong>${escapeHtml(statusLabel)}</strong>
+                </div>
+                <div class="uptime-url-identity">
+                    <strong>${escapeHtml(title)}</strong>
+                    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>
+                </div>
+                <div class="uptime-url-current">
+                    ${renderCurrentCheck(dashboard)}
+                </div>
+                <div class="uptime-url-metrics">
+                    ${renderUptimeSummary(urlData.uptime)}
+                    ${averageResponse}
+                </div>
+                <div class="uptime-url-alerts">
+                    <span class="uptime-chip${notificationsLabel === uptimeMonitorL10n.no_alerts ? ' is-warning' : ''}">${escapeHtml(notificationsLabel)}</span>
+                    <span class="uptime-chip${incidentOpen ? ' is-danger' : ' uptime-chip-muted'}">${escapeHtml(incidentLabel)}</span>
+                    ${incidentDuration ? `<span class="uptime-chip is-danger">${escapeHtml(incidentDuration)}</span>` : ''}
+                </div>
+                <div class="uptime-url-actions">
+                    <label class="uptime-toggle"><input type="checkbox" class="toggle-monitoring" data-id="${escapeHtml(urlData.id)}" ${checked}> <span>${escapeHtml(uptimeMonitorL10n.monitoring || 'Monitoring')}</span></label>
+                    <button type="button" class="button toggle-history" aria-expanded="false"><span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span><span class="uptime-action-label">${escapeHtml(uptimeMonitorL10n.details)}</span></button>
+                    <button type="button" class="button delete-url uptime-delete-button" data-id="${escapeHtml(urlData.id)}">${escapeHtml(uptimeMonitorL10n.delete)}</button>
+                </div>
+                <div class="uptime-url-history" hidden>
+                    ${renderHistory(urlData.history, urlData.uptime)}
+                </div>
+            </article>
+        `;
+    }
+
+    function updateUrlList(urls) {
+        const list = $('.uptime-url-list');
+        list.empty();
+
+        if (!Array.isArray(urls) || urls.length === 0) {
+            list.append(`<div class="uptime-empty-state">${escapeHtml(uptimeMonitorL10n.no_urls)}</div>`);
+            return;
+        }
+
+        urls.forEach(function (urlData) {
+            list.append(renderUrlRow(urlData));
+        });
+    }
+
+    function updateDashboard(html) {
+        if (!html) {
+            return;
+        }
+
+        const parsed = $('<div>').html(html);
+        const statusbar = parsed.find('.uptime-statusbar');
+        const metrics = parsed.find('.uptime-metric-grid');
+
+        if (statusbar.length) {
+            $('.uptime-statusbar').replaceWith(statusbar);
+        }
+        if (metrics.length) {
+            $('.uptime-metric-grid').replaceWith(metrics);
+        }
+    }
+
+    function updateDashboardResponse(data) {
+        updateDashboard(data.dashboard_html);
+        updateUrlList(data.urls);
+    }
+
     $('#uptime-monitor-form').on('submit', function (e) {
         e.preventDefault();
 
-        let url = $('#url').val();
-        let emailAlert = $('#email_alert').is(':checked') ? 1 : 0;
-        let pushoverAlert = $('#pushover_alert').is(':checked') ? 1 : 0;
+        const url = $('#url').val();
+        const emailAlert = $('#email_alert').is(':checked') ? 1 : 0;
+        const pushoverAlert = $('#pushover_alert').is(':checked') ? 1 : 0;
 
         $.ajax({
             url: uptimeMonitorAjax.ajax_url,
@@ -188,7 +308,8 @@ jQuery(document).ready(function ($) {
             },
             success: function (response) {
                 if (response.success) {
-                    updateTable(response.data.urls);
+                    updateDashboardResponse(response.data);
+                    $('#url').val('');
                     alert(uptimeMonitorL10n.add_success);
                 } else {
                     alert(uptimeMonitorL10n.error + response.data.message);
@@ -200,9 +321,8 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    // Delete URL via AJAX
-    $('.uptime-monitor-table').on('click', '.delete-url', function () {
-        let id = $(this).data('id');
+    $('.uptime-url-list').on('click', '.delete-url', function () {
+        const id = $(this).data('id');
 
         $.ajax({
             url: uptimeMonitorAjax.ajax_url,
@@ -214,7 +334,7 @@ jQuery(document).ready(function ($) {
             },
             success: function (response) {
                 if (response.success) {
-                    updateTable(response.data.urls);
+                    updateDashboardResponse(response.data);
                     alert(uptimeMonitorL10n.delete_success);
                 } else {
                     alert(uptimeMonitorL10n.error + response.data.message);
@@ -226,31 +346,7 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    // Update the table with new data
-    function updateTable(urls) {
-        let tableBody = $('.uptime-monitor-table tbody');
-        tableBody.empty();
-
-        if (urls.length === 0) {
-            tableBody.append(`<tr><td colspan="6">${uptimeMonitorL10n.no_urls}</td></tr>`);
-        } else {
-            urls.forEach(function (urlData) {
-                const checked = urlData.enabled ? 'checked' : '';
-                tableBody.append(`
-                    <tr>
-                        <td>${escapeHtml(urlData.url)}</td>
-                        <td>${urlData.email ? uptimeMonitorL10n.enabled : uptimeMonitorL10n.disabled}</td>
-                        <td>${urlData.pushover ? uptimeMonitorL10n.enabled : uptimeMonitorL10n.disabled}</td>
-                        <td><input type="checkbox" class="toggle-monitoring" data-id="${escapeHtml(urlData.id)}" ${checked}></td>
-                        <td>${renderHistory(urlData.history, urlData.uptime)}</td>
-                        <td><button class="button delete-url" data-id="${escapeHtml(urlData.id)}">${uptimeMonitorL10n.delete}</button></td>
-                    </tr>
-                `);
-            });
-        }
-    }
-
-    $('.uptime-monitor-table').on('change', '.toggle-monitoring', function () {
+    $('.uptime-url-list').on('change', '.toggle-monitoring', function () {
         const id = $(this).data('id');
         const enabled = $(this).is(':checked') ? 1 : 0;
 
@@ -261,12 +357,24 @@ jQuery(document).ready(function ($) {
             nonce: uptimeMonitorAjax.nonce
         }, function (response) {
             if (response.success) {
-                updateTable(response.data.urls);
+                updateDashboardResponse(response.data);
             } else {
                 alert(uptimeMonitorL10n.error + response.data.message);
             }
         }).fail(function () {
             alert(uptimeMonitorL10n.error_generic);
         });
+    });
+
+    $('.uptime-url-list').on('click', '.toggle-history', function () {
+        const button = $(this);
+        const row = button.closest('.uptime-url-row');
+        const history = row.find('.uptime-url-history').first();
+        const expanded = button.attr('aria-expanded') === 'true';
+
+        button.attr('aria-expanded', expanded ? 'false' : 'true');
+        button.toggleClass('is-expanded', !expanded);
+        button.find('.uptime-action-label').text(expanded ? uptimeMonitorL10n.details : uptimeMonitorL10n.hide_details);
+        history.prop('hidden', expanded);
     });
 });
