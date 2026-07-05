@@ -23,13 +23,6 @@ namespace SimpleUptimeMonitor;
  * - Custom client plugin mogelijk voor firewall-omzeiling
  */
 
-use WP_REST_Controller;
-use WP_REST_Response;
-use WP_REST_Request;
-use WP_REST_Server;
-use WP_Error;
-
-
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -40,6 +33,9 @@ if (!defined('ABSPATH')) {
  */
 class SimpleUptimeMonitor
 {
+    public const MAX_LOG_FILE_SIZE = 5242880;
+    public const MAX_LOG_ENTRIES = 1000;
+
     /**
      * Constructor.
      * Registers hooks for plugin functionality.
@@ -448,8 +444,12 @@ class SimpleUptimeMonitor
             mkdir(dirname($log_file), 0755, true);
         }
 
-        // Bestaande logs ophalen
-        $logs = file_exists($log_file) ? json_decode(file_get_contents($log_file), true) : [];
+        // Bestaande logs ophalen, maar voorkom dat een groot logbestand WordPress laat crashen.
+        $logs = [];
+        if (file_exists($log_file) && filesize($log_file) <= self::MAX_LOG_FILE_SIZE) {
+            $decoded_logs = json_decode(file_get_contents($log_file), true);
+            $logs = is_array($decoded_logs) ? $decoded_logs : [];
+        }
 
         // Nieuw logitem
         $log_entry = [
@@ -461,6 +461,9 @@ class SimpleUptimeMonitor
 
         // Toevoegen en opslaan
         $logs[] = $log_entry;
+        if (count($logs) > self::MAX_LOG_ENTRIES) {
+            $logs = array_slice($logs, -self::MAX_LOG_ENTRIES);
+        }
         file_put_contents($log_file, json_encode($logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 
@@ -551,7 +554,7 @@ class SimpleUptimeMonitor
 }
 
 new SimpleUptimeMonitor();
-class UptimeMonitorLogsController extends WP_REST_Controller {
+class UptimeMonitorLogsController extends \WP_REST_Controller {
 	/**
 	 * Registers REST API routes for the Uptime Monitor.
 	 *
@@ -561,7 +564,7 @@ class UptimeMonitorLogsController extends WP_REST_Controller {
 	 */
 	public function register_routes(): void {
 		register_rest_route('uptime-monitor/v1', '/logs', [
-			'methods'             => WP_REST_Server::READABLE,
+			'methods'             => \WP_REST_Server::READABLE,
 			'callback'            => [$this, 'get_logs'],
 			'permission_callback' => [$this, 'check_permissions'], // '__return_true' when checking route
 		]);
@@ -572,36 +575,35 @@ class UptimeMonitorLogsController extends WP_REST_Controller {
 	 * @return bool True if the user has 'manage_options' capability, false otherwise.
 	 */
 	public function check_permissions(): bool {
-		SimpleUptimeMonitor::log_to_json(
-			'debug',
-			'Check_permissions called.',
-			[ 'user_id' => get_current_user_id(),
-			  'is_user_logged_in' => is_user_logged_in(),
-			  'current_user' => wp_get_current_user()
-			]
-		);
 		return current_user_can('manage_options'); // Allow only admins
 	}
 	/**
 	 * Handles REST API request to fetch the uptime log data.
 	 *
-	 * @param WP_REST_Request $request The REST API request.
-	 * @return WP_REST_Response|WP_Error The log data as a REST response or an error if the log file is missing.
+	 * @param \WP_REST_Request $request The REST API request.
+	 * @return \WP_REST_Response|\WP_Error The log data as a REST response or an error if the log file is missing.
 	 */
-	public function get_logs( WP_REST_Request $request ) {
+	public function get_logs( \WP_REST_Request $request ) {
 		$log_file = WP_CONTENT_DIR . '/logs/uptime-monitor.json';
 		if (!file_exists($log_file)) {
-			return new WP_Error(
+			return new \WP_Error(
 				'no_logs_found',
 				__('No logs found.', 'uptime-monitor'),
 				['status' => 404]
+			);
+		}
+		if (filesize($log_file) > SimpleUptimeMonitor::MAX_LOG_FILE_SIZE) {
+			return new \WP_Error(
+				'logs_too_large',
+				__('The log file is too large to return through the REST API.', 'uptime-monitor'),
+				['status' => 413]
 			);
 		}
 
 		$logs = file_get_contents($log_file);
 		$logs_data = json_decode($logs, true);
 
-		return new WP_REST_Response($logs_data, 200);
+		return new \WP_REST_Response($logs_data, 200);
 	}
 }
 add_action('rest_api_init', function() {
