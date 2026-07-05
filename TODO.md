@@ -38,7 +38,7 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 
 ## 2. Releasekwaliteit
 
-- [ ] Maak een 3.0.1 stabilisatie-release.
+- [x] Maak een 3.0.1 stabilisatie-release.
   - Inhoud: cron-fix, security checks, datamigratie, UI-consistentie en loggingfixes.
   - Klaar wanneer: changelog, plugin header en Git tag `v3.0.1` kloppen.
 
