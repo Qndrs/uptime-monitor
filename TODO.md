@@ -14,7 +14,7 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 - Huidige SSH-account heeft geen shell; server-side Git deploy is daarmee nog niet mogelijk.
 - Releasepakket is lokaal reproduceerbaar via `scripts/build-release.ps1`.
 - Lokale releasechecks draaien via `scripts/check-release.ps1`.
-- Volgende inhoudelijke fase: nadenken over features, waarschijnlijk starten bij monitoringhistorie, response time, uptimepercentage, alert throttling en Pushover-configuratie.
+- Volgende inhoudelijke fase: Pushover-configuratie afronden en daarna het dashboard/API-werk uitwerken.
 
 ## 1. Stabilisatie
 
@@ -102,8 +102,9 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Mogelijk: voorkom herhaalde meldingen bij elke cron-run zolang dezelfde storing voortduurt.
   - Status: per storing worden maximaal drie downmeldingen verstuurd; de derde melding kondigt aan dat er geen nieuwe meldingen volgen tot herstel.
 
-- [ ] Maak retry-gedrag configureerbaar.
+- [x] Maak retry-gedrag configureerbaar.
   - Mogelijk: aantal pogingen, timeout en welke statuscodes als down tellen.
+  - Status: settingspagina, import/export en monitor gebruiken configureerbare retry attempts, request timeout en down-statuscode ranges.
 
 ## 4. Dashboard En REST
 

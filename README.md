@@ -13,7 +13,7 @@ Simple Uptime Monitor is a lightweight WordPress plugin for monitoring external 
 - Requires at least: WordPress 6.0
 - Tested up to: WordPress 7.0
 - Requires PHP: 8.0+
-- Stable tag: 3.0.1
+- Stable tag: 3.1.0
 - License: GPLv2 or later
 - License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,7 +22,10 @@ Simple Uptime Monitor is a lightweight WordPress plugin for monitoring external 
 - Monitor multiple external websites from the WordPress dashboard.
 - Enable or disable monitoring per URL.
 - Send downtime alerts by email and/or Pushover.
-- Configure the monitoring interval from the settings page.
+- Show per-URL status history, uptime percentages, and response times.
+- Send recovery alerts when an incident is resolved.
+- Throttle repeated downtime alerts during the same incident.
+- Configure the monitoring interval, retry attempts, timeout, and down status codes from the settings page.
 - Export and import plugin configuration as JSON.
 - Store structured logs in the WordPress database with an entry limit.
 - Read logs through an authenticated REST endpoint.
@@ -105,6 +108,15 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 The checks validate PHP syntax, JavaScript syntax when Node.js is available, version consistency, and release packaging basics.
 
 ## Changelog
+
+### 3.1.0
+
+- Added per-URL status history with recent checks, status codes, timestamps, and error messages.
+- Added response time tracking with average response time and simple trend display.
+- Added uptime percentages for 24 hours, 7 days, and 30 days.
+- Added recovery notifications when a down URL becomes reachable again.
+- Added alert throttling with a maximum of three downtime alerts per incident.
+- Added configurable retry attempts, request timeout, and down status code ranges.
 
 ### 3.0.1
 

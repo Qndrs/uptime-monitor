@@ -10,3 +10,6 @@ delete_option('uptime_monitor_interval');
 delete_option('uptime_monitor_logs');
 delete_option('uptime_monitor_history');
 delete_option('uptime_monitor_incidents');
+delete_option('uptime_monitor_retry_attempts');
+delete_option('uptime_monitor_request_timeout');
+delete_option('uptime_monitor_down_status_codes');

@@ -5,7 +5,7 @@ namespace SimpleUptimeMonitor;
  * Plugin Name: Simple Uptime Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor de beschikbaarheid van websites en ontvang meldingen via e-mail of Pushover. Beheer eenvoudig meerdere URL's vanuit het WordPress-beheerpaneel, met logging, JSON-import/export, REST-ondersteuning en intervalinstellingen.
- * Version: 3.0.1
+ * Version: 3.1.0
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,11 +33,14 @@ if (!defined('ABSPATH')) {
  */
 class SimpleUptimeMonitor
 {
-    public const VERSION = '3.0.1';
+    public const VERSION = '3.1.0';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
     public const MAX_INCIDENT_ALERTS = 3;
+    public const DEFAULT_RETRY_ATTEMPTS = 3;
+    public const DEFAULT_REQUEST_TIMEOUT = 10;
+    public const DEFAULT_DOWN_STATUS_CODES = '100-199,300-599';
     private const CRON_HOOK = 'monitor_uptime_event';
     private const CRON_SCHEDULE = 'uptime_monitor_interval';
 
@@ -96,6 +99,67 @@ class SimpleUptimeMonitor
     private function get_monitor_interval(): int
     {
         return max(60, (int)get_option('uptime_monitor_interval', 120));
+    }
+
+    private function get_retry_attempts(): int
+    {
+        return min(10, max(1, (int)get_option('uptime_monitor_retry_attempts', self::DEFAULT_RETRY_ATTEMPTS)));
+    }
+
+    private function get_request_timeout(): int
+    {
+        return min(60, max(1, (int)get_option('uptime_monitor_request_timeout', self::DEFAULT_REQUEST_TIMEOUT)));
+    }
+
+    private function get_down_status_codes(): string
+    {
+        return $this->sanitize_status_code_ranges(get_option('uptime_monitor_down_status_codes', self::DEFAULT_DOWN_STATUS_CODES));
+    }
+
+    private function sanitize_status_code_ranges($value): string
+    {
+        $tokens = preg_split('/[\s,]+/', (string)$value, -1, PREG_SPLIT_NO_EMPTY);
+        $ranges = [];
+
+        foreach ($tokens as $token) {
+            if (preg_match('/^(\d{3})(?:-(\d{3}))?$/', $token, $matches) !== 1) {
+                continue;
+            }
+
+            $start = (int)$matches[1];
+            $end = isset($matches[2]) ? (int)$matches[2] : $start;
+            if ($start > $end) {
+                [$start, $end] = [$end, $start];
+            }
+            if ($start < 100 || $end > 599) {
+                continue;
+            }
+
+            $ranges[] = $start === $end ? (string)$start : $start . '-' . $end;
+        }
+
+        $ranges = array_values(array_unique($ranges));
+
+        return !empty($ranges) ? implode(',', $ranges) : self::DEFAULT_DOWN_STATUS_CODES;
+    }
+
+    private function is_down_status_code(int $status_code): bool
+    {
+        if ($status_code < 100 || $status_code > 599) {
+            return true;
+        }
+
+        foreach (explode(',', $this->get_down_status_codes()) as $range) {
+            $parts = array_map('absint', explode('-', $range));
+            $start = $parts[0] ?? 0;
+            $end = $parts[1] ?? $start;
+
+            if ($status_code >= $start && $status_code <= $end) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function reschedule_monitoring(): void
@@ -697,12 +761,12 @@ class SimpleUptimeMonitor
             if ($new_url === null) {
                 echo '<div class="error"><p>' . esc_html__('Invalid URL.', 'uptime-monitor') . '</p></div>';
             } else {
-                $response = wp_remote_get($new_url, ['timeout' => 10]);
+                $response = wp_remote_get($new_url, ['timeout' => $this->get_request_timeout()]);
                 if (is_wp_error($response)) {
                     echo '<div class="error"><p>' . esc_html__('Invalid URL:', 'uptime-monitor') . ' ' . esc_html($new_url) . '</p></div>';
                 } else {
                     $status_code = wp_remote_retrieve_response_code($response);
-                    if ($status_code < 200 || $status_code >= 300) {
+                    if ($this->is_down_status_code($status_code)) {
                         echo '<div class="error"><p>' . esc_html__('URL is not reachable (status code:', 'uptime-monitor') . ' ' . esc_html($status_code) . ').</p></div>';
                     } else {
                         $urls[] = [
@@ -805,6 +869,15 @@ class SimpleUptimeMonitor
                         if (isset($data['settings']['monitor_interval'])) {
                             update_option('uptime_monitor_interval', max(60, intval($data['settings']['monitor_interval'])));
                         }
+                        if (isset($data['settings']['retry_attempts'])) {
+                            update_option('uptime_monitor_retry_attempts', min(10, max(1, intval($data['settings']['retry_attempts']))));
+                        }
+                        if (isset($data['settings']['request_timeout'])) {
+                            update_option('uptime_monitor_request_timeout', min(60, max(1, intval($data['settings']['request_timeout']))));
+                        }
+                        if (isset($data['settings']['down_status_codes'])) {
+                            update_option('uptime_monitor_down_status_codes', $this->sanitize_status_code_ranges($data['settings']['down_status_codes']));
+                        }
                         if (isset($data['urls'])) {
                             $imported_urls = $this->normalize_urls($data['urls']);
                             update_option('uptime_monitor_urls', $imported_urls);
@@ -819,6 +892,12 @@ class SimpleUptimeMonitor
                 $posted_interval = isset($_POST['monitor_interval']) ? absint(wp_unslash($_POST['monitor_interval'])) : 120;
 			    $monitor_interval = max(60, $posted_interval);
 			    update_option('uptime_monitor_interval', $monitor_interval);
+                $retry_attempts = isset($_POST['retry_attempts']) ? min(10, max(1, absint(wp_unslash($_POST['retry_attempts'])))) : self::DEFAULT_RETRY_ATTEMPTS;
+                update_option('uptime_monitor_retry_attempts', $retry_attempts);
+                $request_timeout = isset($_POST['request_timeout']) ? min(60, max(1, absint(wp_unslash($_POST['request_timeout'])))) : self::DEFAULT_REQUEST_TIMEOUT;
+                update_option('uptime_monitor_request_timeout', $request_timeout);
+                $down_status_codes = isset($_POST['down_status_codes']) ? sanitize_text_field(wp_unslash($_POST['down_status_codes'])) : self::DEFAULT_DOWN_STATUS_CODES;
+                update_option('uptime_monitor_down_status_codes', $this->sanitize_status_code_ranges($down_status_codes));
 
                 $this->reschedule_monitoring();
 
@@ -829,10 +908,18 @@ class SimpleUptimeMonitor
 
         // Huidige instellingen ophalen
 	    $monitor_interval = $this->get_monitor_interval();
+        $retry_attempts = $this->get_retry_attempts();
+        $request_timeout = $this->get_request_timeout();
+        $down_status_codes = $this->get_down_status_codes();
 	    $urls = $this->normalize_stored_urls();
 
 	    $export_data = [
-		    'settings' => [ 'monitor_interval' => $monitor_interval ],
+		    'settings' => [
+                'monitor_interval' => $monitor_interval,
+                'retry_attempts' => $retry_attempts,
+                'request_timeout' => $request_timeout,
+                'down_status_codes' => $down_status_codes,
+            ],
 		    'urls'     => $urls,
 	    ];
 
@@ -850,6 +937,19 @@ class SimpleUptimeMonitor
         echo '<tr>';
         echo '<th scope="row"><label for="monitor_interval">' . esc_html__('Monitor Interval (seconds)', 'uptime-monitor') . '</label></th>';
         echo '<td><input type="number" id="monitor_interval" name="monitor_interval" value="' . esc_attr($monitor_interval) . '" min="60" step="60"></td>';
+        echo '</tr>';
+        echo '<tr>';
+        echo '<th scope="row"><label for="retry_attempts">' . esc_html__('Retry Attempts', 'uptime-monitor') . '</label></th>';
+        echo '<td><input type="number" id="retry_attempts" name="retry_attempts" value="' . esc_attr($retry_attempts) . '" min="1" max="10" step="1"></td>';
+        echo '</tr>';
+        echo '<tr>';
+        echo '<th scope="row"><label for="request_timeout">' . esc_html__('Request Timeout (seconds)', 'uptime-monitor') . '</label></th>';
+        echo '<td><input type="number" id="request_timeout" name="request_timeout" value="' . esc_attr($request_timeout) . '" min="1" max="60" step="1"></td>';
+        echo '</tr>';
+        echo '<tr>';
+        echo '<th scope="row"><label for="down_status_codes">' . esc_html__('Down Status Codes', 'uptime-monitor') . '</label></th>';
+        echo '<td><input type="text" id="down_status_codes" name="down_status_codes" value="' . esc_attr($down_status_codes) . '" class="regular-text">';
+        echo '<p class="description">' . esc_html__('Use comma-separated HTTP status codes or ranges. Default: 100-199,300-599.', 'uptime-monitor') . '</p></td>';
         echo '</tr>';
         echo '</table>';
 
@@ -874,6 +974,8 @@ class SimpleUptimeMonitor
         $this->log_to_json('info', 'Cron job started.', ['task' => 'monitor_uptime_event']);
         $urls = $this->normalize_stored_urls();
         $this->log_to_json('info', 'URLs to monitor.', ['urls' => $urls]);
+        $retry_attempts = $this->get_retry_attempts();
+        $request_timeout = $this->get_request_timeout();
 
         foreach ($urls as $url_data) {
 	        if (isset($url_data['enabled']) && $url_data['enabled'] === false) {
@@ -881,12 +983,35 @@ class SimpleUptimeMonitor
 		        continue;
 	        }
             $response_time_ms = null;
-	        for ($i = 0; $i < 3; $i++) {
+            $response = null;
+	        for ($i = 0; $i < $retry_attempts; $i++) {
                 $request_start = microtime(true);
-                $response = wp_remote_get($url_data['url'], ['timeout' => 10]);
+                $response = wp_remote_get($url_data['url'], ['timeout' => $request_timeout]);
                 $response_time_ms = (int)round((microtime(true) - $request_start) * 1000);
-                if (!is_wp_error($response)) {
-                    $this->log_to_json('info', 'Successful retry.', ['url' => $url_data['url'], 'attempt' => $i + 1, 'response_time_ms' => $response_time_ms]);
+
+                if (is_wp_error($response)) {
+                    $this->log_to_json('error', 'HTTP check attempt failed.', [
+                        'url' => $url_data['url'],
+                        'attempt' => $i + 1,
+                        'retry_attempts' => $retry_attempts,
+                        'error' => $response->get_error_message(),
+                        'response_time_ms' => $response_time_ms,
+                    ]);
+                    continue;
+                }
+
+                $attempt_status_code = wp_remote_retrieve_response_code($response);
+                $is_down_status = $this->is_down_status_code($attempt_status_code);
+                $this->log_to_json('info', 'HTTP check attempt completed.', [
+                    'url' => $url_data['url'],
+                    'attempt' => $i + 1,
+                    'retry_attempts' => $retry_attempts,
+                    'status_code' => $attempt_status_code,
+                    'is_down_status' => $is_down_status,
+                    'response_time_ms' => $response_time_ms,
+                ]);
+
+                if (!$is_down_status) {
                     break;
                 }
             }
@@ -898,7 +1023,7 @@ class SimpleUptimeMonitor
             }
             $status_code = wp_remote_retrieve_response_code($response);
             $this->log_to_json('info', 'HTTP status code received.', ['url' => $url_data['url'], 'status_code' => $status_code, 'response_time_ms' => $response_time_ms]);
-            if ($status_code >= 200 and $status_code < 300) {
+            if (!$this->is_down_status_code($status_code)) {
                 $this->log_to_json('info', 'Url is up.', ['url' => $url_data['url']]);
                 $this->record_status_history($url_data, 'up', $status_code, $response_time_ms, __('URL is up.', 'uptime-monitor'));
                 $this->handle_up_incident_state($url_data, $status_code);
@@ -1088,14 +1213,14 @@ class SimpleUptimeMonitor
             wp_send_json_error(['message' => __('Invalid URL.', 'uptime-monitor')], 400);
         }
 
-        $response = wp_remote_get($new_url, ['timeout' => 10]);
+        $response = wp_remote_get($new_url, ['timeout' => $this->get_request_timeout()]);
         if (is_wp_error($response)) {
             /* translators: %s: Invalid monitored URL. */
             wp_send_json_error(['message' => sprintf(__('Invalid URL: %s', 'uptime-monitor'), $new_url)], 400);
         }
 
         $status_code = wp_remote_retrieve_response_code($response);
-        if ($status_code < 200 || $status_code >= 300) {
+        if ($this->is_down_status_code($status_code)) {
             /* translators: %d: HTTP status code. */
             wp_send_json_error(['message' => sprintf(__('URL is not reachable. Status code: %d', 'uptime-monitor'), $status_code)], 400);
         }

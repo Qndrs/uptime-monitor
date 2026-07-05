@@ -4,7 +4,7 @@ Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 3.0.1
+Stable tag: 3.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ Monitor external websites from WordPress and receive downtime alerts by email or
 
 == Description ==
 
-Simple Uptime Monitor checks external URLs from the WordPress dashboard. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, Pushover alerts, JSON import/export, structured logging, and an authenticated REST endpoint for logs.
+Simple Uptime Monitor checks external URLs from the WordPress dashboard. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, and an authenticated REST endpoint for logs.
 
 == Installation ==
 
@@ -41,6 +41,12 @@ Logs are stored in the WordPress database option `uptime_monitor_logs` and cappe
 No. The log endpoint requires a user with the `manage_options` capability.
 
 == Changelog ==
+
+= 3.1.0 =
+
+* Added per-URL status history, response time tracking, and uptime percentages.
+* Added recovery notifications and throttled downtime alerts per incident.
+* Added configurable retry attempts, request timeout, and down status code ranges.
 
 = 3.0.1 =
 
