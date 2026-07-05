@@ -365,6 +365,7 @@ class SimpleUptimeMonitor
                 'details' => __('Details', 'uptime-monitor'),
                 'hide_details' => __('Hide details', 'uptime-monitor'),
                 'monitoring' => __('Monitoring', 'uptime-monitor'),
+                'dismiss' => __('Dismiss this notice.', 'uptime-monitor'),
             ]);
         }
     }
@@ -1239,6 +1240,7 @@ class SimpleUptimeMonitor
         echo '<div class="uptime-dashboard-header">';
         echo '<h1>' . esc_html__('Uptime Monitor', 'uptime-monitor') . '</h1>';
         echo '</div>';
+        echo '<div class="uptime-monitor-notices" aria-live="polite" aria-atomic="true"></div>';
 
         $this->render_dashboard_overview($dashboard);
 

@@ -289,6 +289,40 @@ jQuery(document).ready(function ($) {
         updateUrlList(data.urls);
     }
 
+    function getErrorMessage(response) {
+        if (response && response.data && response.data.message) {
+            return uptimeMonitorL10n.error + response.data.message;
+        }
+
+        return uptimeMonitorL10n.error_generic;
+    }
+
+    function showNotice(message, type) {
+        const noticeType = type === 'error' ? 'error' : 'success';
+        let notices = $('.uptime-monitor-notices').first();
+
+        if (!notices.length) {
+            notices = $('<div class="uptime-monitor-notices" aria-live="polite" aria-atomic="true"></div>');
+            $('.uptime-monitor-dashboard').prepend(notices);
+        }
+
+        const notice = $(`
+            <div class="notice uptime-monitor-notice notice-${noticeType}">
+                <p>${escapeHtml(message)}</p>
+                <button type="button" class="notice-dismiss">
+                    <span class="screen-reader-text">${escapeHtml(uptimeMonitorL10n.dismiss || 'Dismiss this notice.')}</span>
+                </button>
+            </div>
+        `);
+
+        notices.empty().append(notice);
+        window.setTimeout(function () {
+            notice.fadeOut(160, function () {
+                $(this).remove();
+            });
+        }, 4500);
+    }
+
     $('#uptime-monitor-form').on('submit', function (e) {
         e.preventDefault();
 
@@ -310,13 +344,13 @@ jQuery(document).ready(function ($) {
                 if (response.success) {
                     updateDashboardResponse(response.data);
                     $('#url').val('');
-                    alert(uptimeMonitorL10n.add_success);
+                    showNotice(uptimeMonitorL10n.add_success, 'success');
                 } else {
-                    alert(uptimeMonitorL10n.error + response.data.message);
+                    showNotice(getErrorMessage(response), 'error');
                 }
             },
             error: function () {
-                alert(uptimeMonitorL10n.error_generic);
+                showNotice(uptimeMonitorL10n.error_generic, 'error');
             }
         });
     });
@@ -335,13 +369,13 @@ jQuery(document).ready(function ($) {
             success: function (response) {
                 if (response.success) {
                     updateDashboardResponse(response.data);
-                    alert(uptimeMonitorL10n.delete_success);
+                    showNotice(uptimeMonitorL10n.delete_success, 'success');
                 } else {
-                    alert(uptimeMonitorL10n.error + response.data.message);
+                    showNotice(getErrorMessage(response), 'error');
                 }
             },
             error: function () {
-                alert(uptimeMonitorL10n.error_generic);
+                showNotice(uptimeMonitorL10n.error_generic, 'error');
             }
         });
     });
@@ -359,11 +393,15 @@ jQuery(document).ready(function ($) {
             if (response.success) {
                 updateDashboardResponse(response.data);
             } else {
-                alert(uptimeMonitorL10n.error + response.data.message);
+                showNotice(getErrorMessage(response), 'error');
             }
         }).fail(function () {
-            alert(uptimeMonitorL10n.error_generic);
+            showNotice(uptimeMonitorL10n.error_generic, 'error');
         });
+    });
+
+    $('.uptime-monitor-dashboard').on('click', '.uptime-monitor-notice .notice-dismiss', function () {
+        $(this).closest('.uptime-monitor-notice').remove();
     });
 
     $('.uptime-url-list').on('click', '.toggle-history', function () {

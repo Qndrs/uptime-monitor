@@ -26,6 +26,20 @@
     line-height: 1.25;
 }
 
+.uptime-monitor-notices {
+    margin: 12px 0 0;
+}
+
+.uptime-monitor-notice.notice {
+    border-radius: 6px;
+    margin: 0 0 12px;
+    padding-right: 38px;
+}
+
+.uptime-monitor-notice p {
+    font-weight: 600;
+}
+
 .uptime-statusbar {
     align-items: center;
     background: var(--ump-panel);
