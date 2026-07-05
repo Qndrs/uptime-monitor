@@ -35,6 +35,7 @@ class SimpleUptimeMonitor
 {
     public const VERSION = '3.0.1';
     public const MAX_LOG_ENTRIES = 1000;
+    public const MAX_STATUS_HISTORY_PER_URL = 20;
     private const CRON_HOOK = 'monitor_uptime_event';
     private const CRON_SCHEDULE = 'uptime_monitor_interval';
 
@@ -211,8 +212,143 @@ class SimpleUptimeMonitor
                 'delete' => __('Delete', 'uptime-monitor'),
                 'enabled' => __('Enabled', 'uptime-monitor'),
                 'disabled' => __('Disabled', 'uptime-monitor'),
+                'history' => __('Status History', 'uptime-monitor'),
+                'no_history' => __('No checks yet.', 'uptime-monitor'),
+                'status_up' => __('Up', 'uptime-monitor'),
+                'status_down' => __('Down', 'uptime-monitor'),
+                'status_error' => __('Error', 'uptime-monitor'),
+                /* translators: %d: HTTP status code. */
+                'http_status' => __('HTTP %d', 'uptime-monitor'),
             ]);
         }
+    }
+
+    private function get_status_history(): array
+    {
+        $history = get_option('uptime_monitor_history', []);
+
+        return is_array($history) ? $history : [];
+    }
+
+    private function get_status_history_for_url(string $url_id): array
+    {
+        $history = $this->get_status_history();
+        $url_history = isset($history[$url_id]) && is_array($history[$url_id]) ? $history[$url_id] : [];
+
+        return array_map(
+            [$this, 'normalize_status_history_entry'],
+            array_values(array_slice($url_history, -self::MAX_STATUS_HISTORY_PER_URL))
+        );
+    }
+
+    private function normalize_status_history_entry($entry): array
+    {
+        $entry = is_array($entry) ? $entry : [];
+        $timestamp = isset($entry['timestamp']) ? sanitize_text_field($entry['timestamp']) : '';
+
+        return [
+            'timestamp' => $timestamp,
+            'display_timestamp' => $timestamp !== '' ? $this->format_history_timestamp($timestamp) : '',
+            'status' => isset($entry['status']) ? sanitize_key($entry['status']) : 'error',
+            'status_code' => isset($entry['status_code']) ? absint($entry['status_code']) : null,
+            'message' => isset($entry['message']) ? sanitize_text_field($entry['message']) : '',
+        ];
+    }
+
+    private function add_status_history_to_urls(array $urls): array
+    {
+        foreach ($urls as &$url_data) {
+            $url_data['history'] = $this->get_status_history_for_url($url_data['id']);
+        }
+        unset($url_data);
+
+        return $urls;
+    }
+
+    private function record_status_history(array $url_data, string $status, ?int $status_code, string $message): void
+    {
+        $url_id = isset($url_data['id']) ? sanitize_key($url_data['id']) : '';
+        if ($url_id === '') {
+            return;
+        }
+
+        $allowed_statuses = ['up', 'down', 'error'];
+        if (!in_array($status, $allowed_statuses, true)) {
+            $status = 'error';
+        }
+
+        $history = $this->get_status_history();
+        $url_history = isset($history[$url_id]) && is_array($history[$url_id]) ? $history[$url_id] : [];
+        $url_history[] = [
+            'timestamp' => gmdate('Y-m-d H:i:s'),
+            'status' => $status,
+            'status_code' => $status_code,
+            'message' => sanitize_text_field($message),
+        ];
+
+        $history[$url_id] = array_values(array_slice($url_history, -self::MAX_STATUS_HISTORY_PER_URL));
+        update_option('uptime_monitor_history', $history, false);
+    }
+
+    private function delete_status_history_for_url(string $url_id): void
+    {
+        $history = $this->get_status_history();
+        if (isset($history[$url_id])) {
+            unset($history[$url_id]);
+            update_option('uptime_monitor_history', $history, false);
+        }
+    }
+
+    private function format_history_timestamp(string $timestamp): string
+    {
+        $formatted = get_date_from_gmt($timestamp, get_option('date_format') . ' ' . get_option('time_format'));
+
+        return $formatted ?: $timestamp . ' UTC';
+    }
+
+    private function get_status_label(string $status): string
+    {
+        switch ($status) {
+            case 'up':
+                return __('Up', 'uptime-monitor');
+            case 'down':
+                return __('Down', 'uptime-monitor');
+            default:
+                return __('Error', 'uptime-monitor');
+        }
+    }
+
+    private function render_status_history_cell(array $history): void
+    {
+        if (empty($history)) {
+            echo '<span class="uptime-history-empty">' . esc_html__('No checks yet.', 'uptime-monitor') . '</span>';
+            return;
+        }
+
+        echo '<ol class="uptime-history-list">';
+        foreach (array_reverse(array_slice($history, -5)) as $entry) {
+            $entry = $this->normalize_status_history_entry($entry);
+            $status = $entry['status'];
+            $status_code = $entry['status_code'] !== null ? absint($entry['status_code']) : 0;
+            $timestamp = $entry['timestamp'];
+            $display_timestamp = $entry['display_timestamp'];
+            $message = $entry['message'];
+
+            echo '<li class="uptime-history-item">';
+            echo '<span class="uptime-status-badge uptime-status-' . esc_attr($status) . '">' . esc_html($this->get_status_label($status)) . '</span>';
+            if ($status_code > 0) {
+                /* translators: %d: HTTP status code. */
+                echo '<span class="uptime-history-code">' . esc_html(sprintf(__('HTTP %d', 'uptime-monitor'), $status_code)) . '</span>';
+            }
+            if ($timestamp !== '') {
+                echo '<time class="uptime-history-time" datetime="' . esc_attr($timestamp) . '">' . esc_html($display_timestamp) . '</time>';
+            }
+            if ($message !== '') {
+                echo '<span class="uptime-history-message">' . esc_html($message) . '</span>';
+            }
+            echo '</li>';
+        }
+        echo '</ol>';
     }
 
     /**
@@ -291,10 +427,10 @@ class SimpleUptimeMonitor
 
         echo '<h2>' . esc_html__('Existing URLs', 'uptime-monitor') . '</h2>';
         echo '<table class="widefat fixed uptime-monitor-table">';
-        echo '<thead><tr><th>' . esc_html__('URL', 'uptime-monitor') . '</th><th>' . esc_html__('Email Alerts', 'uptime-monitor') . '</th><th>' . esc_html__('Pushover Alerts', 'uptime-monitor') . '</th><th>' . esc_html__('Monitoring Enabled', 'uptime-monitor') . '</th><th>' . esc_html__('Actions', 'uptime-monitor') . '</th></tr></thead>';
+        echo '<thead><tr><th>' . esc_html__('URL', 'uptime-monitor') . '</th><th>' . esc_html__('Email Alerts', 'uptime-monitor') . '</th><th>' . esc_html__('Pushover Alerts', 'uptime-monitor') . '</th><th>' . esc_html__('Monitoring Enabled', 'uptime-monitor') . '</th><th>' . esc_html__('Status History', 'uptime-monitor') . '</th><th>' . esc_html__('Actions', 'uptime-monitor') . '</th></tr></thead>';
         echo '<tbody>';
         if (empty($urls)) {
-            echo '<tr><td colspan="5">' . esc_html__('No URLs available. Add one!', 'uptime-monitor') . '</td></tr>';
+            echo '<tr><td colspan="6">' . esc_html__('No URLs available. Add one!', 'uptime-monitor') . '</td></tr>';
         } else {
             foreach ($urls as $index => $url_data) {
                 echo '<tr>';
@@ -303,6 +439,9 @@ class SimpleUptimeMonitor
                 echo '<td>' . ($url_data['pushover'] ? esc_html__('Enabled', 'uptime-monitor') : esc_html__('Disabled', 'uptime-monitor')) . '</td>';
                 echo '<td>';
                 echo '<input type="checkbox" class="toggle-monitoring" data-id="' . esc_attr($url_data['id']) . '" ' . checked($url_data['enabled'], true, false) . '>';
+                echo '</td>';
+                echo '<td>';
+                $this->render_status_history_cell($this->get_status_history_for_url($url_data['id']));
                 echo '</td>';
                 echo '<td><button class="button delete-url" data-id="' . esc_attr($url_data['id']) . '">' . esc_html__('Delete', 'uptime-monitor') . '</button></td>';
                 echo '</tr>';
@@ -422,15 +561,18 @@ class SimpleUptimeMonitor
             }
             if (is_wp_error($response)) {
                 $this->log_to_json('error', 'Failed to fetch URL.', ['url' => $url_data['url'], 'error' => $response->get_error_message()]);
+                $this->record_status_history($url_data, 'error', null, $response->get_error_message());
                 continue;
             }
             $status_code = wp_remote_retrieve_response_code($response);
             $this->log_to_json('info', 'HTTP status code received.', ['url' => $url_data['url'], 'status_code' => $status_code]);
             if ($status_code >= 200 and $status_code < 300) {
                 $this->log_to_json('info', 'Url is up.', ['url' => $url_data['url']]);
+                $this->record_status_history($url_data, 'up', $status_code, __('URL is up.', 'uptime-monitor'));
 
             } else {
                 $this->log_to_json('error', 'URL is down.', ['url' => $url_data['url'], 'status_code' => $status_code]);
+                $this->record_status_history($url_data, 'down', $status_code, __('URL is down.', 'uptime-monitor'));
 
                 if ($url_data['email']) {
                     $this->send_email_alert($url_data['url'], $status_code);
@@ -586,7 +728,7 @@ class SimpleUptimeMonitor
         ];
         $urls = $this->normalize_urls($urls);
         update_option('uptime_monitor_urls', $urls);
-        wp_send_json_success(['urls' => $urls]);
+        wp_send_json_success(['urls' => $this->add_status_history_to_urls($urls)]);
     }
 
     /**
@@ -614,7 +756,8 @@ class SimpleUptimeMonitor
                 unset($urls[$index]);
                 $urls = array_values($urls); // Herstel de indexen
                 update_option('uptime_monitor_urls', $urls);
-                wp_send_json_success(['urls' => $urls]);
+                $this->delete_status_history_for_url($id_to_delete);
+                wp_send_json_success(['urls' => $this->add_status_history_to_urls($urls)]);
             }
         }
         wp_send_json_error(['message' => __('URL not found.', 'uptime-monitor')], 404);
@@ -641,7 +784,7 @@ class SimpleUptimeMonitor
 			if ($url_data['id'] === $id) {
 				$url_data['enabled'] = $enabled;
 				update_option('uptime_monitor_urls', $urls);
-				wp_send_json_success(['urls' => $urls]);
+				wp_send_json_success(['urls' => $this->add_status_history_to_urls($urls)]);
 			}
 		}
 		wp_send_json_error(['message' => __('URL not found.', 'uptime-monitor')], 404);

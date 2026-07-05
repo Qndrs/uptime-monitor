@@ -2,6 +2,20 @@
 
 Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder is bedoeld als pragmatische roadmap: eerst stabiliteit en veiligheid, daarna productfeatures.
 
+## Huidige status
+
+- Pauzepunt: 2026-07-05.
+- Release `v3.0.1` is afgerond, getagd en gepusht.
+- Tag `v3.0.1` wijst naar releasecode commit `b6fdc03`.
+- Laatste main-commit bij pauze: `175c475` (`Mark 3.0.1 release complete`).
+- Plugin Check is opnieuw gedraaid en gaf geen fouten.
+- Testsite `https://qndrs.training/simpleuptimemonitor/` draaide gezond na deployment.
+- Deploymentroute op dit moment: SFTP naar `/home/qndrs/public_html/simpleuptimemonitor/wp-content/plugins/uptime-monitor`.
+- Huidige SSH-account heeft geen shell; server-side Git deploy is daarmee nog niet mogelijk.
+- Releasepakket is lokaal reproduceerbaar via `scripts/build-release.ps1`.
+- Lokale releasechecks draaien via `scripts/check-release.ps1`.
+- Volgende inhoudelijke fase: nadenken over features, waarschijnlijk starten bij monitoringhistorie, response time, uptimepercentage, alert throttling en Pushover-configuratie.
+
 ## 1. Stabilisatie
 
 - [x] Fix WP-Cron scheduling bij activatie.
@@ -61,8 +75,9 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 
 ## 3. Monitoring Features
 
-- [ ] Toon statusgeschiedenis per URL.
+- [x] Toon statusgeschiedenis per URL.
   - Mogelijk: laatste checks, statuscodes, foutmeldingen en timestamps.
+  - Status: compacte per-URL geschiedenis toegevoegd aan de admin-tabel, inclusief statusbadge, HTTP-code, timestamp en foutmelding.
 
 - [ ] Meet response time.
   - Mogelijk: gemiddelde responstijd, laatste responstijd en eenvoudige trend.
@@ -72,6 +87,13 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 
 - [ ] Voeg herstelmeldingen toe.
   - Mogelijk: stuur ook bericht wanneer een down URL weer up is.
+
+- [ ] Werk Pushover-configuratie uit.
+  - Huidig: `PUSHOVER_USER_KEY` en `PUSHOVER_API_TOKEN` moeten in `wp-config.php` staan.
+  - Voorstel: sla credentials op als WordPress options in de database via de settingspagina, met gemaskeerde invoervelden en een testknop.
+  - Veiligheid: exporteer secrets niet in de gewone JSON-configuratie, log ze nooit, en bescherm opslag met nonce/capability checks.
+  - Compatibiliteit: blijf `wp-config.php` constants ondersteunen als fallback of expliciete override voor bestaande installaties.
+  - Klaar wanneer: een beheerder Pushover kan configureren zonder bestandstoegang en bestaande configuraties blijven werken.
 
 - [ ] Voeg alert throttling toe.
   - Mogelijk: voorkom herhaalde meldingen bij elke cron-run zolang dezelfde storing voortduurt.

@@ -3,6 +3,54 @@ jQuery(document).ready(function ($) {
         return $('<div>').text(value || '').html();
     }
 
+    function getStatusLabel(status) {
+        if (status === 'up') {
+            return uptimeMonitorL10n.status_up;
+        }
+        if (status === 'down') {
+            return uptimeMonitorL10n.status_down;
+        }
+
+        return uptimeMonitorL10n.status_error;
+    }
+
+    function getStatusClass(status) {
+        return ['up', 'down', 'error'].indexOf(status) !== -1 ? status : 'error';
+    }
+
+    function renderStatusCode(statusCode) {
+        const parsedCode = parseInt(statusCode, 10);
+        if (!parsedCode) {
+            return '';
+        }
+
+        return `<span class="uptime-history-code">${escapeHtml(uptimeMonitorL10n.http_status.replace('%d', parsedCode))}</span>`;
+    }
+
+    function renderHistory(history) {
+        if (!Array.isArray(history) || history.length === 0) {
+            return `<span class="uptime-history-empty">${escapeHtml(uptimeMonitorL10n.no_history)}</span>`;
+        }
+
+        const items = history.slice(-5).reverse().map(function (entry) {
+            const status = getStatusClass(entry.status);
+            const timestamp = entry.timestamp || '';
+            const displayTimestamp = entry.display_timestamp || timestamp;
+            const message = entry.message || '';
+
+            return `
+                <li class="uptime-history-item">
+                    <span class="uptime-status-badge uptime-status-${status}">${escapeHtml(getStatusLabel(status))}</span>
+                    ${renderStatusCode(entry.status_code)}
+                    ${timestamp ? `<time class="uptime-history-time" datetime="${escapeHtml(timestamp)}">${escapeHtml(displayTimestamp)}</time>` : ''}
+                    ${message ? `<span class="uptime-history-message">${escapeHtml(message)}</span>` : ''}
+                </li>
+            `;
+        }).join('');
+
+        return `<ol class="uptime-history-list">${items}</ol>`;
+    }
+
     // Add URL via AJAX
     $('#uptime-monitor-form').on('submit', function (e) {
         e.preventDefault();
@@ -67,7 +115,7 @@ jQuery(document).ready(function ($) {
         tableBody.empty();
 
         if (urls.length === 0) {
-            tableBody.append(`<tr><td colspan="5">${uptimeMonitorL10n.no_urls}</td></tr>`);
+            tableBody.append(`<tr><td colspan="6">${uptimeMonitorL10n.no_urls}</td></tr>`);
         } else {
             urls.forEach(function (urlData) {
                 const checked = urlData.enabled ? 'checked' : '';
@@ -77,6 +125,7 @@ jQuery(document).ready(function ($) {
                         <td>${urlData.email ? uptimeMonitorL10n.enabled : uptimeMonitorL10n.disabled}</td>
                         <td>${urlData.pushover ? uptimeMonitorL10n.enabled : uptimeMonitorL10n.disabled}</td>
                         <td><input type="checkbox" class="toggle-monitoring" data-id="${escapeHtml(urlData.id)}" ${checked}></td>
+                        <td>${renderHistory(urlData.history)}</td>
                         <td><button class="button delete-url" data-id="${escapeHtml(urlData.id)}">${uptimeMonitorL10n.delete}</button></td>
                     </tr>
                 `);

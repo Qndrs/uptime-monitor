@@ -2,7 +2,19 @@
     .uptime-monitor-form input[type="text"] {
         width: 100%;
     }
+
+    .uptime-monitor-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .uptime-history-list {
+        white-space: normal;
+        min-width: 260px;
+    }
 }
+
 .uptime-monitor-admin h1 {
     color: #0073aa;
 }
@@ -43,6 +55,7 @@
 
 .uptime-monitor-table th, .uptime-monitor-table td {
     padding: 10px;
+    vertical-align: top;
 }
 
 .uptime-monitor-table th {
@@ -52,4 +65,69 @@
 
 .uptime-monitor-table tr:nth-child(even) {
     background-color: #f9f9f9;
+}
+
+.uptime-history-empty {
+    color: #646970;
+    font-style: italic;
+}
+
+.uptime-history-list {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+}
+
+.uptime-history-item {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    line-height: 1.4;
+    list-style: none;
+}
+
+.uptime-status-badge {
+    border-radius: 3px;
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    min-width: 42px;
+    padding: 5px 7px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.uptime-status-up {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.uptime-status-down {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.uptime-status-error {
+    background: #fff3cd;
+    color: #664d03;
+}
+
+.uptime-history-code {
+    color: #1d2327;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+}
+
+.uptime-history-time {
+    color: #646970;
+    font-size: 12px;
+}
+
+.uptime-history-message {
+    color: #3c434a;
+    flex-basis: 100%;
+    font-size: 12px;
 }
