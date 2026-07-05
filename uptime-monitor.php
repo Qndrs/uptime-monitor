@@ -35,6 +35,8 @@ class SimpleUptimeMonitor
 {
     public const MAX_LOG_FILE_SIZE = 5242880;
     public const MAX_LOG_ENTRIES = 1000;
+    private const CRON_HOOK = 'monitor_uptime_event';
+    private const CRON_SCHEDULE = 'uptime_monitor_interval';
 
     /**
      * Constructor.
@@ -43,9 +45,10 @@ class SimpleUptimeMonitor
     public function __construct()
     {
         add_action('plugins_loaded', [$this, 'load_textdomain']);
+        add_action('admin_init', [$this, 'maybe_upgrade_options']);
         add_action('admin_menu', [$this, 'add_menu_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
-        add_action('monitor_uptime_event', [$this, 'monitor_uptime']);
+        add_action(self::CRON_HOOK, [$this, 'monitor_uptime']);
         register_activation_hook(__FILE__, [$this, 'activate']);
         register_deactivation_hook(__FILE__, [$this, 'deactivate']);
         // AJAX hooks
@@ -70,9 +73,8 @@ class SimpleUptimeMonitor
      */
     public function activate(): void
     {
-        if (!wp_next_scheduled('monitor_uptime_event')) {
-            wp_schedule_event(time(), 'monitor_uptime_event', 'monitor_uptime_event');
-        }
+        $this->normalize_stored_urls();
+        $this->reschedule_monitoring();
     }
 
     /**
@@ -81,10 +83,94 @@ class SimpleUptimeMonitor
      */
     public function deactivate(): void
     {
-        $timestamp = wp_next_scheduled('monitor_uptime_event');
-        if ($timestamp) {
-            wp_unschedule_event($timestamp, 'monitor_uptime_event');
+        wp_clear_scheduled_hook(self::CRON_HOOK);
+    }
+
+    /**
+     * Normalizes existing options after file-based updates where activation does not run.
+     */
+    public function maybe_upgrade_options(): void
+    {
+        if (!current_user_can('manage_options')) {
+            return;
         }
+
+        $this->normalize_stored_urls();
+
+        if (!wp_next_scheduled(self::CRON_HOOK)) {
+            wp_schedule_event(time(), self::CRON_SCHEDULE, self::CRON_HOOK);
+        }
+    }
+
+    private function get_monitor_interval(): int
+    {
+        return max(60, (int)get_option('uptime_monitor_interval', 120));
+    }
+
+    private function reschedule_monitoring(): void
+    {
+        wp_clear_scheduled_hook(self::CRON_HOOK);
+        wp_schedule_event(time(), self::CRON_SCHEDULE, self::CRON_HOOK);
+    }
+
+    private function normalize_stored_urls(): array
+    {
+        $urls = $this->normalize_urls(get_option('uptime_monitor_urls', []));
+        update_option('uptime_monitor_urls', $urls);
+
+        return $urls;
+    }
+
+    private function normalize_urls($urls): array
+    {
+        if (!is_array($urls)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($urls as $url_data) {
+            $record = $this->normalize_url_record($url_data);
+            if ($record !== null) {
+                $normalized[] = $record;
+            }
+        }
+
+        return $normalized;
+    }
+
+    private function normalize_url_record($url_data): ?array
+    {
+        if (!is_array($url_data) || empty($url_data['url'])) {
+            return null;
+        }
+
+        $url = $this->sanitize_monitor_url($url_data['url']);
+        if ($url === null) {
+            return null;
+        }
+
+        return [
+            'id' => !empty($url_data['id']) ? sanitize_key($url_data['id']) : wp_generate_uuid4(),
+            'url' => $url,
+            'email' => !empty($url_data['email']),
+            'pushover' => !empty($url_data['pushover']),
+            'enabled' => array_key_exists('enabled', $url_data) ? (bool)$url_data['enabled'] : true,
+        ];
+    }
+
+    private function sanitize_monitor_url($url): ?string
+    {
+        $url = esc_url_raw(trim((string)$url), ['http', 'https']);
+        if (!$url || !wp_http_validate_url($url)) {
+            return null;
+        }
+
+        $scheme = wp_parse_url($url, PHP_URL_SCHEME);
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            return null;
+        }
+
+        return $url;
     }
 
     /**
@@ -146,7 +232,7 @@ class SimpleUptimeMonitor
      */
     public function render_urls_page(): void
     {
-        $urls = get_option('uptime_monitor_urls', []);
+        $urls = $this->normalize_stored_urls();
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (!isset($_POST['uptime_monitor_nonce_field']) || !wp_verify_nonce($_POST['uptime_monitor_nonce_field'], 'uptime_monitor_nonce_action')) {
@@ -154,27 +240,34 @@ class SimpleUptimeMonitor
             }
 
 
-            $new_url = sanitize_text_field($_POST['url']);
+            $new_url = $this->sanitize_monitor_url($_POST['url'] ?? '');
             $email_alert = isset($_POST['email_alert']);
             $pushover_alert = isset($_POST['pushover_alert']);
 
-            $response = wp_remote_get($new_url, ['timeout' => 10]);
-            if (is_wp_error($response)) {
-                echo '<div class="error"><p>' . esc_html__('Invalid URL:', 'uptime-monitor') . ' ' . esc_html($new_url) . '</p></div>';
+            if ($new_url === null) {
+                echo '<div class="error"><p>' . esc_html__('Invalid URL.', 'uptime-monitor') . '</p></div>';
             } else {
-                $status_code = wp_remote_retrieve_response_code($response);
-                if ($status_code < 200 || $status_code >= 300) {
-                    echo '<div class="error"><p>' . esc_html__('URL is not reachable (status code:', 'uptime-monitor') . ' ' . esc_html($status_code) . ').</p></div>';
+                $response = wp_remote_get($new_url, ['timeout' => 10]);
+                if (is_wp_error($response)) {
+                    echo '<div class="error"><p>' . esc_html__('Invalid URL:', 'uptime-monitor') . ' ' . esc_html($new_url) . '</p></div>';
                 } else {
-                    $urls[] = [
-                        'url' => $new_url,
-                        'email' => $email_alert,
-                        'pushover' => $pushover_alert
-                    ];
-                    update_option('uptime_monitor_urls', $urls);
-                    add_settings_error('uptime_monitor', 'uptime_notice', __('URL added successfully!', 'uptime-monitor'), 'updated');
-                    settings_errors('uptime_monitor');
+                    $status_code = wp_remote_retrieve_response_code($response);
+                    if ($status_code < 200 || $status_code >= 300) {
+                        echo '<div class="error"><p>' . esc_html__('URL is not reachable (status code:', 'uptime-monitor') . ' ' . esc_html($status_code) . ').</p></div>';
+                    } else {
+                        $urls[] = [
+                            'id' => wp_generate_uuid4(),
+                            'url' => $new_url,
+                            'email' => $email_alert,
+                            'pushover' => $pushover_alert,
+                            'enabled' => true,
+                        ];
+                        $urls = $this->normalize_urls($urls);
+                        update_option('uptime_monitor_urls', $urls);
+                        add_settings_error('uptime_monitor', 'uptime_notice', __('URL added successfully!', 'uptime-monitor'), 'updated');
+                        settings_errors('uptime_monitor');
 
+                    }
                 }
             }
 
@@ -208,16 +301,20 @@ class SimpleUptimeMonitor
         echo '<table class="widefat fixed uptime-monitor-table">';
         echo '<thead><tr><th>' . __('URL', 'uptime-monitor') . '</th><th>' . __('Email Alerts', 'uptime-monitor') . '</th><th>' . __('Pushover Alerts', 'uptime-monitor') . '</th><th>' . __('Monitoring Enabled', 'uptime-monitor') . '</th><th>' . __('Actions', 'uptime-monitor') . '</th></tr></thead>';
         echo '<tbody>';
-        foreach ($urls as $index => $url_data) {
-            echo '<tr>';
-            echo '<td>' . esc_html($url_data['url']) . '</td>';
-            echo '<td>' . ($url_data['email'] ? __('Enabled', 'uptime-monitor') : __('Disabled', 'uptime-monitor')) . '</td>';
-            echo '<td>' . ($url_data['pushover'] ? __('Enabled', 'uptime-monitor') : __('Disabled', 'uptime-monitor')) . '</td>';
-	        echo '<td>';
-	        echo '<input type="checkbox" class="toggle-monitoring" data-id="' . esc_attr($url_data['id']) . '" ' . ($url_data['enabled'] ? 'checked' : '') . '>';
-	        echo '</td>';
-	        echo '<td><button class="button delete-url" data-id="' . esc_attr($url_data['id']) . '">' . __('Delete', 'uptime-monitor') . '</button></td>';
-            echo '</tr>';
+        if (empty($urls)) {
+            echo '<tr><td colspan="5">' . esc_html__('No URLs available. Add one!', 'uptime-monitor') . '</td></tr>';
+        } else {
+            foreach ($urls as $index => $url_data) {
+                echo '<tr>';
+                echo '<td>' . esc_html($url_data['url']) . '</td>';
+                echo '<td>' . ($url_data['email'] ? esc_html__('Enabled', 'uptime-monitor') : esc_html__('Disabled', 'uptime-monitor')) . '</td>';
+                echo '<td>' . ($url_data['pushover'] ? esc_html__('Enabled', 'uptime-monitor') : esc_html__('Disabled', 'uptime-monitor')) . '</td>';
+                echo '<td>';
+                echo '<input type="checkbox" class="toggle-monitoring" data-id="' . esc_attr($url_data['id']) . '" ' . checked($url_data['enabled'], true, false) . '>';
+                echo '</td>';
+                echo '<td><button class="button delete-url" data-id="' . esc_attr($url_data['id']) . '">' . esc_html__('Delete', 'uptime-monitor') . '</button></td>';
+                echo '</tr>';
+            }
         }
         echo '</tbody>';
         echo '</table>';
@@ -238,38 +335,30 @@ class SimpleUptimeMonitor
 			    $json_input = stripslashes(trim($_POST['import_json']));
 			    $data = json_decode($json_input, true);
 
-			    if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+			    if (json_last_error() !== JSON_ERROR_NONE || !is_array($data) || (!isset($data['settings']) && !isset($data['urls']))) {
 				    echo '<div class="error"><p>' . esc_html__('Invalid JSON format.', 'uptime-monitor') . '</p></div>';
 			    } else {
-				    if (isset($data['settings']['monitor_interval'])) {
-					    update_option('uptime_monitor_interval', intval($data['settings']['monitor_interval']));
-				    }
-				    if (isset($data['urls']) && is_array($data['urls'])) {
-					    foreach ($data['urls'] as &$url) {
-						    if (!isset($url['enabled'])) {
-							    $url['enabled'] = true;
-						    }
-					    }
-					    update_option('uptime_monitor_urls', $data['urls']);
-				    }
-				    // Herplan cronjob
-				    $timestamp = wp_next_scheduled('monitor_uptime_event');
-				    if ($timestamp) {
-					    wp_unschedule_event($timestamp, 'monitor_uptime_event');
-				    }
-				    wp_schedule_event(time(), 'uptime_monitor_interval', 'monitor_uptime_event');
-				    echo '<div class="updated"><p>' . esc_html__('Configuration imported successfully!', 'uptime-monitor') . '</p></div>';
+                    if (isset($data['urls']) && !is_array($data['urls'])) {
+                        echo '<div class="error"><p>' . esc_html__('Invalid JSON format.', 'uptime-monitor') . '</p></div>';
+                    } else {
+                        if (isset($data['settings']['monitor_interval'])) {
+                            update_option('uptime_monitor_interval', max(60, intval($data['settings']['monitor_interval'])));
+                        }
+                        if (isset($data['urls'])) {
+                            $imported_urls = $this->normalize_urls($data['urls']);
+                            update_option('uptime_monitor_urls', $imported_urls);
+                        }
+                        // Herplan cronjob
+                        $this->reschedule_monitoring();
+                        echo '<div class="updated"><p>' . esc_html__('Configuration imported successfully!', 'uptime-monitor') . '</p></div>';
+                    }
 			    }
 		    } else {
 			    // STANDAARD INSTELLING OPSLAAN
-			    $monitor_interval = intval($_POST['monitor_interval']);
+			    $monitor_interval = max(60, intval($_POST['monitor_interval'] ?? 120));
 			    update_option('uptime_monitor_interval', $monitor_interval);
 
-			    $timestamp = wp_next_scheduled('monitor_uptime_event');
-			    if ($timestamp) {
-				    wp_unschedule_event($timestamp, 'monitor_uptime_event');
-			    }
-			    wp_schedule_event(time(), 'uptime_monitor_interval', 'monitor_uptime_event');
+                $this->reschedule_monitoring();
 
 			    echo '<div class="updated"><p>' . __('Settings saved!', 'uptime-monitor') . '</p></div>';
 		    }
@@ -277,8 +366,8 @@ class SimpleUptimeMonitor
 
 
         // Huidige instellingen ophalen
-	    $monitor_interval = get_option('uptime_monitor_interval', 120);
-	    $urls = get_option('uptime_monitor_urls', []);
+	    $monitor_interval = $this->get_monitor_interval();
+	    $urls = $this->normalize_stored_urls();
 
 	    $export_data = [
 		    'settings' => [ 'monitor_interval' => $monitor_interval ],
@@ -321,7 +410,7 @@ class SimpleUptimeMonitor
     public function monitor_uptime(): void
     {
         $this->log_to_json('info', 'Cron job started.', ['task' => 'monitor_uptime_event']);
-        $urls = get_option('uptime_monitor_urls', []);
+        $urls = $this->normalize_stored_urls();
         $this->log_to_json('info', 'URLs to monitor.', ['urls' => $urls]);
 
         foreach ($urls as $url_data) {
@@ -476,28 +565,36 @@ class SimpleUptimeMonitor
     {
         check_ajax_referer('uptime_monitor_nonce', 'nonce');
 
-        $urls = get_option('uptime_monitor_urls', []);
-        $new_url = sanitize_text_field($_POST['url']);
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You are not allowed to manage uptime URLs.', 'uptime-monitor')], 403);
+        }
+
+        $urls = $this->normalize_stored_urls();
+        $new_url = $this->sanitize_monitor_url(wp_unslash($_POST['url'] ?? ''));
         $email_alert = isset($_POST['email_alert']) && $_POST['email_alert'] == 1;
         $pushover_alert = isset($_POST['pushover_alert']) && $_POST['pushover_alert'] == 1;
 
+        if ($new_url === null) {
+            wp_send_json_error(['message' => __('Invalid URL.', 'uptime-monitor')], 400);
+        }
+
         $response = wp_remote_get($new_url, ['timeout' => 10]);
         if (is_wp_error($response)) {
-            wp_send_json_error(['message' => 'Invalid URL: ' . esc_html($new_url)]);
+            wp_send_json_error(['message' => sprintf(__('Invalid URL: %s', 'uptime-monitor'), $new_url)], 400);
         }
 
         $status_code = wp_remote_retrieve_response_code($response);
         if ($status_code < 200 || $status_code >= 300) {
-            wp_send_json_error(['message' => 'URL is not reachable. Status code: ' . $status_code]);
+            wp_send_json_error(['message' => sprintf(__('URL is not reachable. Status code: %d', 'uptime-monitor'), $status_code)], 400);
         }
-        $unique_id = wp_generate_uuid4(); // Generate a unique identifier for the URL
         $urls[] = [
-            'id' => $unique_id,
+            'id' => wp_generate_uuid4(),
             'url' => $new_url,
             'email' => $email_alert,
             'pushover' => $pushover_alert,
 	        'enabled' => true,
         ];
+        $urls = $this->normalize_urls($urls);
         update_option('uptime_monitor_urls', $urls);
         wp_send_json_success(['urls' => $urls]);
     }
@@ -515,18 +612,22 @@ class SimpleUptimeMonitor
     {
         check_ajax_referer('uptime_monitor_nonce', 'nonce');
 
-        $id_to_delete = sanitize_text_field($_POST['id']);
-        $urls = get_option('uptime_monitor_urls', []);
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You are not allowed to manage uptime URLs.', 'uptime-monitor')], 403);
+        }
+
+        $id_to_delete = sanitize_key($_POST['id'] ?? '');
+        $urls = $this->normalize_stored_urls();
 
         foreach ($urls as $index => $url_data) {
             if ($url_data['id'] === $id_to_delete) {
                 unset($urls[$index]);
                 $urls = array_values($urls); // Herstel de indexen
-                update_option('uptime_monitor_urls', array_values($urls));
+                update_option('uptime_monitor_urls', $urls);
                 wp_send_json_success(['urls' => $urls]);
             }
         }
-        wp_send_json_error(['message' => 'URL not found.']);
+        wp_send_json_error(['message' => __('URL not found.', 'uptime-monitor')], 404);
     }
 	/**
 	 * Handles AJAX request to toggle monitoring for a specific URL.
@@ -538,18 +639,22 @@ class SimpleUptimeMonitor
 	public function ajax_toggle_monitoring(): void {
 		check_ajax_referer('uptime_monitor_nonce', 'nonce');
 
-		$id = sanitize_text_field($_POST['id']);
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You are not allowed to manage uptime URLs.', 'uptime-monitor')], 403);
+        }
+
+		$id = sanitize_key($_POST['id'] ?? '');
 		$enabled = isset($_POST['enabled']) && $_POST['enabled'] == 1;
-		$urls = get_option('uptime_monitor_urls', []);
+		$urls = $this->normalize_stored_urls();
 
 		foreach ($urls as &$url_data) {
 			if ($url_data['id'] === $id) {
 				$url_data['enabled'] = $enabled;
 				update_option('uptime_monitor_urls', $urls);
-				wp_send_json_success();
+				wp_send_json_success(['urls' => $urls]);
 			}
 		}
-		wp_send_json_error(['message' => 'URL not found']);
+		wp_send_json_error(['message' => __('URL not found.', 'uptime-monitor')], 404);
 	}
 }
 
@@ -620,7 +725,7 @@ add_action('rest_api_init', function() {
  * @return array The updated array of cron schedules, including the custom interval.
  */
 add_filter('cron_schedules', function ($schedules) {
-    $monitor_interval = get_option('uptime_monitor_interval', 120); // Standaard naar 120 seconden
+    $monitor_interval = max(60, (int)get_option('uptime_monitor_interval', 120)); // Standaard naar 120 seconden
     $schedules['uptime_monitor_interval'] = [
         'interval' => $monitor_interval,
         'display' => sprintf(__('Every %d seconds', 'uptime-monitor'), $monitor_interval)

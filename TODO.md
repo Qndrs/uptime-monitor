@@ -4,35 +4,35 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 
 ## 1. Stabilisatie
 
-- [ ] Fix WP-Cron scheduling bij activatie.
+- [x] Fix WP-Cron scheduling bij activatie.
   - Probleem: activatie gebruikt nu een recurrence die niet overeenkomt met de geregistreerde custom schedule.
   - Klaar wanneer: activatie direct een geldige `monitor_uptime_event` plant met de ingestelde interval.
 
-- [ ] Normaliseer het URL data-model.
+- [x] Normaliseer het URL data-model.
   - Probleem: sommige routes/imports kunnen URL records zonder `id` of `enabled` opleveren.
   - Klaar wanneer: alle opgeslagen URL records altijd `id`, `url`, `email`, `pushover` en `enabled` hebben.
 
-- [ ] Voeg een migratiepad toe voor bestaande installaties.
+- [x] Voeg een migratiepad toe voor bestaande installaties.
   - Probleem: oudere pluginversies hebben records zonder nieuwe velden.
   - Klaar wanneer: bestaande opties bij upgrade automatisch worden aangevuld zonder data te verliezen.
 
-- [ ] Voeg capability checks toe aan alle AJAX-acties.
+- [x] Voeg capability checks toe aan alle AJAX-acties.
   - Probleem: AJAX checkt nu wel nonces, maar niet overal expliciet `current_user_can('manage_options')`.
   - Klaar wanneer: toevoegen, verwijderen en togglen alleen kan door beheerders.
 
-- [ ] Maak de admin-tabel consistent na AJAX updates.
+- [x] Maak de admin-tabel consistent na AJAX updates.
   - Probleem: JavaScript rendert na update minder kolommen dan de PHP-render en mist de monitoring-toggle.
   - Klaar wanneer: de tabel na toevoegen/verwijderen/togglen dezelfde kolommen en controls behoudt.
 
-- [ ] Verhard URL-validatie en sanitization.
+- [x] Verhard URL-validatie en sanitization.
   - Probleem: `sanitize_text_field()` is niet genoeg voor URL-invoer.
   - Klaar wanneer: alleen geldige `http`/`https` URLs worden opgeslagen en output overal correct escaped is.
 
-- [ ] Maak importvalidatie strenger.
+- [x] Maak importvalidatie strenger.
   - Probleem: JSON-import accepteert nog te veel vormvarianten.
   - Klaar wanneer: import schema-validatie doet, ongeldige records overslaat of blokkeert, en duidelijke feedback geeft.
 
-- [ ] Rond logging robuust af.
+- [x] Rond logging robuust af.
   - Probleem: grote JSON-logbestanden kunnen performanceproblemen veroorzaken.
   - Klaar wanneer: logrotatie, max entries, max bestandsgrootte en foutafhandeling getest zijn.
 

@@ -1,4 +1,8 @@
 jQuery(document).ready(function ($) {
+    function escapeHtml(value) {
+        return $('<div>').text(value || '').html();
+    }
+
     // Add URL via AJAX
     $('#uptime-monitor-form').on('submit', function (e) {
         e.preventDefault();
@@ -63,35 +67,40 @@ jQuery(document).ready(function ($) {
         tableBody.empty();
 
         if (urls.length === 0) {
-            tableBody.append(`<tr><td colspan="4">${uptimeMonitorL10n.no_urls}</td></tr>`);
+            tableBody.append(`<tr><td colspan="5">${uptimeMonitorL10n.no_urls}</td></tr>`);
         } else {
             urls.forEach(function (urlData) {
+                const checked = urlData.enabled ? 'checked' : '';
                 tableBody.append(`
                     <tr>
-                        <td>${urlData.url}</td>
+                        <td>${escapeHtml(urlData.url)}</td>
                         <td>${urlData.email ? uptimeMonitorL10n.enabled : uptimeMonitorL10n.disabled}</td>
                         <td>${urlData.pushover ? uptimeMonitorL10n.enabled : uptimeMonitorL10n.disabled}</td>
-                        <td><button class="button delete-url" data-id="${urlData.id}">${uptimeMonitorL10n.delete}</button></td>
+                        <td><input type="checkbox" class="toggle-monitoring" data-id="${escapeHtml(urlData.id)}" ${checked}></td>
+                        <td><button class="button delete-url" data-id="${escapeHtml(urlData.id)}">${uptimeMonitorL10n.delete}</button></td>
                     </tr>
                 `);
             });
         }
     }
-});
-jQuery(document).on('change', '.toggle-monitoring', function () {
-    const id = jQuery(this).data('id');
-    const enabled = jQuery(this).is(':checked') ? 1 : 0;
 
-    jQuery.post(uptimeMonitorAjax.ajax_url, {
-        action: 'toggle_uptime_monitoring',
-        id: id,
-        enabled: enabled,
-        nonce: uptimeMonitorAjax.nonce
-    }, function (response) {
-        if (response.success) {
-            console.log('Monitoring status updated');
-        } else {
+    $('.uptime-monitor-table').on('change', '.toggle-monitoring', function () {
+        const id = $(this).data('id');
+        const enabled = $(this).is(':checked') ? 1 : 0;
+
+        $.post(uptimeMonitorAjax.ajax_url, {
+            action: 'toggle_uptime_monitoring',
+            id: id,
+            enabled: enabled,
+            nonce: uptimeMonitorAjax.nonce
+        }, function (response) {
+            if (response.success) {
+                updateTable(response.data.urls);
+            } else {
+                alert(uptimeMonitorL10n.error + response.data.message);
+            }
+        }).fail(function () {
             alert(uptimeMonitorL10n.error_generic);
-        }
+        });
     });
 });
