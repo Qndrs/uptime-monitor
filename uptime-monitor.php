@@ -219,6 +219,13 @@ class SimpleUptimeMonitor
                 'status_error' => __('Error', 'uptime-monitor'),
                 /* translators: %d: HTTP status code. */
                 'http_status' => __('HTTP %d', 'uptime-monitor'),
+                /* translators: %d: Response time in milliseconds. */
+                'response_time_ms' => __('%d ms', 'uptime-monitor'),
+                /* translators: %d: Average response time in milliseconds. */
+                'average_response_time_ms' => __('Avg %d ms', 'uptime-monitor'),
+                'trend_faster' => __('Faster', 'uptime-monitor'),
+                'trend_slower' => __('Slower', 'uptime-monitor'),
+                'trend_stable' => __('Stable', 'uptime-monitor'),
             ]);
         }
     }
@@ -251,6 +258,7 @@ class SimpleUptimeMonitor
             'display_timestamp' => $timestamp !== '' ? $this->format_history_timestamp($timestamp) : '',
             'status' => isset($entry['status']) ? sanitize_key($entry['status']) : 'error',
             'status_code' => isset($entry['status_code']) ? absint($entry['status_code']) : null,
+            'response_time_ms' => isset($entry['response_time_ms']) ? absint($entry['response_time_ms']) : null,
             'message' => isset($entry['message']) ? sanitize_text_field($entry['message']) : '',
         ];
     }
@@ -265,7 +273,7 @@ class SimpleUptimeMonitor
         return $urls;
     }
 
-    private function record_status_history(array $url_data, string $status, ?int $status_code, string $message): void
+    private function record_status_history(array $url_data, string $status, ?int $status_code, ?int $response_time_ms, string $message): void
     {
         $url_id = isset($url_data['id']) ? sanitize_key($url_data['id']) : '';
         if ($url_id === '') {
@@ -283,6 +291,7 @@ class SimpleUptimeMonitor
             'timestamp' => gmdate('Y-m-d H:i:s'),
             'status' => $status,
             'status_code' => $status_code,
+            'response_time_ms' => $response_time_ms !== null ? max(0, $response_time_ms) : null,
             'message' => sanitize_text_field($message),
         ];
 
@@ -318,6 +327,63 @@ class SimpleUptimeMonitor
         }
     }
 
+    private function get_average_response_time_ms(array $history): ?int
+    {
+        $response_times = [];
+        foreach ($history as $entry) {
+            $entry = $this->normalize_status_history_entry($entry);
+            if ($entry['response_time_ms'] !== null) {
+                $response_times[] = $entry['response_time_ms'];
+            }
+        }
+
+        if (empty($response_times)) {
+            return null;
+        }
+
+        return (int)round(array_sum($response_times) / count($response_times));
+    }
+
+    private function get_response_time_trend(array $history): ?string
+    {
+        $response_times = [];
+        foreach ($history as $entry) {
+            $entry = $this->normalize_status_history_entry($entry);
+            if ($entry['response_time_ms'] !== null) {
+                $response_times[] = $entry['response_time_ms'];
+            }
+        }
+
+        if (count($response_times) < 2) {
+            return null;
+        }
+
+        $latest = array_pop($response_times);
+        $previous_average = array_sum($response_times) / count($response_times);
+        $threshold = max(50, $previous_average * 0.1);
+
+        if ($latest > $previous_average + $threshold) {
+            return 'slower';
+        }
+        if ($latest < $previous_average - $threshold) {
+            return 'faster';
+        }
+
+        return 'stable';
+    }
+
+    private function get_response_time_trend_label(string $trend): string
+    {
+        switch ($trend) {
+            case 'faster':
+                return __('Faster', 'uptime-monitor');
+            case 'slower':
+                return __('Slower', 'uptime-monitor');
+            default:
+                return __('Stable', 'uptime-monitor');
+        }
+    }
+
     private function render_status_history_cell(array $history): void
     {
         if (empty($history)) {
@@ -325,11 +391,24 @@ class SimpleUptimeMonitor
             return;
         }
 
+        $average_response_time_ms = $this->get_average_response_time_ms($history);
+        $response_time_trend = $this->get_response_time_trend($history);
+        if ($average_response_time_ms !== null) {
+            echo '<div class="uptime-response-summary">';
+            /* translators: %d: Average response time in milliseconds. */
+            echo '<span class="uptime-response-average">' . esc_html(sprintf(__('Avg %d ms', 'uptime-monitor'), $average_response_time_ms)) . '</span>';
+            if ($response_time_trend !== null) {
+                echo '<span class="uptime-response-trend uptime-response-trend-' . esc_attr($response_time_trend) . '">' . esc_html($this->get_response_time_trend_label($response_time_trend)) . '</span>';
+            }
+            echo '</div>';
+        }
+
         echo '<ol class="uptime-history-list">';
         foreach (array_reverse(array_slice($history, -5)) as $entry) {
             $entry = $this->normalize_status_history_entry($entry);
             $status = $entry['status'];
             $status_code = $entry['status_code'] !== null ? absint($entry['status_code']) : 0;
+            $response_time_ms = $entry['response_time_ms'] !== null ? absint($entry['response_time_ms']) : null;
             $timestamp = $entry['timestamp'];
             $display_timestamp = $entry['display_timestamp'];
             $message = $entry['message'];
@@ -339,6 +418,10 @@ class SimpleUptimeMonitor
             if ($status_code > 0) {
                 /* translators: %d: HTTP status code. */
                 echo '<span class="uptime-history-code">' . esc_html(sprintf(__('HTTP %d', 'uptime-monitor'), $status_code)) . '</span>';
+            }
+            if ($response_time_ms !== null) {
+                /* translators: %d: Response time in milliseconds. */
+                echo '<span class="uptime-history-response-time">' . esc_html(sprintf(__('%d ms', 'uptime-monitor'), $response_time_ms)) . '</span>';
             }
             if ($timestamp !== '') {
                 echo '<time class="uptime-history-time" datetime="' . esc_attr($timestamp) . '">' . esc_html($display_timestamp) . '</time>';
@@ -552,27 +635,30 @@ class SimpleUptimeMonitor
 		        $this->log_to_json('info', 'Monitoring disabled for URL.', ['url' => $url_data['url']]);
 		        continue;
 	        }
+            $response_time_ms = null;
 	        for ($i = 0; $i < 3; $i++) {
+                $request_start = microtime(true);
                 $response = wp_remote_get($url_data['url'], ['timeout' => 10]);
+                $response_time_ms = (int)round((microtime(true) - $request_start) * 1000);
                 if (!is_wp_error($response)) {
-                    $this->log_to_json('info', 'Successful retry.', ['url' => $url_data['url'], 'attempt' => $i + 1]);
+                    $this->log_to_json('info', 'Successful retry.', ['url' => $url_data['url'], 'attempt' => $i + 1, 'response_time_ms' => $response_time_ms]);
                     break;
                 }
             }
             if (is_wp_error($response)) {
-                $this->log_to_json('error', 'Failed to fetch URL.', ['url' => $url_data['url'], 'error' => $response->get_error_message()]);
-                $this->record_status_history($url_data, 'error', null, $response->get_error_message());
+                $this->log_to_json('error', 'Failed to fetch URL.', ['url' => $url_data['url'], 'error' => $response->get_error_message(), 'response_time_ms' => $response_time_ms]);
+                $this->record_status_history($url_data, 'error', null, $response_time_ms, $response->get_error_message());
                 continue;
             }
             $status_code = wp_remote_retrieve_response_code($response);
-            $this->log_to_json('info', 'HTTP status code received.', ['url' => $url_data['url'], 'status_code' => $status_code]);
+            $this->log_to_json('info', 'HTTP status code received.', ['url' => $url_data['url'], 'status_code' => $status_code, 'response_time_ms' => $response_time_ms]);
             if ($status_code >= 200 and $status_code < 300) {
                 $this->log_to_json('info', 'Url is up.', ['url' => $url_data['url']]);
-                $this->record_status_history($url_data, 'up', $status_code, __('URL is up.', 'uptime-monitor'));
+                $this->record_status_history($url_data, 'up', $status_code, $response_time_ms, __('URL is up.', 'uptime-monitor'));
 
             } else {
                 $this->log_to_json('error', 'URL is down.', ['url' => $url_data['url'], 'status_code' => $status_code]);
-                $this->record_status_history($url_data, 'down', $status_code, __('URL is down.', 'uptime-monitor'));
+                $this->record_status_history($url_data, 'down', $status_code, $response_time_ms, __('URL is down.', 'uptime-monitor'));
 
                 if ($url_data['email']) {
                     $this->send_email_alert($url_data['url'], $status_code);

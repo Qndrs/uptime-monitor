@@ -79,6 +79,46 @@
     padding: 0;
 }
 
+.uptime-response-summary {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.uptime-response-average,
+.uptime-response-trend,
+.uptime-history-response-time {
+    border-radius: 3px;
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 5px 7px;
+}
+
+.uptime-response-average,
+.uptime-history-response-time {
+    background: #e7f5ff;
+    color: #0a4b78;
+}
+
+.uptime-response-trend-stable {
+    background: #f0f0f1;
+    color: #3c434a;
+}
+
+.uptime-response-trend-faster {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.uptime-response-trend-slower {
+    background: #fff3cd;
+    color: #664d03;
+}
+
 .uptime-history-item {
     align-items: center;
     display: flex;

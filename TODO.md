@@ -79,8 +79,9 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Mogelijk: laatste checks, statuscodes, foutmeldingen en timestamps.
   - Status: compacte per-URL geschiedenis toegevoegd aan de admin-tabel, inclusief statusbadge, HTTP-code, timestamp en foutmelding.
 
-- [ ] Meet response time.
+- [x] Meet response time.
   - Mogelijk: gemiddelde responstijd, laatste responstijd en eenvoudige trend.
+  - Status: cron-checks meten responstijd in milliseconden; de history toont per check de responstijd, plus gemiddelde en trend.
 
 - [ ] Bereken uptimepercentage.
   - Mogelijk: per URL over 24 uur, 7 dagen en 30 dagen.
