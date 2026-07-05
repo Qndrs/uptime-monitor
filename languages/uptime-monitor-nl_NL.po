@@ -1,9 +1,9 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Uptime Monitor Extension for Get URL Cron\n"
+"Project-Id-Version: Simple Uptime Monitor 3.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-12-30 05:43+0000\n"
-"PO-Revision-Date: 2026-01-04 11:51+0000\n"
+"POT-Creation-Date: 2026-07-05 22:15+0200\n"
+"PO-Revision-Date: 2026-07-05 22:15+0200\n"
 "Last-Translator: Robert Kuunders\n"
 "Language-Team: Nederlands\n"
 "Language: nl_NL\n"
@@ -11,176 +11,408 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Loco https://localise.biz/\n"
-"X-Loco-Version: 2.8.0; wp-6.9; php-8.3.29\n"
-"X-Domain: uptime-monitor"
+"X-Generator: Codex\n"
+"X-Domain: uptime-monitor\n"
 
-#: uptime-monitor.php:125
+msgid "%d ms"
+msgstr "%d ms"
+
+msgid "24h"
+msgstr "24u"
+
+msgid "24h uptime"
+msgstr "24u uptime"
+
+msgid "30d"
+msgstr "30d"
+
+msgid "7d"
+msgstr "7d"
+
 msgid "A general error occurred. Please try again."
 msgstr "Er is een algemene fout opgetreden. Probeer het opnieuw."
 
-#: uptime-monitor.php:199
-msgid "Actions"
-msgstr "Bewerkingen"
+msgid "Across URLs with history"
+msgstr "Over URLs met geschiedenis"
 
-#: uptime-monitor.php:193
+msgid "Active incidents: %1$d; active URLs: %2$d"
+msgstr "Actieve incidenten: %1$d; actieve URLs: %2$d"
+
 msgid "Add URL"
 msgstr "URL toevoegen"
 
-#: uptime-monitor.php:124
 msgid "An error occurred: "
-msgstr "Er is een fout opgetreden:"
+msgstr "Er is een fout opgetreden: "
 
-#: uptime-monitor.php:379
+msgid "Average over recent checks"
+msgstr "Gemiddelde over recente checks"
+
+msgid "Average response"
+msgstr "Gemiddelde responstijd"
+
+msgid "Avg %d ms"
+msgstr "Gem. %d ms"
+
+msgid "Before status is final"
+msgstr "Voordat de status definitief is"
+
 msgid "Cannot send alert due to missing credentials."
-msgstr "Melding kan niet verzonden worden vanwege ontbrekende credentials."
+msgstr "Melding kan niet worden verzonden vanwege ontbrekende credentials."
 
-#: uptime-monitor.php:251
+msgid "Clear stored API token"
+msgstr "Opgeslagen API-token wissen"
+
+msgid "Clear stored user key"
+msgstr "Opgeslagen user key wissen"
+
+msgid "Configuration Import / Export"
+msgstr "Configuratie importeren / exporteren"
+
 msgid "Configuration imported successfully!"
-msgstr "Configuratie succesvol geïmporteerd."
+msgstr "Configuratie succesvol geïmporteerd!"
 
-#: uptime-monitor.php:127 uptime-monitor.php:209
+msgid "Configuration panel"
+msgstr "Configuratiepaneel"
+
+msgid "Configured"
+msgstr "Geconfigureerd"
+
+msgid "Configured in database"
+msgstr "Geconfigureerd in database"
+
+msgid "Credential source"
+msgstr "Bron van credentials"
+
+msgid "Cron and HTTP checks"
+msgstr "Cron en HTTP-checks"
+
+msgid "Current health"
+msgstr "Huidige gezondheid"
+
+msgid "Current settings"
+msgstr "Huidige instellingen"
+
+msgid "Degraded"
+msgstr "Verminderd"
+
 msgid "Delete"
 msgstr "Verwijderen"
 
-#: uptime-monitor.php:129 uptime-monitor.php:204 uptime-monitor.php:205
+msgid "Details"
+msgstr "Details"
+
 msgid "Disabled"
 msgstr "Uitgeschakeld"
 
-#: uptime-monitor.php:190
+msgid "Dismiss this notice."
+msgstr "Deze melding sluiten."
+
+msgid "Down"
+msgstr "Down"
+
+msgid "Down codes"
+msgstr "Down-codes"
+
+msgid "Down for %s"
+msgstr "Down sinds %s"
+
+msgid "Down Status Codes"
+msgstr "Down-statuscodes"
+
+msgid "Email"
+msgstr "E-mail"
+
+msgid "Email / Pushover enabled"
+msgstr "E-mail / Pushover ingeschakeld"
+
 msgid "Email Alert"
-msgstr "E-mail alarm"
+msgstr "E-mailalarm"
 
-#: uptime-monitor.php:199
-msgid "Email Alerts"
-msgstr "E-mail alarmen"
-
-#: uptime-monitor.php:128 uptime-monitor.php:204 uptime-monitor.php:205
 msgid "Enabled"
 msgstr "Ingeschakeld"
 
-#: uptime-monitor.php:580
+msgid "Error"
+msgstr "Fout"
+
 msgid "Every %d seconds"
-msgstr "Iedere %d seconden"
+msgstr "Elke %d seconden"
 
-#: uptime-monitor.php:197
-msgid "Existing URLs"
-msgstr "Huidige URL's"
-
-#: uptime-monitor.php:295
 msgid "Export Configuration"
-msgstr "Exporteer instellingen."
+msgstr "Configuratie exporteren"
 
-#: uptime-monitor.php:298
+msgid "Extra attempts before a URL is considered down."
+msgstr "Extra pogingen voordat een URL als down wordt gezien."
+
+msgid "Faster"
+msgstr "Sneller"
+
+msgid "Hide details"
+msgstr "Details verbergen"
+
+msgid "How often WordPress cron should schedule monitoring checks."
+msgstr "Hoe vaak WordPress cron monitoringchecks moet plannen."
+
+msgid "HTTP %d"
+msgstr "HTTP %d"
+
+msgid "HTTP status ranges"
+msgstr "HTTP-statusbereiken"
+
 msgid "Import Configuration"
-msgstr "Importeer instellingen."
+msgstr "Configuratie importeren"
 
-#: uptime-monitor.php:232
+msgid "Incident active"
+msgstr "Incident actief"
+
+msgid "Incident open"
+msgstr "Incident open"
+
+msgid "Interval:"
+msgstr "Interval:"
+
 msgid "Invalid JSON format."
-msgstr "Ongeldig JSON format."
+msgstr "Ongeldig JSON-formaat."
 
-#: uptime-monitor.php:153
+msgid "Invalid URL."
+msgstr "Ongeldige URL."
+
 msgid "Invalid URL:"
 msgstr "Ongeldige URL:"
 
-#: uptime-monitor.php:185
-msgid "Manage URLs"
-msgstr "Beheer URL's"
+msgid "Invalid URL: %s"
+msgstr "Ongeldige URL: %s"
 
-#: uptime-monitor.php:290
+msgid "Last check:"
+msgstr "Laatste check:"
+
+msgid "Maximum wait time per HTTP request attempt."
+msgstr "Maximale wachttijd per HTTP-poging."
+
+msgid "Minimum 60 seconds"
+msgstr "Minimaal 60 seconden"
+
+msgid "Monitor interval"
+msgstr "Monitorinterval"
+
 msgid "Monitor Interval (seconds)"
-msgstr "Monitor interval (seconden)"
+msgstr "Monitorinterval (seconden)"
 
-#: uptime-monitor.php:199
-msgid "Monitoring Enabled"
-msgstr "Monitoring ingeschakeld"
+msgid "monitored"
+msgstr "gemonitord"
 
-#: uptime-monitor.php:552
+msgid "Monitored URLs"
+msgstr "Gemonitorde URLs"
+
+msgid "Monitoring"
+msgstr "Monitoring"
+
+msgid "Monitoring metrics"
+msgstr "Monitoringstatistieken"
+
+msgid "Monitoring Settings"
+msgstr "Monitoringinstellingen"
+
+msgid "Monitoring summary"
+msgstr "Monitoringsamenvatting"
+
+msgid "Next check"
+msgstr "Volgende check"
+
+msgid "No alerts"
+msgstr "Geen meldingen"
+
+msgid "No checks yet."
+msgstr "Nog geen checks."
+
+msgid "No data"
+msgstr "Geen data"
+
+msgid "No further alerts will be sent for this incident until the website is reachable again."
+msgstr "Voor dit incident worden geen verdere meldingen verzonden totdat de website weer bereikbaar is."
+
+msgid "No incident"
+msgstr "Geen incident"
+
 msgid "No logs found."
-msgstr "Geen log aangetroffen."
+msgstr "Geen logs gevonden."
 
-#: uptime-monitor.php:126
 msgid "No URLs available. Add one!"
-msgstr "Geen URL's beschikbaar. Voeg er een toe!"
+msgstr "Geen URLs beschikbaar. Voeg er een toe!"
 
-#: uptime-monitor.php:299
-msgid "Paste a previously exported JSON configuration below."
-msgstr "Plak een JSON instellingen structuur hieronder."
+msgid "Not configured"
+msgstr "Niet geconfigureerd"
 
-#. Description of the plugin
-msgid "Plugin to monitor website uptime and send alerts."
-msgstr "Plugin om websites te monitoren en alarmmeldingen te versturen."
+msgid "Not scheduled"
+msgstr "Niet gepland"
 
-#: uptime-monitor.php:191
+msgid "Notifications"
+msgstr "Meldingen"
+
+msgid "Operational"
+msgstr "Operationeel"
+
+msgid "Paste a previously exported JSON configuration here."
+msgstr "Plak hier een eerder geëxporteerde JSON-configuratie."
+
+msgid "Paused"
+msgstr "Gepauzeerd"
+
+msgid "Per HTTP attempt"
+msgstr "Per HTTP-poging"
+
+msgid "Pushover"
+msgstr "Pushover"
+
 msgid "Pushover Alert"
 msgstr "Pushover-alarm"
 
-#: uptime-monitor.php:199
-msgid "Pushover Alerts"
-msgstr "Pushover-alarmen"
+msgid "Pushover API Token"
+msgstr "Pushover API-token"
 
-#: uptime-monitor.php:283
-msgid ""
-"Pushover credentials are securely managed via your wp-config.php file. "
-"Contact your site administrator to update these values."
-msgstr ""
-"Pushover-gegevens staan in wp-config.php. De beheerder van de website kan "
-"deze voor je in het bestand plaatsen."
+msgid "Pushover Configuration"
+msgstr "Pushover-configuratie"
 
-#. Author of the plugin
-msgid "Robert E. Kuunders, GPT"
-msgstr "Robert E. Kuunders, GPT"
+msgid "Pushover constants are defined in wp-config.php and take precedence over stored settings."
+msgstr "Pushover-constanten zijn ingesteld in wp-config.php en krijgen voorrang op opgeslagen instellingen."
 
-#: uptime-monitor.php:303
+msgid "Pushover User Key"
+msgstr "Pushover user key"
+
+msgid "Pushover:"
+msgstr "Pushover:"
+
+msgid "Request timeout"
+msgstr "Request-timeout"
+
+msgid "Request Timeout (seconds)"
+msgstr "Request-timeout (seconden)"
+
+msgid "Retries:"
+msgstr "Retries:"
+
+msgid "Retry attempts"
+msgstr "Retry-pogingen"
+
 msgid "Save Settings"
 msgstr "Instellingen opslaan"
 
-#: uptime-monitor.php:95 uptime-monitor.php:96
+msgid "Scheduled WordPress cron"
+msgstr "Geplande WordPress-cron"
+
+msgid "Secrets excluded"
+msgstr "Secrets uitgesloten"
+
+msgid "Send Pushover Test"
+msgstr "Pushover-test verzenden"
+
 msgid "Settings"
 msgstr "Instellingen"
 
-#: uptime-monitor.php:264
+msgid "Settings saved and Pushover test notification sent."
+msgstr "Instellingen opgeslagen en Pushover-testmelding verzonden."
+
 msgid "Settings saved!"
 msgstr "Instellingen opgeslagen!"
 
-#. Name of the plugin
+msgid "Settings saved, but the Pushover test notification failed. Check your credentials and logs."
+msgstr "Instellingen opgeslagen, maar de Pushover-testmelding is mislukt. Controleer de credentials en logs."
+
+msgid "Settings summary"
+msgstr "Instellingensamenvatting"
+
 msgid "Simple Uptime Monitor"
-msgstr "Eenvoudige Uptime monitor."
+msgstr "Simple Uptime Monitor"
 
-#: uptime-monitor.php:361 uptime-monitor.php:384
-#, php-format
-msgid "The website %s is down. HTTP Status Code: %d."
-msgstr "Website %s lijkt offline. HTTP-statuscode: %d"
+msgid "Slower"
+msgstr "Trager"
 
-#: uptime-monitor.php:86 uptime-monitor.php:87
+msgid "Stable"
+msgstr "Stabiel"
+
+msgid "Status History"
+msgstr "Statusgeschiedenis"
+
+msgid "Store Pushover credentials here when file access to wp-config.php is not available."
+msgstr "Sla Pushover-credentials hier op wanneer bestandstoegang tot wp-config.php niet beschikbaar is."
+
+msgid "The website %1$s is down. Error: %2$s."
+msgstr "De website %1$s is down. Fout: %2$s."
+
+msgid "The website %1$s is down. HTTP Status Code: %2$d."
+msgstr "De website %1$s is down. HTTP-statuscode: %2$d."
+
+msgid "The website %1$s is reachable again. HTTP Status Code: %2$d."
+msgstr "De website %1$s is weer bereikbaar. HTTP-statuscode: %2$d."
+
+msgid "The website %s is reachable again."
+msgstr "De website %s is weer bereikbaar."
+
+msgid "This is a test notification from Simple Uptime Monitor."
+msgstr "Dit is een testmelding van Simple Uptime Monitor."
+
+msgid "Timeout:"
+msgstr "Timeout:"
+
+msgid "Unknown"
+msgstr "Onbekend"
+
+msgid "up"
+msgstr "up"
+
+msgid "Uptime"
+msgstr "Uptime"
+
 msgid "Uptime Monitor"
 msgstr "Uptime Monitor"
 
-#: uptime-monitor.php:282
 msgid "Uptime Monitor Settings"
-msgstr "Uptime Monitor Instellingen"
+msgstr "Uptime Monitor-instellingen"
 
-#: uptime-monitor.php:189 uptime-monitor.php:199
+msgid "Uptime Monitor Test"
+msgstr "Uptime Monitor-test"
+
 msgid "URL"
 msgstr "URL"
 
-#: uptime-monitor.php:122 uptime-monitor.php:165
 msgid "URL added successfully!"
 msgstr "URL succesvol toegevoegd!"
 
-#: uptime-monitor.php:123 uptime-monitor.php:180
 msgid "URL deleted successfully!"
 msgstr "URL succesvol verwijderd!"
 
-#: uptime-monitor.php:157
-msgid "URL is not reachable (status code:"
-msgstr "URL is niet bereikbaar. (statuscode:"
+msgid "URL is down."
+msgstr "URL is down."
 
-#: uptime-monitor.php:385
+msgid "URL is not reachable (status code:"
+msgstr "URL is niet bereikbaar (statuscode:"
+
+msgid "URL is not reachable. Status code: %d"
+msgstr "URL is niet bereikbaar. Statuscode: %d"
+
+msgid "URL is up."
+msgstr "URL is up."
+
+msgid "URL not found."
+msgstr "URL niet gevonden."
+
+msgid "Use comma-separated HTTP status codes or ranges. Default: 100-199,300-599."
+msgstr "Gebruik komma-gescheiden HTTP-statuscodes of bereiken. Standaard: 100-199,300-599."
+
 msgid "Website Down Alert"
 msgstr "Website down-alarm"
 
-#: uptime-monitor.php:360
-#, php-format
 msgid "Website Down Alert: %s"
 msgstr "Website down-alarm: %s"
+
+msgid "Website Recovered"
+msgstr "Website hersteld"
+
+msgid "Website Recovered: %s"
+msgstr "Website hersteld: %s"
+
+msgid "wp-config.php constants"
+msgstr "wp-config.php-constanten"
+
+msgid "You are not allowed to manage uptime URLs."
+msgstr "Je hebt geen toestemming om uptime-URLs te beheren."
+
