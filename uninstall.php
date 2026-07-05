@@ -9,3 +9,4 @@ delete_option('uptime_monitor_urls');
 delete_option('uptime_monitor_interval');
 delete_option('uptime_monitor_logs');
 delete_option('uptime_monitor_history');
+delete_option('uptime_monitor_incidents');

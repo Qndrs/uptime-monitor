@@ -87,8 +87,9 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Mogelijk: per URL over 24 uur, 7 dagen en 30 dagen.
   - Status: de statusgeschiedenis wordt tot 30 dagen bewaard; de admin-tabel toont uptimepercentages over 24 uur, 7 dagen en 30 dagen op basis van de beschikbare checks.
 
-- [ ] Voeg herstelmeldingen toe.
+- [x] Voeg herstelmeldingen toe.
   - Mogelijk: stuur ook bericht wanneer een down URL weer up is.
+  - Status: per URL wordt incident-state bijgehouden; bij herstel wordt een eenmalige herstelmelding verstuurd en de incidentstatus gereset.
 
 - [ ] Werk Pushover-configuratie uit.
   - Huidig: `PUSHOVER_USER_KEY` en `PUSHOVER_API_TOKEN` moeten in `wp-config.php` staan.
@@ -97,8 +98,9 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Compatibiliteit: blijf `wp-config.php` constants ondersteunen als fallback of expliciete override voor bestaande installaties.
   - Klaar wanneer: een beheerder Pushover kan configureren zonder bestandstoegang en bestaande configuraties blijven werken.
 
-- [ ] Voeg alert throttling toe.
+- [x] Voeg alert throttling toe.
   - Mogelijk: voorkom herhaalde meldingen bij elke cron-run zolang dezelfde storing voortduurt.
+  - Status: per storing worden maximaal drie downmeldingen verstuurd; de derde melding kondigt aan dat er geen nieuwe meldingen volgen tot herstel.
 
 - [ ] Maak retry-gedrag configureerbaar.
   - Mogelijk: aantal pogingen, timeout en welke statuscodes als down tellen.

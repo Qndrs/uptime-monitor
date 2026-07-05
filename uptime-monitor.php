@@ -37,6 +37,7 @@ class SimpleUptimeMonitor
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
+    public const MAX_INCIDENT_ALERTS = 3;
     private const CRON_HOOK = 'monitor_uptime_event';
     private const CRON_SCHEDULE = 'uptime_monitor_interval';
 
@@ -107,6 +108,7 @@ class SimpleUptimeMonitor
     {
         $urls = $this->normalize_urls(get_option('uptime_monitor_urls', []));
         update_option('uptime_monitor_urls', $urls);
+        $this->prune_monitor_state_to_urls($urls);
 
         return $urls;
     }
@@ -337,6 +339,132 @@ class SimpleUptimeMonitor
             unset($history[$url_id]);
             update_option('uptime_monitor_history', $history, false);
         }
+    }
+
+    private function get_incidents(): array
+    {
+        $incidents = get_option('uptime_monitor_incidents', []);
+
+        return is_array($incidents) ? $incidents : [];
+    }
+
+    private function delete_incident_for_url(string $url_id): void
+    {
+        $incidents = $this->get_incidents();
+        if (isset($incidents[$url_id])) {
+            unset($incidents[$url_id]);
+            update_option('uptime_monitor_incidents', $incidents, false);
+        }
+    }
+
+    private function prune_monitor_state_to_urls(array $urls): void
+    {
+        $valid_ids = [];
+        foreach ($urls as $url_data) {
+            if (!empty($url_data['id'])) {
+                $valid_ids[sanitize_key($url_data['id'])] = true;
+            }
+        }
+
+        $history = $this->get_status_history();
+        $history_changed = false;
+        foreach (array_keys($history) as $url_id) {
+            if (!isset($valid_ids[$url_id])) {
+                unset($history[$url_id]);
+                $history_changed = true;
+            }
+        }
+        if ($history_changed) {
+            update_option('uptime_monitor_history', $history, false);
+        }
+
+        $incidents = $this->get_incidents();
+        $incidents_changed = false;
+        foreach (array_keys($incidents) as $url_id) {
+            if (!isset($valid_ids[$url_id])) {
+                unset($incidents[$url_id]);
+                $incidents_changed = true;
+            }
+        }
+        if ($incidents_changed) {
+            update_option('uptime_monitor_incidents', $incidents, false);
+        }
+    }
+
+    private function handle_up_incident_state(array $url_data, ?int $status_code): void
+    {
+        $url_id = isset($url_data['id']) ? sanitize_key($url_data['id']) : '';
+        if ($url_id === '') {
+            return;
+        }
+
+        $incidents = $this->get_incidents();
+        if (!isset($incidents[$url_id]) || !is_array($incidents[$url_id])) {
+            return;
+        }
+
+        if (!empty($url_data['email'])) {
+            $this->send_email_recovery_alert($url_data['url'], $status_code);
+        }
+        if (!empty($url_data['pushover'])) {
+            $this->send_pushover_recovery_alert($url_data['url'], $status_code);
+        }
+
+        unset($incidents[$url_id]);
+        update_option('uptime_monitor_incidents', $incidents, false);
+        $this->log_to_json('info', 'Recovery alert sent and incident reset.', [
+            'url' => $url_data['url'],
+            'status_code' => $status_code,
+        ]);
+    }
+
+    private function handle_down_incident_state(array $url_data, ?int $status_code, string $error_message = ''): void
+    {
+        $url_id = isset($url_data['id']) ? sanitize_key($url_data['id']) : '';
+        if ($url_id === '') {
+            return;
+        }
+
+        $incidents = $this->get_incidents();
+        $incident = isset($incidents[$url_id]) && is_array($incidents[$url_id]) ? $incidents[$url_id] : [
+            'status' => 'down',
+            'down_since' => gmdate('Y-m-d H:i:s'),
+            'alert_count' => 0,
+        ];
+
+        $alert_count = isset($incident['alert_count']) ? absint($incident['alert_count']) : 0;
+        $should_send_alert = $alert_count < self::MAX_INCIDENT_ALERTS;
+        $is_final_alert = ($alert_count + 1) >= self::MAX_INCIDENT_ALERTS;
+
+        if ($should_send_alert) {
+            if (!empty($url_data['email'])) {
+                $this->send_email_alert($url_data['url'], $status_code, $error_message, $is_final_alert);
+            }
+            if (!empty($url_data['pushover'])) {
+                $this->send_pushover_alert($url_data['url'], $status_code, $error_message, $is_final_alert);
+            }
+
+            $alert_count++;
+            $incident['last_alert_at'] = gmdate('Y-m-d H:i:s');
+            $this->log_to_json('info', 'Down alert processed.', [
+                'url' => $url_data['url'],
+                'alert_count' => $alert_count,
+                'final_alert_until_recovery' => $is_final_alert,
+            ]);
+        } else {
+            $this->log_to_json('info', 'Down alert suppressed until recovery.', [
+                'url' => $url_data['url'],
+                'alert_count' => $alert_count,
+            ]);
+        }
+
+        $incident['status'] = 'down';
+        $incident['alert_count'] = $alert_count;
+        $incident['last_status_code'] = $status_code;
+        $incident['last_error'] = sanitize_text_field($error_message);
+        $incident['last_seen_at'] = gmdate('Y-m-d H:i:s');
+        $incidents[$url_id] = $incident;
+        update_option('uptime_monitor_incidents', $incidents, false);
     }
 
     private function format_history_timestamp(string $timestamp): string
@@ -601,8 +729,13 @@ class SimpleUptimeMonitor
                 wp_die('Security check failed.');
             }
             $index_to_delete = isset($_GET['delete']) ? absint(wp_unslash($_GET['delete'])) : 0;
+            $deleted_url_id = isset($urls[$index_to_delete]['id']) ? sanitize_key($urls[$index_to_delete]['id']) : '';
             unset($urls[$index_to_delete]);
             update_option('uptime_monitor_urls', array_values($urls));
+            if ($deleted_url_id !== '') {
+                $this->delete_status_history_for_url($deleted_url_id);
+                $this->delete_incident_for_url($deleted_url_id);
+            }
             add_settings_error('uptime_monitor', 'uptime_notice', __('URL deleted successfully!', 'uptime-monitor'), 'updated');
             settings_errors('uptime_monitor');
         }
@@ -760,6 +893,7 @@ class SimpleUptimeMonitor
             if (is_wp_error($response)) {
                 $this->log_to_json('error', 'Failed to fetch URL.', ['url' => $url_data['url'], 'error' => $response->get_error_message(), 'response_time_ms' => $response_time_ms]);
                 $this->record_status_history($url_data, 'error', null, $response_time_ms, $response->get_error_message());
+                $this->handle_down_incident_state($url_data, null, $response->get_error_message());
                 continue;
             }
             $status_code = wp_remote_retrieve_response_code($response);
@@ -767,17 +901,12 @@ class SimpleUptimeMonitor
             if ($status_code >= 200 and $status_code < 300) {
                 $this->log_to_json('info', 'Url is up.', ['url' => $url_data['url']]);
                 $this->record_status_history($url_data, 'up', $status_code, $response_time_ms, __('URL is up.', 'uptime-monitor'));
+                $this->handle_up_incident_state($url_data, $status_code);
 
             } else {
                 $this->log_to_json('error', 'URL is down.', ['url' => $url_data['url'], 'status_code' => $status_code]);
                 $this->record_status_history($url_data, 'down', $status_code, $response_time_ms, __('URL is down.', 'uptime-monitor'));
-
-                if ($url_data['email']) {
-                    $this->send_email_alert($url_data['url'], $status_code);
-                }
-                if ($url_data['pushover']) {
-                    $this->send_pushover_alert($url_data['url'], $status_code);
-                }
+                $this->handle_down_incident_state($url_data, $status_code);
             }
         }
     }
@@ -786,15 +915,41 @@ class SimpleUptimeMonitor
      * Sends an email alert for a down URL.
      *
      * @param string $url The URL that is down.
-     * @param int $status_code The HTTP status code.
+     * @param int|null $status_code The HTTP status code.
+     * @param string $error_message Optional network error message.
+     * @param bool $is_final_alert Whether this is the last alert until recovery.
      */
-    private function send_email_alert($url, $status_code): void
+    private function send_email_alert($url, ?int $status_code, string $error_message = '', bool $is_final_alert = false): void
     {
         $admin_email = get_option('admin_email');
         /* translators: %s: Monitored URL. */
         $subject = sprintf(__('Website Down Alert: %s', 'uptime-monitor'), $url);
-        /* translators: 1: Monitored URL, 2: HTTP status code. */
-        $message = sprintf(__('The website %1$s is down. HTTP Status Code: %2$d.', 'uptime-monitor'), $url, $status_code);
+        if ($status_code !== null) {
+            /* translators: 1: Monitored URL, 2: HTTP status code. */
+            $message = sprintf(__('The website %1$s is down. HTTP Status Code: %2$d.', 'uptime-monitor'), $url, $status_code);
+        } else {
+            /* translators: 1: Monitored URL, 2: Network error message. */
+            $message = sprintf(__('The website %1$s is down. Error: %2$s.', 'uptime-monitor'), $url, $error_message);
+        }
+        if ($is_final_alert) {
+            $message .= "\n\n" . __('No further alerts will be sent for this incident until the website is reachable again.', 'uptime-monitor');
+        }
+        wp_mail($admin_email, $subject, $message);
+    }
+
+    private function send_email_recovery_alert($url, ?int $status_code): void
+    {
+        $admin_email = get_option('admin_email');
+        /* translators: %s: Monitored URL. */
+        $subject = sprintf(__('Website Recovered: %s', 'uptime-monitor'), $url);
+        if ($status_code !== null) {
+            /* translators: 1: Monitored URL, 2: HTTP status code. */
+            $message = sprintf(__('The website %1$s is reachable again. HTTP Status Code: %2$d.', 'uptime-monitor'), $url, $status_code);
+        } else {
+            /* translators: %s: Monitored URL. */
+            $message = sprintf(__('The website %s is reachable again.', 'uptime-monitor'), $url);
+        }
+
         wp_mail($admin_email, $subject, $message);
     }
 
@@ -802,9 +957,40 @@ class SimpleUptimeMonitor
      * Sends a Pushover alert for a down URL.
      *
      * @param string $url The URL that is down.
-     * @param int $status_code The HTTP status code.
+     * @param int|null $status_code The HTTP status code.
+     * @param string $error_message Optional network error message.
+     * @param bool $is_final_alert Whether this is the last alert until recovery.
      */
-    private function send_pushover_alert($url, $status_code): void
+    private function send_pushover_alert($url, ?int $status_code, string $error_message = '', bool $is_final_alert = false): void
+    {
+        if ($status_code !== null) {
+            /* translators: 1: Monitored URL, 2: HTTP status code. */
+            $message = sprintf(__('The website %1$s is down. HTTP Status Code: %2$d.', 'uptime-monitor'), $url, $status_code);
+        } else {
+            /* translators: 1: Monitored URL, 2: Network error message. */
+            $message = sprintf(__('The website %1$s is down. Error: %2$s.', 'uptime-monitor'), $url, $error_message);
+        }
+        if ($is_final_alert) {
+            $message .= "\n\n" . __('No further alerts will be sent for this incident until the website is reachable again.', 'uptime-monitor');
+        }
+
+        $this->send_pushover_message($url, __('Website Down Alert', 'uptime-monitor'), $message);
+    }
+
+    private function send_pushover_recovery_alert($url, ?int $status_code): void
+    {
+        if ($status_code !== null) {
+            /* translators: 1: Monitored URL, 2: HTTP status code. */
+            $message = sprintf(__('The website %1$s is reachable again. HTTP Status Code: %2$d.', 'uptime-monitor'), $url, $status_code);
+        } else {
+            /* translators: %s: Monitored URL. */
+            $message = sprintf(__('The website %s is reachable again.', 'uptime-monitor'), $url);
+        }
+
+        $this->send_pushover_message($url, __('Website Recovered', 'uptime-monitor'), $message);
+    }
+
+    private function send_pushover_message($url, string $title, string $message): void
     {
         $user_key = defined('PUSHOVER_USER_KEY') ? PUSHOVER_USER_KEY : '';
         $api_token = defined('PUSHOVER_API_TOKEN') ? PUSHOVER_API_TOKEN : '';
@@ -816,10 +1002,6 @@ class SimpleUptimeMonitor
             ]);
             return;
         }
-
-        /* translators: 1: Monitored URL, 2: HTTP status code. */
-        $message = sprintf(__('The website %1$s is down. HTTP Status Code: %2$d.', 'uptime-monitor'), $url, $status_code);
-        $title = __('Website Down Alert', 'uptime-monitor');
 
         $post_data = [
             'token' => $api_token,
@@ -955,6 +1137,7 @@ class SimpleUptimeMonitor
                 $urls = array_values($urls); // Herstel de indexen
                 update_option('uptime_monitor_urls', $urls);
                 $this->delete_status_history_for_url($id_to_delete);
+                $this->delete_incident_for_url($id_to_delete);
                 wp_send_json_success(['urls' => $this->add_status_history_to_urls($urls)]);
             }
         }
