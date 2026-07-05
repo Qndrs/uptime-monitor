@@ -114,14 +114,18 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Ontwerpnotitie: zie `docs/dashboard-design.md` voor dashboard-MVP, visuele richting en latere uitbreidingen.
   - Status: de oude URL-tabel is vervangen door een compact statusdashboard met globale statusbalk, metric cards, statuslampen per URL, actuele checkinformatie, downtime-duur bij open incidenten, notificatie/incidentbadges, snelle acties en inklapbare history.
 
-- [ ] Breid de REST API uit met status-endpoints.
+- [x] Breid de REST API uit met status-endpoints.
   - Mogelijk: `GET /status`, `GET /status/{id}` en gefilterde logresponses.
+  - Status: `GET /wp-json/uptime-monitor/v1/status` en `GET /wp-json/uptime-monitor/v1/status/{id}` toegevoegd met admin-authenticatie, zonder secrets in responses. De instellingenpagina toont een compacte REST API-viewer met open/copy acties.
 
 - [ ] Onderzoek API-token toegang voor externe dashboards.
   - Mogelijk: read-only token naast WordPress admin authenticatie.
 
 - [ ] Voeg logfilters en paginering toe.
   - Mogelijk: filter op URL, type, datumrange en limiet.
+
+- [ ] Onderzoek een WordPress dashboard widget.
+  - Lage prioriteit / leuk later: compacte widget op het WP-dashboard met een duidelijk alarm/zwaailicht-signaal bij actieve incidenten.
 
 ## 5. Client Plugin / Firewalled Sites
 

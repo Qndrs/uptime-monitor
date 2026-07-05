@@ -53,6 +53,7 @@ class SimpleUptimeMonitor
         add_action('admin_init', [$this, 'maybe_upgrade_options']);
         add_action('admin_menu', [$this, 'add_menu_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
+        add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action(self::CRON_HOOK, [$this, 'monitor_uptime']);
         register_activation_hook(__FILE__, [$this, 'activate']);
         register_deactivation_hook(__FILE__, [$this, 'deactivate']);
@@ -366,6 +367,8 @@ class SimpleUptimeMonitor
                 'hide_details' => __('Hide details', 'uptime-monitor'),
                 'monitoring' => __('Monitoring', 'uptime-monitor'),
                 'dismiss' => __('Dismiss this notice.', 'uptime-monitor'),
+                'copy_success' => __('Copied to clipboard.', 'uptime-monitor'),
+                'copy_failed' => __('Could not copy to clipboard.', 'uptime-monitor'),
             ]);
         }
     }
@@ -850,6 +853,120 @@ class SimpleUptimeMonitor
         ];
     }
 
+    public function register_rest_routes(): void
+    {
+        register_rest_route('uptime-monitor/v1', '/status', [
+            'methods' => \WP_REST_Server::READABLE,
+            'callback' => [$this, 'rest_get_status'],
+            'permission_callback' => [$this, 'rest_check_permissions'],
+        ]);
+
+        register_rest_route('uptime-monitor/v1', '/status/(?P<id>[a-zA-Z0-9_-]+)', [
+            'methods' => \WP_REST_Server::READABLE,
+            'callback' => [$this, 'rest_get_url_status'],
+            'permission_callback' => [$this, 'rest_check_permissions'],
+            'args' => [
+                'id' => [
+                    'required' => true,
+                    'sanitize_callback' => 'sanitize_key',
+                ],
+            ],
+        ]);
+    }
+
+    public function rest_check_permissions(): bool
+    {
+        return current_user_can('manage_options');
+    }
+
+    public function rest_get_status(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $dashboard = $this->get_dashboard_summary($this->normalize_stored_urls());
+
+        return new \WP_REST_Response($this->get_rest_status_payload($dashboard), 200);
+    }
+
+    public function rest_get_url_status(\WP_REST_Request $request)
+    {
+        $id = sanitize_key((string)$request->get_param('id'));
+        $dashboard = $this->get_dashboard_summary($this->normalize_stored_urls());
+
+        foreach ($dashboard['urls'] as $url_data) {
+            if (isset($url_data['id']) && $url_data['id'] === $id) {
+                return new \WP_REST_Response($this->get_rest_url_payload($url_data), 200);
+            }
+        }
+
+        return new \WP_Error('uptime_monitor_url_not_found', __('URL not found.', 'uptime-monitor'), ['status' => 404]);
+    }
+
+    private function get_rest_status_payload(array $dashboard): array
+    {
+        return [
+            'generated_at' => gmdate('c'),
+            'overall' => [
+                'status' => $dashboard['overall_status'],
+                'label' => $dashboard['overall_label'],
+                'latest_check' => $dashboard['latest_check_display'],
+                'next_check' => $dashboard['next_check_display'],
+            ],
+            'counts' => [
+                'total' => $dashboard['total'],
+                'active' => $dashboard['active'],
+                'up' => $dashboard['up'],
+                'down' => $dashboard['down'],
+                'paused' => $dashboard['paused'],
+                'degraded' => $dashboard['degraded'],
+                'incidents' => $dashboard['incidents'],
+            ],
+            'metrics' => [
+                'health_percentage' => $dashboard['health_percentage'],
+                'health_display' => $dashboard['health_display'],
+                'average_response_ms' => $dashboard['average_response_ms'],
+                'average_response_display' => $dashboard['average_response_display'],
+                'uptime_24h' => $dashboard['uptime_24h'],
+                'uptime_24h_display' => $dashboard['uptime_24h_display'],
+            ],
+            'settings' => [
+                'monitor_interval' => $this->get_monitor_interval(),
+                'retry_attempts' => $this->get_retry_attempts(),
+                'request_timeout' => $this->get_request_timeout(),
+                'down_status_codes' => $this->get_down_status_codes(),
+            ],
+            'urls' => array_map([$this, 'get_rest_url_payload'], $dashboard['urls']),
+        ];
+    }
+
+    private function get_rest_url_payload(array $url_data): array
+    {
+        $dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
+        $latest = isset($dashboard['latest']) && is_array($dashboard['latest']) ? $dashboard['latest'] : null;
+
+        return [
+            'id' => isset($url_data['id']) ? (string)$url_data['id'] : '',
+            'url' => isset($url_data['url']) ? (string)$url_data['url'] : '',
+            'enabled' => !isset($url_data['enabled']) || (bool)$url_data['enabled'],
+            'alerts' => [
+                'email' => !empty($url_data['email']),
+                'pushover' => !empty($url_data['pushover']),
+                'label' => isset($dashboard['notifications_label']) ? $dashboard['notifications_label'] : $this->get_notifications_label($url_data),
+            ],
+            'status' => [
+                'value' => isset($dashboard['status']) ? $dashboard['status'] : 'unknown',
+                'label' => isset($dashboard['status_label']) ? $dashboard['status_label'] : __('Unknown', 'uptime-monitor'),
+            ],
+            'latest_check' => $latest,
+            'uptime' => isset($url_data['uptime']) && is_array($url_data['uptime']) ? $url_data['uptime'] : [],
+            'average_response_ms' => isset($dashboard['average_response_time_ms']) ? $dashboard['average_response_time_ms'] : null,
+            'average_response_display' => isset($dashboard['average_response_time_display']) ? $dashboard['average_response_time_display'] : '',
+            'incident' => [
+                'open' => !empty($dashboard['incident_open']),
+                'label' => isset($dashboard['incident_label']) ? $dashboard['incident_label'] : __('No incident', 'uptime-monitor'),
+                'duration' => isset($dashboard['incident_duration_display']) ? $dashboard['incident_duration_display'] : '',
+            ],
+        ];
+    }
+
     private function get_average_response_time_ms(array $history): ?int
     {
         $response_times = [];
@@ -1072,6 +1189,20 @@ class SimpleUptimeMonitor
         echo '<span class="uptime-metric-card__label">' . esc_html($label) . '</span>';
         echo '<strong class="uptime-metric-card__value">' . esc_html($value) . '</strong>';
         echo '<span class="uptime-metric-card__meta">' . esc_html($meta) . '</span>';
+        echo '</article>';
+    }
+
+    private function render_rest_endpoint_row(string $label, string $description, string $endpoint): void
+    {
+        echo '<article class="uptime-rest-endpoint">';
+        echo '<div class="uptime-rest-endpoint__main">';
+        echo '<strong>' . esc_html($label) . '</strong>';
+        echo '<span>' . esc_html($description) . '</span>';
+        echo '<code>' . esc_html($endpoint) . '</code>';
+        echo '</div>';
+        echo '<div class="uptime-rest-endpoint__actions">';
+        echo '<button type="button" class="button uptime-copy-endpoint" data-copy-value="' . esc_attr($endpoint) . '"><span class="dashicons dashicons-clipboard" aria-hidden="true"></span>' . esc_html__('Copy', 'uptime-monitor') . '</button>';
+        echo '</div>';
         echo '</article>';
     }
 
@@ -1387,6 +1518,21 @@ class SimpleUptimeMonitor
         $this->render_dashboard_metric(__('Request timeout', 'uptime-monitor'), (string)$request_timeout . 's', __('Per HTTP attempt', 'uptime-monitor'));
         $this->render_dashboard_metric(__('Down codes', 'uptime-monitor'), $down_status_codes, __('HTTP status ranges', 'uptime-monitor'));
         $this->render_dashboard_metric(__('Pushover', 'uptime-monitor'), $pushover_status, __('Credential source', 'uptime-monitor'));
+        echo '</section>';
+
+        $status_endpoint = rest_url('uptime-monitor/v1/status');
+        $status_detail_endpoint = rest_url('uptime-monitor/v1/status/{id}');
+        $logs_endpoint = rest_url('uptime-monitor/v1/logs');
+        echo '<section class="uptime-settings-panel uptime-rest-viewer" aria-label="' . esc_attr__('REST API viewer', 'uptime-monitor') . '">';
+        echo '<div class="uptime-settings-panel__header">';
+        echo '<h2>' . esc_html__('REST API', 'uptime-monitor') . '</h2>';
+        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Admin authentication required', 'uptime-monitor') . '</span>';
+        echo '</div>';
+        echo '<div class="uptime-rest-grid">';
+        $this->render_rest_endpoint_row(__('Overall status', 'uptime-monitor'), __('Complete monitor status response.', 'uptime-monitor'), $status_endpoint);
+        $this->render_rest_endpoint_row(__('URL status', 'uptime-monitor'), __('Single monitored URL status by ID.', 'uptime-monitor'), $status_detail_endpoint);
+        $this->render_rest_endpoint_row(__('Logs', 'uptime-monitor'), __('Existing admin-only log endpoint.', 'uptime-monitor'), $logs_endpoint);
+        echo '</div>';
         echo '</section>';
 
         echo '<form method="post" class="uptime-settings-form">';

@@ -404,6 +404,33 @@ jQuery(document).ready(function ($) {
         $(this).closest('.uptime-monitor-notice').remove();
     });
 
+    $('.uptime-monitor-dashboard').on('click', '.uptime-copy-endpoint', function () {
+        const value = $(this).data('copy-value') || '';
+        if (!value) {
+            showNotice(uptimeMonitorL10n.copy_failed, 'error');
+            return;
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(value).then(function () {
+                showNotice(uptimeMonitorL10n.copy_success, 'success');
+            }).catch(function () {
+                showNotice(uptimeMonitorL10n.copy_failed, 'error');
+            });
+            return;
+        }
+
+        const input = $('<input type="text" class="screen-reader-text">').val(value).appendTo('body');
+        input.trigger('select');
+        try {
+            document.execCommand('copy');
+            showNotice(uptimeMonitorL10n.copy_success, 'success');
+        } catch (error) {
+            showNotice(uptimeMonitorL10n.copy_failed, 'error');
+        }
+        input.remove();
+    });
+
     $('.uptime-url-list').on('click', '.toggle-history', function () {
         const button = $(this);
         const row = button.closest('.uptime-url-row');

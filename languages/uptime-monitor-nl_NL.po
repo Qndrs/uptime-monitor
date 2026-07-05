@@ -416,3 +416,38 @@ msgstr "wp-config.php-constanten"
 msgid "You are not allowed to manage uptime URLs."
 msgstr "Je hebt geen toestemming om uptime-URLs te beheren."
 
+msgid "Admin authentication required"
+msgstr "Admin-authenticatie vereist"
+
+msgid "Complete monitor status response."
+msgstr "Volledige monitorstatusresponse."
+
+msgid "Copied to clipboard."
+msgstr "Gekopieerd naar het klembord."
+
+msgid "Copy"
+msgstr "Kopiëren"
+
+msgid "Could not copy to clipboard."
+msgstr "Kopiëren naar het klembord is niet gelukt."
+
+msgid "Existing admin-only log endpoint."
+msgstr "Bestaand logendpoint, alleen voor admins."
+
+msgid "Logs"
+msgstr "Logs"
+
+msgid "Overall status"
+msgstr "Algemene status"
+
+msgid "REST API"
+msgstr "REST API"
+
+msgid "REST API viewer"
+msgstr "REST API-viewer"
+
+msgid "Single monitored URL status by ID."
+msgstr "Status van één gemonitorde URL op basis van ID."
+
+msgid "URL status"
+msgstr "URL-status"
