@@ -83,8 +83,9 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Mogelijk: gemiddelde responstijd, laatste responstijd en eenvoudige trend.
   - Status: cron-checks meten responstijd in milliseconden; de history toont per check de responstijd, plus gemiddelde en trend.
 
-- [ ] Bereken uptimepercentage.
+- [x] Bereken uptimepercentage.
   - Mogelijk: per URL over 24 uur, 7 dagen en 30 dagen.
+  - Status: de statusgeschiedenis wordt tot 30 dagen bewaard; de admin-tabel toont uptimepercentages over 24 uur, 7 dagen en 30 dagen op basis van de beschikbare checks.
 
 - [ ] Voeg herstelmeldingen toe.
   - Mogelijk: stuur ook bericht wanneer een down URL weer up is.

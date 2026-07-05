@@ -35,7 +35,8 @@ class SimpleUptimeMonitor
 {
     public const VERSION = '3.0.1';
     public const MAX_LOG_ENTRIES = 1000;
-    public const MAX_STATUS_HISTORY_PER_URL = 20;
+    public const MAX_STATUS_HISTORY_PER_URL = 43200;
+    public const MAX_STATUS_HISTORY_DAYS = 30;
     private const CRON_HOOK = 'monitor_uptime_event';
     private const CRON_SCHEDULE = 'uptime_monitor_interval';
 
@@ -226,6 +227,7 @@ class SimpleUptimeMonitor
                 'trend_faster' => __('Faster', 'uptime-monitor'),
                 'trend_slower' => __('Slower', 'uptime-monitor'),
                 'trend_stable' => __('Stable', 'uptime-monitor'),
+                'uptime' => __('Uptime', 'uptime-monitor'),
             ]);
         }
     }
@@ -266,7 +268,9 @@ class SimpleUptimeMonitor
     private function add_status_history_to_urls(array $urls): array
     {
         foreach ($urls as &$url_data) {
-            $url_data['history'] = $this->get_status_history_for_url($url_data['id']);
+            $history = $this->get_status_history_for_url($url_data['id']);
+            $url_data['history'] = $history;
+            $url_data['uptime'] = $this->get_uptime_percentages($history);
         }
         unset($url_data);
 
@@ -295,8 +299,35 @@ class SimpleUptimeMonitor
             'message' => sanitize_text_field($message),
         ];
 
-        $history[$url_id] = array_values(array_slice($url_history, -self::MAX_STATUS_HISTORY_PER_URL));
+        $history[$url_id] = $this->prune_status_history($url_history);
         update_option('uptime_monitor_history', $history, false);
+    }
+
+    private function prune_status_history(array $history): array
+    {
+        $cutoff = time() - (self::MAX_STATUS_HISTORY_DAYS * 24 * 60 * 60);
+        $filtered = [];
+
+        foreach ($history as $entry) {
+            $entry = $this->normalize_status_history_entry($entry);
+            $timestamp = $this->history_timestamp_to_epoch($entry['timestamp']);
+            if ($timestamp === null || $timestamp >= $cutoff) {
+                $filtered[] = $entry;
+            }
+        }
+
+        return array_values(array_slice($filtered, -self::MAX_STATUS_HISTORY_PER_URL));
+    }
+
+    private function history_timestamp_to_epoch(string $timestamp): ?int
+    {
+        if ($timestamp === '') {
+            return null;
+        }
+
+        $epoch = strtotime($timestamp . ' UTC');
+
+        return $epoch !== false ? $epoch : null;
     }
 
     private function delete_status_history_for_url(string $url_id): void
@@ -384,12 +415,93 @@ class SimpleUptimeMonitor
         }
     }
 
+    private function get_uptime_percentages(array $history): array
+    {
+        $periods = [
+            '24h' => [
+                'label' => __('24h', 'uptime-monitor'),
+                'seconds' => 24 * 60 * 60,
+            ],
+            '7d' => [
+                'label' => __('7d', 'uptime-monitor'),
+                'seconds' => 7 * 24 * 60 * 60,
+            ],
+            '30d' => [
+                'label' => __('30d', 'uptime-monitor'),
+                'seconds' => 30 * 24 * 60 * 60,
+            ],
+        ];
+        $now = time();
+        $uptime = [];
+
+        foreach ($periods as $period_key => $period) {
+            $period_start = $now - $period['seconds'];
+            $total_checks = 0;
+            $up_checks = 0;
+
+            foreach ($history as $entry) {
+                $entry = $this->normalize_status_history_entry($entry);
+                $timestamp = $this->history_timestamp_to_epoch($entry['timestamp']);
+                if ($timestamp === null || $timestamp < $period_start) {
+                    continue;
+                }
+
+                $total_checks++;
+                if ($entry['status'] === 'up') {
+                    $up_checks++;
+                }
+            }
+
+            $percentage = $total_checks > 0 ? round(($up_checks / $total_checks) * 100, 1) : null;
+            $uptime[$period_key] = [
+                'label' => $period['label'],
+                'percentage' => $percentage,
+                'percentage_display' => $percentage !== null ? number_format_i18n($percentage, 1) : '',
+                'total_checks' => $total_checks,
+            ];
+        }
+
+        return $uptime;
+    }
+
+    private function render_uptime_summary(array $history): void
+    {
+        $uptime = $this->get_uptime_percentages($history);
+        $has_uptime_data = false;
+
+        foreach ($uptime as $period) {
+            if ($period['percentage'] !== null) {
+                $has_uptime_data = true;
+                break;
+            }
+        }
+
+        if (!$has_uptime_data) {
+            return;
+        }
+
+        echo '<div class="uptime-percentage-summary" aria-label="' . esc_attr__('Uptime', 'uptime-monitor') . '">';
+        foreach ($uptime as $period_key => $period) {
+            if ($period['percentage'] === null) {
+                continue;
+            }
+
+            echo '<span class="uptime-percentage uptime-percentage-' . esc_attr($period_key) . '">';
+            echo '<span class="uptime-percentage-label">' . esc_html($period['label']) . '</span>';
+            echo '<span class="uptime-percentage-value">' . esc_html($period['percentage_display']) . '%</span>';
+            echo '</span>';
+        }
+        echo '</div>';
+    }
+
     private function render_status_history_cell(array $history): void
     {
         if (empty($history)) {
             echo '<span class="uptime-history-empty">' . esc_html__('No checks yet.', 'uptime-monitor') . '</span>';
             return;
         }
+
+        $this->render_uptime_summary($history);
 
         $average_response_time_ms = $this->get_average_response_time_ms($history);
         $response_time_trend = $this->get_response_time_trend($history);

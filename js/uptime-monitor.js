@@ -109,7 +109,41 @@ jQuery(document).ready(function ($) {
         `;
     }
 
-    function renderHistory(history) {
+    function renderUptimeSummary(uptime) {
+        if (!uptime || typeof uptime !== 'object') {
+            return '';
+        }
+
+        const periods = ['24h', '7d', '30d'];
+        const items = periods.map(function (periodKey) {
+            const period = uptime[periodKey];
+            if (!period || period.percentage === null || typeof period.percentage === 'undefined') {
+                return '';
+            }
+
+            const percentage = parseFloat(period.percentage);
+            if (isNaN(percentage)) {
+                return '';
+            }
+
+            const percentageDisplay = period.percentage_display || percentage.toFixed(1);
+
+            return `
+                <span class="uptime-percentage uptime-percentage-${periodKey}">
+                    <span class="uptime-percentage-label">${escapeHtml(period.label)}</span>
+                    <span class="uptime-percentage-value">${escapeHtml(percentageDisplay)}%</span>
+                </span>
+            `;
+        }).join('');
+
+        if (!items.trim()) {
+            return '';
+        }
+
+        return `<div class="uptime-percentage-summary" aria-label="${escapeHtml(uptimeMonitorL10n.uptime)}">${items}</div>`;
+    }
+
+    function renderHistory(history, uptime) {
         if (!Array.isArray(history) || history.length === 0) {
             return `<span class="uptime-history-empty">${escapeHtml(uptimeMonitorL10n.no_history)}</span>`;
         }
@@ -131,7 +165,7 @@ jQuery(document).ready(function ($) {
             `;
         }).join('');
 
-        return `${renderResponseSummary(history)}<ol class="uptime-history-list">${items}</ol>`;
+        return `${renderUptimeSummary(uptime)}${renderResponseSummary(history)}<ol class="uptime-history-list">${items}</ol>`;
     }
 
     // Add URL via AJAX
@@ -208,7 +242,7 @@ jQuery(document).ready(function ($) {
                         <td>${urlData.email ? uptimeMonitorL10n.enabled : uptimeMonitorL10n.disabled}</td>
                         <td>${urlData.pushover ? uptimeMonitorL10n.enabled : uptimeMonitorL10n.disabled}</td>
                         <td><input type="checkbox" class="toggle-monitoring" data-id="${escapeHtml(urlData.id)}" ${checked}></td>
-                        <td>${renderHistory(urlData.history)}</td>
+                        <td>${renderHistory(urlData.history, urlData.uptime)}</td>
                         <td><button class="button delete-url" data-id="${escapeHtml(urlData.id)}">${uptimeMonitorL10n.delete}</button></td>
                     </tr>
                 `);
