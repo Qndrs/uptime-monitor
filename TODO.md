@@ -4,17 +4,18 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 
 ## Huidige status
 
-- Pauzepunt: 2026-07-05.
-- Release `v3.0.1` is afgerond, getagd en gepusht.
-- Tag `v3.0.1` wijst naar releasecode commit `b6fdc03`.
-- Laatste main-commit bij pauze: `175c475` (`Mark 3.0.1 release complete`).
-- Plugin Check is opnieuw gedraaid en gaf geen fouten.
-- Testsite `https://qndrs.training/simpleuptimemonitor/` draaide gezond na deployment.
+- Pauzepunt: 2026-07-07.
+- Release `v3.3.0` is afgerond, getagd en gepusht.
+- Tag `v3.3.0` wijst naar releasecode commit `09abf4b` (`Release 3.3.0 dashboard widget`).
+- Laatste main-commit bij pauze: `09abf4b` (`Release 3.3.0 dashboard widget`).
+- Lokale releasechecks zijn groen gedraaid: PHP syntax, JavaScript syntax en `scripts/check-release.ps1`.
+- Testsite `https://qndrs.training/simpleuptimemonitor/` draaide gezond na deployment van de dashboardwidget.
 - Deploymentroute op dit moment: SFTP naar `/home/qndrs/public_html/simpleuptimemonitor/wp-content/plugins/uptime-monitor`.
 - Huidige SSH-account heeft geen shell; server-side Git deploy is daarmee nog niet mogelijk.
 - Releasepakket is lokaal reproduceerbaar via `scripts/build-release.ps1`.
 - Lokale releasechecks draaien via `scripts/check-release.ps1`.
-- Volgende inhoudelijke fase: dashboard/API-werk uitwerken.
+- Dashboard/API-werk is afgerond tot en met compact dashboard, status-REST, read-only token, logfilters/paginering en WP-dashboardwidget.
+- Volgende inhoudelijke fase: client-plugin/heartbeat voor firewalled sites of deployment/contributor-documentatie opruimen.
 
 ## 1. Stabilisatie
 
