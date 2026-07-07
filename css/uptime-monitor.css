@@ -13,6 +13,99 @@
     max-width: 1600px;
 }
 
+.uptime-dashboard-widget {
+    max-width: none;
+}
+
+.uptime-widget-status {
+    align-items: center;
+    border: 1px solid var(--ump-border);
+    border-left: 5px solid var(--ump-up);
+    border-radius: 6px;
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+}
+
+.uptime-dashboard-widget.is-down .uptime-widget-status {
+    border-left-color: var(--ump-down);
+    background: rgba(180, 35, 24, 0.06);
+}
+
+.uptime-dashboard-widget.is-degraded .uptime-widget-status {
+    border-left-color: var(--ump-warning);
+    background: rgba(183, 121, 31, 0.07);
+}
+
+.uptime-widget-status strong,
+.uptime-widget-item strong {
+    display: block;
+}
+
+.uptime-widget-status span,
+.uptime-widget-item span,
+.uptime-widget-ok,
+.uptime-widget-more {
+    color: var(--ump-muted);
+}
+
+.uptime-widget-beacon {
+    background: var(--ump-down);
+    border-radius: 999px;
+    box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.14), 0 0 16px rgba(180, 35, 24, 0.55);
+    display: inline-block;
+    flex: 0 0 auto;
+    height: 16px;
+    position: relative;
+    width: 16px;
+}
+
+.uptime-widget-beacon::after {
+    animation: uptime-beacon-pulse 1.6s ease-out infinite;
+    border: 2px solid rgba(180, 35, 24, 0.45);
+    border-radius: 999px;
+    content: "";
+    inset: -7px;
+    position: absolute;
+}
+
+.uptime-widget-list {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.uptime-widget-item {
+    align-items: center;
+    border: 1px solid var(--ump-border);
+    border-radius: 6px;
+    display: flex;
+    gap: 9px;
+    margin: 0;
+    padding: 9px 10px;
+}
+
+.uptime-widget-actions {
+    margin: 12px 0 0;
+}
+
+@keyframes uptime-beacon-pulse {
+    from {
+        opacity: 0.9;
+        transform: scale(0.75);
+    }
+    to {
+        opacity: 0;
+        transform: scale(1.6);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .uptime-widget-beacon::after {
+        animation: none;
+    }
+}
+
 .uptime-dashboard-header {
     align-items: center;
     display: flex;

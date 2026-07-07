@@ -5,7 +5,7 @@ namespace SimpleUptimeMonitor;
  * Plugin Name: Simple Uptime Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor de beschikbaarheid van websites en ontvang meldingen via e-mail of Pushover. Beheer eenvoudig meerdere URL's vanuit het WordPress-beheerpaneel, met logging, JSON-import/export, REST-ondersteuning en intervalinstellingen.
- * Version: 3.2.0
+ * Version: 3.3.0
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  */
 class SimpleUptimeMonitor
 {
-    public const VERSION = '3.2.0';
+    public const VERSION = '3.3.0';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
@@ -52,6 +52,7 @@ class SimpleUptimeMonitor
     {
         add_action('admin_init', [$this, 'maybe_upgrade_options']);
         add_action('admin_menu', [$this, 'add_menu_page']);
+        add_action('wp_dashboard_setup', [$this, 'register_dashboard_widget']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action(self::CRON_HOOK, [$this, 'monitor_uptime']);
@@ -350,6 +351,19 @@ class SimpleUptimeMonitor
         );
     }
 
+    public function register_dashboard_widget(): void
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        wp_add_dashboard_widget(
+            'uptime_monitor_dashboard_widget',
+            __('Uptime Monitor', 'uptime-monitor'),
+            [$this, 'render_dashboard_widget']
+        );
+    }
+
     /**
      * Enqueues styles and scripts for the admin interface.
      *
@@ -362,9 +376,12 @@ class SimpleUptimeMonitor
             'uptime-monitor_page_uptime-monitor-settings',
         ];
 
-        if (in_array($hook_suffix, $plugin_pages, true)) {
+        if ($hook_suffix === 'index.php' || in_array($hook_suffix, $plugin_pages, true)) {
             // Enqueue admin styles
             wp_enqueue_style('uptime-monitor-styles', plugin_dir_url(__FILE__) . 'css/uptime-monitor.css', [], self::VERSION);
+        }
+
+        if (in_array($hook_suffix, $plugin_pages, true)) {
             // Enqueue admin scripts
             wp_enqueue_script('uptime-monitor-scripts', plugin_dir_url(__FILE__) . 'js/uptime-monitor.js', ['jquery'], self::VERSION, true);
             // Localize AJAX script
@@ -1308,6 +1325,96 @@ class SimpleUptimeMonitor
         echo '<strong class="uptime-metric-card__value">' . esc_html($value) . '</strong>';
         echo '<span class="uptime-metric-card__meta">' . esc_html($meta) . '</span>';
         echo '</article>';
+    }
+
+    public function render_dashboard_widget(): void
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        $dashboard = $this->get_dashboard_summary($this->normalize_stored_urls());
+        $overall_status = isset($dashboard['overall_status']) ? sanitize_key($dashboard['overall_status']) : 'operational';
+        $status_class = $overall_status === 'incident' ? 'down' : ($overall_status === 'degraded' ? 'degraded' : 'up');
+        $attention_urls = array_values(array_filter($dashboard['urls'], function (array $url_data): bool {
+            $url_dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
+            $status = isset($url_dashboard['status']) ? sanitize_key($url_dashboard['status']) : 'unknown';
+
+            return !empty($url_dashboard['incident_open']) || in_array($status, ['down', 'degraded', 'unknown'], true);
+        }));
+
+        echo '<div class="uptime-monitor-dashboard uptime-dashboard-widget is-' . esc_attr($status_class) . '">';
+        echo '<div class="uptime-widget-status">';
+        if ($overall_status === 'incident') {
+            echo '<span class="uptime-widget-beacon" aria-hidden="true"></span>';
+        } else {
+            echo '<span class="uptime-status-light is-' . esc_attr($status_class) . '" aria-hidden="true"></span>';
+        }
+        echo '<div>';
+        echo '<strong>' . esc_html($dashboard['overall_label']) . '</strong>';
+        echo '<span>' . esc_html__('Last check:', 'uptime-monitor') . ' ' . esc_html($dashboard['latest_check_display']) . '</span>';
+        echo '</div>';
+        echo '</div>';
+
+        if (empty($attention_urls)) {
+            echo '<p class="uptime-widget-ok">' . esc_html__('All monitored URLs are reachable.', 'uptime-monitor') . '</p>';
+        } else {
+            echo '<ul class="uptime-widget-list">';
+            foreach (array_slice($attention_urls, 0, 5) as $url_data) {
+                $this->render_dashboard_widget_item($url_data);
+            }
+            echo '</ul>';
+            if (count($attention_urls) > 5) {
+                echo '<p class="uptime-widget-more">' . esc_html(sprintf(
+                    /* translators: %d: Number of additional attention URLs not shown in the dashboard widget. */
+                    __('%d more URLs need attention.', 'uptime-monitor'),
+                    count($attention_urls) - 5
+                )) . '</p>';
+            }
+        }
+
+        echo '<p class="uptime-widget-actions"><a class="button button-primary" href="' . esc_url(admin_url('admin.php?page=uptime-monitor')) . '">' . esc_html__('Open Uptime Monitor', 'uptime-monitor') . '</a></p>';
+        echo '</div>';
+    }
+
+    private function render_dashboard_widget_item(array $url_data): void
+    {
+        $dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
+        $status = isset($dashboard['status']) ? sanitize_key($dashboard['status']) : 'unknown';
+        $status_label = isset($dashboard['status_label']) ? (string)$dashboard['status_label'] : $this->get_dashboard_status_label($status);
+        $url = isset($url_data['url']) ? esc_url_raw($url_data['url']) : '';
+        $host = $url !== '' ? wp_parse_url($url, PHP_URL_HOST) : '';
+        $title = is_string($host) && $host !== '' ? $host : $url;
+        $latest = isset($dashboard['latest']) && is_array($dashboard['latest']) ? $dashboard['latest'] : null;
+        $detail = '';
+
+        if ($latest !== null) {
+            $status_code = isset($latest['status_code']) && $latest['status_code'] !== null ? absint($latest['status_code']) : 0;
+            $message = isset($latest['message']) ? (string)$latest['message'] : '';
+            if ($status_code > 0) {
+                /* translators: %d: HTTP status code. */
+                $detail = sprintf(__('HTTP %d', 'uptime-monitor'), $status_code);
+            } elseif ($message !== '') {
+                $detail = $message;
+            }
+        }
+
+        $incident_duration = isset($dashboard['incident_duration_display']) ? (string)$dashboard['incident_duration_display'] : '';
+
+        echo '<li class="uptime-widget-item is-' . esc_attr($status) . '">';
+        echo '<span class="uptime-status-light is-' . esc_attr($status) . '" aria-hidden="true"></span>';
+        echo '<div>';
+        echo '<strong>' . esc_html($title) . '</strong>';
+        echo '<span><b>' . esc_html($status_label) . '</b>';
+        if ($detail !== '') {
+            echo ' · ' . esc_html($detail);
+        }
+        if ($incident_duration !== '') {
+            echo ' · ' . esc_html($incident_duration);
+        }
+        echo '</span>';
+        echo '</div>';
+        echo '</li>';
     }
 
     private function render_rest_endpoint_row(string $label, string $description, string $endpoint, string $meta = ''): void

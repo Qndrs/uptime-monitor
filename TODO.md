@@ -126,8 +126,9 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Mogelijk: filter op URL, type, datumrange en limiet.
   - Status: de admin-only logendpoint ondersteunt `type`, `url`, `date_from`, `date_to`, `page`, `per_page`, `limit` en `order`; paginering gebruikt REST headers zoals `X-WP-Total` en `X-WP-TotalPages`.
 
-- [ ] Onderzoek een WordPress dashboard widget.
+- [x] Onderzoek een WordPress dashboard widget.
   - Lage prioriteit / leuk later: compacte widget op het WP-dashboard met een duidelijk alarm/zwaailicht-signaal bij actieve incidenten.
+  - Status: minimale WP-dashboardwidget toegevoegd met globale status, subtiele alarm-beacon bij actieve incidenten, maximaal vijf niet-up URLs en een link naar het Uptime Monitor-dashboard.
 
 ## 5. Client Plugin / Firewalled Sites
 

@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple Uptime Monitor 3.2.0\n"
+"Project-Id-Version: Simple Uptime Monitor 3.3.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-07-05 22:15+0200\n"
 "PO-Revision-Date: 2026-07-05 22:15+0200\n"
@@ -493,3 +493,12 @@ msgstr "Token geconfigureerd"
 
 msgid "Use this token for external dashboards that only need the status endpoints."
 msgstr "Gebruik dit token voor externe dashboards die alleen de status-endpoints nodig hebben."
+
+msgid "%d more URLs need attention."
+msgstr "%d extra URLs vragen aandacht."
+
+msgid "All monitored URLs are reachable."
+msgstr "Alle gemonitorde URLs zijn bereikbaar."
+
+msgid "Open Uptime Monitor"
+msgstr "Uptime Monitor openen"
