@@ -122,8 +122,9 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Mogelijk: read-only token naast WordPress admin authenticatie.
   - Status: read-only tokenbeheer toegevoegd aan de REST API-viewer. Tokens worden alleen eenmalig getoond, gehasht opgeslagen en geven uitsluitend toegang tot de statusroutes via Bearer-token of `X-Uptime-Monitor-Token`.
 
-- [ ] Voeg logfilters en paginering toe.
+- [x] Voeg logfilters en paginering toe.
   - Mogelijk: filter op URL, type, datumrange en limiet.
+  - Status: de admin-only logendpoint ondersteunt `type`, `url`, `date_from`, `date_to`, `page`, `per_page`, `limit` en `order`; paginering gebruikt REST headers zoals `X-WP-Total` en `X-WP-TotalPages`.
 
 - [ ] Onderzoek een WordPress dashboard widget.
   - Lage prioriteit / leuk later: compacte widget op het WP-dashboard met een duidelijk alarm/zwaailicht-signaal bij actieve incidenten.
@@ -143,6 +144,10 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Klaar wanneer: README of aparte docs de setup stap voor stap uitlegt.
 
 ## 6. Deployment En Samenwerking
+
+- [x] Werkafspraak voor commit en push.
+  - Afspraak: geef voortaan bij elk verzoek om commit en push eerst een expliciet advies of een versie-update en release wenselijk zijn.
+  - Werkwijze: noem het voorgestelde versienummer/releasetype, leg kort uit waarom dit wel of niet nodig is, en laat Robert daarna kiezen voordat commit en push worden uitgevoerd.
 
 - [ ] Leg testsite-deployment vast.
   - Huidige route: SFTP naar `wp-content/plugins/uptime-monitor` op de testsite.

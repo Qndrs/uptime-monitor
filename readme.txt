@@ -4,7 +4,7 @@ Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 3.1.1
+Stable tag: 3.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,13 +36,19 @@ You can also add these constants to `wp-config.php`; constants take precedence o
 
 = Where are logs stored? =
 
-Logs are stored in the WordPress database option `uptime_monitor_logs` and capped to avoid unbounded growth.
+Logs are stored in the WordPress database option `uptime_monitor_logs` and capped to avoid unbounded growth. The REST log endpoint supports `type`, `url`, `date_from`, `date_to`, `page`, `per_page`, `limit`, and `order` query parameters.
 
 = Is the REST endpoint public? =
 
-No. The log endpoint requires a user with the `manage_options` capability.
+No. REST endpoints require a user with the `manage_options` capability or the plugin read-only API token.
 
 == Changelog ==
+
+= 3.2.0 =
+
+* Added filters and pagination to the REST log endpoint.
+* Added read-only API token access for filtered log responses.
+* Documented supported log query parameters in the REST API viewer and README.
 
 = 3.1.1 =
 

@@ -361,6 +361,17 @@
     padding: 7px 8px;
 }
 
+.uptime-rest-endpoint__meta code {
+    display: inline-block;
+    margin: 2px 0;
+    padding: 2px 5px;
+}
+
+.uptime-rest-endpoint__example {
+    display: inline-block;
+    margin-top: 4px;
+}
+
 .uptime-rest-endpoint__actions {
     display: flex;
     flex-wrap: wrap;

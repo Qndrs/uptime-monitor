@@ -5,7 +5,7 @@ namespace SimpleUptimeMonitor;
  * Plugin Name: Simple Uptime Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor de beschikbaarheid van websites en ontvang meldingen via e-mail of Pushover. Beheer eenvoudig meerdere URL's vanuit het WordPress-beheerpaneel, met logging, JSON-import/export, REST-ondersteuning en intervalinstellingen.
- * Version: 3.1.1
+ * Version: 3.2.0
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  */
 class SimpleUptimeMonitor
 {
-    public const VERSION = '3.1.1';
+    public const VERSION = '3.2.0';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
@@ -146,20 +146,20 @@ class SimpleUptimeMonitor
             || (defined('PUSHOVER_API_TOKEN') && (string)PUSHOVER_API_TOKEN !== '');
     }
 
-    private function get_read_api_token_hash(): string
+    private static function get_read_api_token_hash(): string
     {
         return (string)get_option('uptime_monitor_read_api_token_hash', '');
     }
 
     private function has_read_api_token(): bool
     {
-        return $this->get_read_api_token_hash() !== '';
+        return self::get_read_api_token_hash() !== '';
     }
 
     private function create_read_api_token(): string
     {
         $token = 'sum_' . wp_generate_password(40, false, false);
-        update_option('uptime_monitor_read_api_token_hash', $this->hash_read_api_token($token), false);
+        update_option('uptime_monitor_read_api_token_hash', self::hash_read_api_token($token), false);
         update_option('uptime_monitor_read_api_token_last4', substr($token, -4), false);
         update_option('uptime_monitor_read_api_token_created_at', gmdate('Y-m-d H:i:s'), false);
 
@@ -173,19 +173,19 @@ class SimpleUptimeMonitor
         delete_option('uptime_monitor_read_api_token_created_at');
     }
 
-    private function hash_read_api_token(string $token): string
+    private static function hash_read_api_token(string $token): string
     {
         return hash_hmac('sha256', $token, wp_salt('auth'));
     }
 
-    private function verify_read_api_token(string $token): bool
+    private static function verify_read_api_token(string $token): bool
     {
-        $token_hash = $this->get_read_api_token_hash();
+        $token_hash = self::get_read_api_token_hash();
         if ($token === '' || $token_hash === '') {
             return false;
         }
 
-        return hash_equals($token_hash, $this->hash_read_api_token($token));
+        return hash_equals($token_hash, self::hash_read_api_token($token));
     }
 
     private function save_pushover_settings_from_post(): void
@@ -966,10 +966,10 @@ class SimpleUptimeMonitor
             return true;
         }
 
-        return $request instanceof \WP_REST_Request && $this->request_has_valid_read_api_token($request);
+        return $request instanceof \WP_REST_Request && self::request_has_valid_read_api_token($request);
     }
 
-    private function request_has_valid_read_api_token(\WP_REST_Request $request): bool
+    public static function request_has_valid_read_api_token(\WP_REST_Request $request): bool
     {
         $token = trim((string)$request->get_header('x_uptime_monitor_token'));
 
@@ -994,7 +994,7 @@ class SimpleUptimeMonitor
             }
         }
 
-        return $this->verify_read_api_token($token);
+        return self::verify_read_api_token($token);
     }
 
     public function rest_get_status(\WP_REST_Request $request): \WP_REST_Response
@@ -1310,13 +1310,22 @@ class SimpleUptimeMonitor
         echo '</article>';
     }
 
-    private function render_rest_endpoint_row(string $label, string $description, string $endpoint): void
+    private function render_rest_endpoint_row(string $label, string $description, string $endpoint, string $meta = ''): void
     {
         echo '<article class="uptime-rest-endpoint">';
         echo '<div class="uptime-rest-endpoint__main">';
         echo '<strong>' . esc_html($label) . '</strong>';
         echo '<span>' . esc_html($description) . '</span>';
         echo '<code>' . esc_html($endpoint) . '</code>';
+        if ($meta !== '') {
+            echo '<span class="uptime-rest-endpoint__meta">' . wp_kses($meta, [
+                'code' => [],
+                'strong' => [],
+                'span' => [
+                    'class' => [],
+                ],
+            ]) . '</span>';
+        }
         echo '</div>';
         echo '<div class="uptime-rest-endpoint__actions">';
         echo '<button type="button" class="button uptime-copy-endpoint" data-copy-value="' . esc_attr($endpoint) . '"><span class="dashicons dashicons-clipboard" aria-hidden="true"></span>' . esc_html__('Copy', 'uptime-monitor') . '</button>';
@@ -1663,7 +1672,12 @@ class SimpleUptimeMonitor
         echo '<div class="uptime-rest-grid">';
         $this->render_rest_endpoint_row(__('Overall status', 'uptime-monitor'), __('Complete monitor status response.', 'uptime-monitor'), $status_endpoint);
         $this->render_rest_endpoint_row(__('URL status', 'uptime-monitor'), __('Single monitored URL status by ID.', 'uptime-monitor'), $status_detail_endpoint);
-        $this->render_rest_endpoint_row(__('Logs', 'uptime-monitor'), __('Existing admin-only log endpoint.', 'uptime-monitor'), $logs_endpoint);
+        $this->render_rest_endpoint_row(
+            __('Logs', 'uptime-monitor'),
+            __('Existing admin-only log endpoint.', 'uptime-monitor'),
+            $logs_endpoint,
+            '<strong>Parameters:</strong> <code>type</code>, <code>url</code>, <code>date_from</code>, <code>date_to</code>, <code>page</code>, <code>per_page</code>, <code>limit</code>, <code>order</code><br><span class="uptime-rest-endpoint__example"><code>?type=error&amp;url=example.com&amp;limit=10&amp;order=desc</code></span>'
+        );
         echo '</div>';
         echo '<div class="uptime-rest-token">';
         echo '<div class="uptime-rest-token__main">';
@@ -2133,6 +2147,43 @@ class UptimeMonitorLogsController extends \WP_REST_Controller {
 			'methods'             => \WP_REST_Server::READABLE,
 			'callback'            => [$this, 'get_logs'],
 			'permission_callback' => [$this, 'check_permissions'], // '__return_true' when checking route
+			'args'                => [
+				'type'      => [
+					'required'          => false,
+					'sanitize_callback' => 'sanitize_key',
+				],
+				'url'       => [
+					'required'          => false,
+					'sanitize_callback' => 'sanitize_text_field',
+				],
+				'date_from' => [
+					'required'          => false,
+					'sanitize_callback' => 'sanitize_text_field',
+				],
+				'date_to'   => [
+					'required'          => false,
+					'sanitize_callback' => 'sanitize_text_field',
+				],
+				'page'      => [
+					'required'          => false,
+					'default'           => 1,
+					'sanitize_callback' => 'absint',
+				],
+				'per_page'  => [
+					'required'          => false,
+					'default'           => 100,
+					'sanitize_callback' => 'absint',
+				],
+				'limit'     => [
+					'required'          => false,
+					'sanitize_callback' => 'absint',
+				],
+				'order'     => [
+					'required'          => false,
+					'default'           => 'desc',
+					'sanitize_callback' => 'sanitize_key',
+				],
+			],
 		]);
 	}
 	/**
@@ -2140,8 +2191,12 @@ class UptimeMonitorLogsController extends \WP_REST_Controller {
 	 *
 	 * @return bool True if the user has 'manage_options' capability, false otherwise.
 	 */
-	public function check_permissions(): bool {
-		return current_user_can('manage_options'); // Allow only admins
+	public function check_permissions(\WP_REST_Request $request = null): bool {
+		if (current_user_can('manage_options')) {
+			return true;
+		}
+
+		return $request instanceof \WP_REST_Request && SimpleUptimeMonitor::request_has_valid_read_api_token($request);
 	}
 	/**
 	 * Handles REST API request to fetch the uptime log data.
@@ -2159,7 +2214,101 @@ class UptimeMonitorLogsController extends \WP_REST_Controller {
 			);
 		}
 
-		return new \WP_REST_Response($logs_data, 200);
+		$logs_data = array_values(array_filter($logs_data, 'is_array'));
+		$filtered_logs = $this->filter_logs($logs_data, $request);
+		if (is_wp_error($filtered_logs)) {
+			return $filtered_logs;
+		}
+
+		$order = sanitize_key((string)$request->get_param('order'));
+		if ($order !== 'asc') {
+			$filtered_logs = array_reverse($filtered_logs);
+		}
+
+		$total = count($filtered_logs);
+		$page = max(1, absint($request->get_param('page')));
+		$limit = absint($request->get_param('limit'));
+		if ($limit > 0) {
+			$page = 1;
+		}
+		$per_page = $limit > 0 ? min(1000, $limit) : min(100, max(1, absint($request->get_param('per_page'))));
+		$total_pages = $total > 0 ? (int)ceil($total / $per_page) : 0;
+		$offset = ($page - 1) * $per_page;
+		$paged_logs = array_slice($filtered_logs, $offset, $per_page);
+
+		$response = new \WP_REST_Response(array_values($paged_logs), 200);
+		$response->header('X-WP-Total', (string)$total);
+		$response->header('X-WP-TotalPages', (string)$total_pages);
+		$response->header('X-Uptime-Monitor-Page', (string)$page);
+		$response->header('X-Uptime-Monitor-Per-Page', (string)$per_page);
+
+		return $response;
+	}
+
+	private function filter_logs(array $logs_data, \WP_REST_Request $request) {
+		$type = sanitize_key((string)$request->get_param('type'));
+		$url = trim((string)$request->get_param('url'));
+		$date_from = $this->parse_log_date_param($request->get_param('date_from'), false, 'date_from');
+		if (is_wp_error($date_from)) {
+			return $date_from;
+		}
+		$date_to = $this->parse_log_date_param($request->get_param('date_to'), true, 'date_to');
+		if (is_wp_error($date_to)) {
+			return $date_to;
+		}
+
+		return array_values(array_filter($logs_data, function (array $entry) use ($type, $url, $date_from, $date_to): bool {
+			if ($type !== '' && sanitize_key((string)($entry['type'] ?? '')) !== $type) {
+				return false;
+			}
+
+			if ($url !== '') {
+				$entry_data = isset($entry['data']) && is_array($entry['data']) ? $entry['data'] : [];
+				$entry_url = isset($entry_data['url']) ? (string)$entry_data['url'] : '';
+				if ($entry_url === '' || stripos($entry_url, $url) === false) {
+					return false;
+				}
+			}
+
+			$timestamp = isset($entry['timestamp']) ? strtotime((string)$entry['timestamp'] . ' UTC') : false;
+			if ($timestamp === false) {
+				return false;
+			}
+
+			if ($date_from !== null && $timestamp < $date_from) {
+				return false;
+			}
+
+			return $date_to === null || $timestamp <= $date_to;
+		}));
+	}
+
+	private function parse_log_date_param($value, bool $end_of_day, string $param_name) {
+		$value = trim((string)$value);
+		if ($value === '') {
+			return null;
+		}
+
+		if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1) {
+			$value .= $end_of_day ? ' 23:59:59 UTC' : ' 00:00:00 UTC';
+		} else {
+			$value .= ' UTC';
+		}
+
+		$timestamp = strtotime($value);
+		if ($timestamp === false) {
+			return new \WP_Error(
+				'uptime_monitor_invalid_log_date',
+				sprintf(
+					/* translators: %s: Invalid log date query parameter name. */
+					__('Invalid log date parameter: %s.', 'uptime-monitor'),
+					$param_name
+				),
+				['status' => 400]
+			);
+		}
+
+		return $timestamp;
 	}
 }
 add_action('rest_api_init', function() {

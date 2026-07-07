@@ -13,7 +13,7 @@ Simple Uptime Monitor is a lightweight WordPress plugin for monitoring external 
 - Requires at least: WordPress 6.0
 - Tested up to: WordPress 7.0
 - Requires PHP: 8.0+
-- Stable tag: 3.1.1
+- Stable tag: 3.2.0
 - License: GPLv2 or later
 - License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -68,9 +68,20 @@ Endpoint:
 GET /wp-json/uptime-monitor/v1/logs
 ```
 
+Query parameters:
+
+- `type`: filter by log type, for example `info` or `error`.
+- `url`: filter logs whose `data.url` contains the given URL or domain.
+- `date_from`: include logs from this UTC date or datetime, for example `2026-07-07`.
+- `date_to`: include logs up to this UTC date or datetime.
+- `page`: page number, default `1`.
+- `per_page`: entries per page, default `100`, maximum `100`.
+- `limit`: shortcut for the first page with up to `1000` entries.
+- `order`: `desc` for newest first, or `asc` for oldest first. Default: `desc`.
+
 Authentication:
 
-Use a WordPress user with `manage_options`, for example with a WordPress Application Password.
+Use a WordPress user with `manage_options`, for example with a WordPress Application Password, or use the plugin read-only API token as a Bearer token.
 
 Example response:
 
@@ -87,7 +98,7 @@ Example response:
 ]
 ```
 
-Logs are capped to prevent heavy responses from taking down the WordPress request.
+Pagination metadata is returned in the `X-WP-Total`, `X-WP-TotalPages`, `X-Uptime-Monitor-Page`, and `X-Uptime-Monitor-Per-Page` headers. Logs are capped to prevent heavy responses from taking down the WordPress request.
 
 ## Release Build
 
@@ -110,6 +121,12 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 The checks validate PHP syntax, JavaScript syntax when Node.js is available, version consistency, and release packaging basics.
 
 ## Changelog
+
+### 3.2.0
+
+- Added filters and pagination to the REST log endpoint.
+- Added read-only API token access for filtered log responses.
+- Documented supported log query parameters in the REST API viewer and README.
 
 ### 3.1.1
 
