@@ -290,8 +290,14 @@ jQuery(document).ready(function ($) {
     }
 
     function getErrorMessage(response) {
-        if (response && response.data && response.data.message) {
-            return uptimeMonitorL10n.error + response.data.message;
+        const payload = response && response.responseJSON ? response.responseJSON : response;
+
+        if (payload && payload.data && payload.data.message) {
+            return uptimeMonitorL10n.error + payload.data.message;
+        }
+
+        if (payload && payload.message) {
+            return uptimeMonitorL10n.error + payload.message;
         }
 
         return uptimeMonitorL10n.error_generic;
@@ -349,8 +355,8 @@ jQuery(document).ready(function ($) {
                     showNotice(getErrorMessage(response), 'error');
                 }
             },
-            error: function () {
-                showNotice(uptimeMonitorL10n.error_generic, 'error');
+            error: function (jqXHR) {
+                showNotice(getErrorMessage(jqXHR), 'error');
             }
         });
     });
@@ -374,8 +380,8 @@ jQuery(document).ready(function ($) {
                     showNotice(getErrorMessage(response), 'error');
                 }
             },
-            error: function () {
-                showNotice(uptimeMonitorL10n.error_generic, 'error');
+            error: function (jqXHR) {
+                showNotice(getErrorMessage(jqXHR), 'error');
             }
         });
     });
@@ -395,8 +401,8 @@ jQuery(document).ready(function ($) {
             } else {
                 showNotice(getErrorMessage(response), 'error');
             }
-        }).fail(function () {
-            showNotice(uptimeMonitorL10n.error_generic, 'error');
+        }).fail(function (jqXHR) {
+            showNotice(getErrorMessage(jqXHR), 'error');
         });
     });
 

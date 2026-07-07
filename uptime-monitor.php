@@ -5,7 +5,7 @@ namespace SimpleUptimeMonitor;
  * Plugin Name: Simple Uptime Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor de beschikbaarheid van websites en ontvang meldingen via e-mail of Pushover. Beheer eenvoudig meerdere URL's vanuit het WordPress-beheerpaneel, met logging, JSON-import/export, REST-ondersteuning en intervalinstellingen.
- * Version: 3.1.0
+ * Version: 3.1.1
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  */
 class SimpleUptimeMonitor
 {
-    public const VERSION = '3.1.0';
+    public const VERSION = '3.1.1';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
@@ -664,7 +664,7 @@ class SimpleUptimeMonitor
 
     private function format_epoch_for_display(int $epoch): string
     {
-        $format = get_option('date_format') . ' ' . get_option('time_format');
+        $format = 'j F Y H:i';
         $offset = $this->get_display_timezone_offset($epoch);
 
         return date_i18n($format, $epoch + $offset, true);
@@ -794,6 +794,7 @@ class SimpleUptimeMonitor
     private function get_dashboard_summary(array $urls): array
     {
         $urls = $this->add_status_history_to_urls($urls);
+        $urls = $this->sort_dashboard_urls($urls);
         $total = count($urls);
         $up = 0;
         $down = 0;
@@ -879,6 +880,49 @@ class SimpleUptimeMonitor
                 ? __('Incident active', 'uptime-monitor')
                 : ($overall_status === 'degraded' ? __('Degraded', 'uptime-monitor') : __('Operational', 'uptime-monitor')),
         ];
+    }
+
+    private function sort_dashboard_urls(array $urls): array
+    {
+        foreach ($urls as $index => &$url_data) {
+            $url_data['_dashboard_sort_index'] = $index;
+        }
+        unset($url_data);
+
+        usort($urls, function (array $a, array $b): int {
+            $priority_difference = $this->get_dashboard_url_priority($a) <=> $this->get_dashboard_url_priority($b);
+            if ($priority_difference !== 0) {
+                return $priority_difference;
+            }
+
+            return ((int)($a['_dashboard_sort_index'] ?? 0)) <=> ((int)($b['_dashboard_sort_index'] ?? 0));
+        });
+
+        foreach ($urls as &$url_data) {
+            unset($url_data['_dashboard_sort_index']);
+        }
+        unset($url_data);
+
+        return $urls;
+    }
+
+    private function get_dashboard_url_priority(array $url_data): int
+    {
+        $dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
+        if (!empty($dashboard['incident_open'])) {
+            return 0;
+        }
+
+        $status = isset($dashboard['status']) ? sanitize_key($dashboard['status']) : 'unknown';
+        $priorities = [
+            'down' => 1,
+            'degraded' => 2,
+            'unknown' => 3,
+            'up' => 4,
+            'paused' => 5,
+        ];
+
+        return $priorities[$status] ?? 6;
     }
 
     private function get_dashboard_ajax_payload(array $urls): array
@@ -1397,7 +1441,7 @@ class SimpleUptimeMonitor
             } else {
                 $response = wp_remote_get($new_url, ['timeout' => $this->get_request_timeout()]);
                 if (is_wp_error($response)) {
-                    echo '<div class="error"><p>' . esc_html__('Invalid URL:', 'uptime-monitor') . ' ' . esc_html($new_url) . '</p></div>';
+                    echo '<div class="error"><p>' . esc_html__('Invalid URL:', 'uptime-monitor') . ' ' . esc_html($new_url . ' - ' . $response->get_error_message()) . '</p></div>';
                 } else {
                     $status_code = wp_remote_retrieve_response_code($response);
                     if ($this->is_down_status_code($status_code)) {
@@ -1994,7 +2038,7 @@ class SimpleUptimeMonitor
         $response = wp_remote_get($new_url, ['timeout' => $this->get_request_timeout()]);
         if (is_wp_error($response)) {
             /* translators: %s: Invalid monitored URL. */
-            wp_send_json_error(['message' => sprintf(__('Invalid URL: %s', 'uptime-monitor'), $new_url)], 400);
+            wp_send_json_error(['message' => sprintf(__('Invalid URL: %s', 'uptime-monitor'), $new_url . ' - ' . $response->get_error_message())], 400);
         }
 
         $status_code = wp_remote_retrieve_response_code($response);

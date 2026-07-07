@@ -4,7 +4,7 @@ Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 3.1.0
+Stable tag: 3.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -43,6 +43,12 @@ Logs are stored in the WordPress database option `uptime_monitor_logs` and cappe
 No. The log endpoint requires a user with the `manage_options` capability.
 
 == Changelog ==
+
+= 3.1.1 =
+
+* Fixed dashboard date/time display to use day-month-year and 24-hour time.
+* Improved AJAX error handling so HTTP and SSL validation errors are shown clearly.
+* Sorted active incidents and down URLs to the top of the dashboard list.
 
 = 3.1.0 =
 
