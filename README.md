@@ -223,7 +223,7 @@ The checks validate PHP syntax, JavaScript syntax when Node.js is available, ver
 
 ## Roadmap
 
-See [TODO.md](TODO.md) for the current stabilization, release-quality, and feature roadmap.
+Public release notes are tracked in the changelog. Development notes and operational deployment notes are kept outside the public plugin repository.
 
 ## License
 

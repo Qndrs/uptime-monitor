@@ -34,7 +34,6 @@ $files = @(
 
 $directories = @(
     "css",
-    "docs",
     "js",
     "languages"
 )
@@ -46,6 +45,11 @@ foreach ($file in $files) {
 foreach ($directory in $directories) {
     Copy-Item -LiteralPath (Join-Path $root $directory) -Destination $stagingPlugin -Recurse
 }
+
+$stagingDocs = Join-Path $stagingPlugin "docs"
+New-Item -ItemType Directory -Force -Path $stagingDocs | Out-Null
+Copy-Item -LiteralPath (Join-Path $root "docs\heartbeat-monitors.md") -Destination $stagingDocs
+Copy-Item -LiteralPath (Join-Path $root "docs\heartbeat-monitors.nl.md") -Destination $stagingDocs
 
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
