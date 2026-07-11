@@ -13,7 +13,7 @@ Simple Uptime Monitor is a lightweight WordPress plugin for monitoring external 
 - Requires at least: WordPress 6.0
 - Tested up to: WordPress 7.0
 - Requires PHP: 8.0+
-- Stable tag: 3.4.0
+- Stable tag: 3.5.0
 - License: GPLv2 or later
 - License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -29,6 +29,7 @@ Simple Uptime Monitor is a lightweight WordPress plugin for monitoring external 
 - Export and import plugin configuration as JSON.
 - Store structured logs in the WordPress database with an entry limit.
 - Read logs through an authenticated REST endpoint.
+- Monitor firewalled machines or internal apps with outbound heartbeat pings.
 - Dutch translation files are included.
 
 ## Installation
@@ -79,6 +80,12 @@ Query parameters:
 - `limit`: shortcut for the first page with up to `1000` entries.
 - `order`: `desc` for newest first, or `asc` for oldest first. Default: `desc`.
 
+## Heartbeat Monitors
+
+Heartbeat monitors are for machines, jobs, Home Assistant instances, NAS devices, Docker hosts or internal applications that are not reachable inbound, but can send outbound HTTPS requests to the monitor.
+
+Create them manually in **Uptime Monitor > Settings > Heartbeat Monitors**. The plugin shows a one-time token and a copyable `curl` example. See `docs/heartbeat-monitors.md` for cron, systemd, Windows Task Scheduler and Home Assistant examples.
+
 Authentication:
 
 Use a WordPress user with `manage_options`, for example with a WordPress Application Password, or use the plugin read-only API token as a Bearer token.
@@ -121,6 +128,13 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 The checks validate PHP syntax, JavaScript syntax when Node.js is available, version consistency, and release packaging basics.
 
 ## Changelog
+
+### 3.5.0
+
+- Added heartbeat monitors for firewalled machines, jobs, Home Assistant, NAS devices and internal apps.
+- Added a token-protected heartbeat REST endpoint with manual token rotation.
+- Added heartbeat monitor management to the settings page with copyable endpoint and curl examples.
+- Added documentation for cron, systemd timers, Windows Task Scheduler and Home Assistant heartbeat clients.
 
 ### 3.4.0
 

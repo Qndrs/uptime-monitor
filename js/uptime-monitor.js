@@ -220,8 +220,12 @@ jQuery(document).ready(function ($) {
         const incidentLabel = dashboard.incident_label || (incidentOpen ? uptimeMonitorL10n.incident_open : uptimeMonitorL10n.no_incident);
         const incidentDuration = dashboard.incident_duration_display || '';
         const checked = urlData.enabled ? 'checked' : '';
+        const type = urlData.type || 'http_check';
         const url = urlData.url || '';
-        const title = getHost(url);
+        const title = type === 'heartbeat' ? (urlData.name || uptimeMonitorL10n.heartbeat) : getHost(url);
+        const identityMeta = type === 'heartbeat'
+            ? `<span>${escapeHtml((uptimeMonitorL10n.expected_every_seconds || 'Expected every %d seconds').replace('%d', parseInt(urlData.heartbeat && urlData.heartbeat.expected_interval ? urlData.heartbeat.expected_interval : urlData.expected_interval, 10) || 300))}</span>`
+            : `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`;
         const averageResponse = dashboard.average_response_time_display
             ? `<span class="uptime-response-average">${escapeHtml(dashboard.average_response_time_display)}</span>`
             : '';
@@ -234,7 +238,8 @@ jQuery(document).ready(function ($) {
                 </div>
                 <div class="uptime-url-identity">
                     <strong>${escapeHtml(title)}</strong>
-                    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>
+                    <span class="uptime-chip uptime-chip-muted">${escapeHtml(type === 'heartbeat' ? uptimeMonitorL10n.heartbeat : uptimeMonitorL10n.http_check)}</span>
+                    ${identityMeta}
                 </div>
                 <div class="uptime-url-current">
                     ${renderCurrentCheck(dashboard)}

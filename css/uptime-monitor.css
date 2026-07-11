@@ -592,6 +592,126 @@
     justify-content: flex-end;
 }
 
+.uptime-heartbeat-grid {
+    align-items: flex-start;
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(360px, 0.85fr) minmax(520px, 1.35fr);
+    margin-top: 16px;
+}
+
+.uptime-heartbeat-create,
+.uptime-heartbeat-list {
+    background: #f6f7f7;
+    border: 1px solid var(--ump-border);
+    border-radius: 6px;
+    padding: 14px;
+}
+
+.uptime-heartbeat-create {
+    align-self: flex-start;
+}
+
+.uptime-heartbeat-create h3,
+.uptime-heartbeat-list h3 {
+    margin: 0 0 12px;
+}
+
+.uptime-heartbeat-create-fields {
+    align-items: flex-start;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr);
+}
+
+.uptime-heartbeat-create-fields .uptime-settings-field {
+    min-width: 0;
+}
+
+.uptime-heartbeat-create-fields input[type="text"],
+.uptime-heartbeat-create-fields input[type="number"] {
+    box-sizing: border-box;
+    min-height: 42px;
+    width: 100%;
+}
+
+.uptime-heartbeat-alert-options {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    grid-column: 1 / -1;
+}
+
+.uptime-heartbeat-alert-options .uptime-settings-checkbox {
+    margin: 0;
+}
+
+.uptime-heartbeat-create .uptime-settings-actions {
+    justify-content: flex-start;
+    margin-top: 14px;
+}
+
+.uptime-heartbeat-create .uptime-settings-actions .button {
+    flex: 0 0 auto;
+    justify-content: center;
+    min-height: 40px;
+    padding-left: 22px;
+    padding-right: 22px;
+    width: auto;
+}
+
+.uptime-heartbeat-card {
+    align-items: flex-start;
+    background: var(--ump-panel);
+    border: 1px solid var(--ump-border);
+    border-left: 4px solid var(--ump-paused);
+    border-radius: 6px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) 150px;
+    margin: 0 0 10px;
+    padding: 12px;
+}
+
+.uptime-heartbeat-card > div:first-child > strong {
+    display: inline-block;
+    margin: 0 8px 6px 0;
+}
+
+.uptime-heartbeat-card.is-up {
+    border-left-color: var(--ump-up);
+}
+
+.uptime-heartbeat-card.is-down,
+.uptime-heartbeat-card.is-error {
+    border-left-color: var(--ump-down);
+}
+
+.uptime-heartbeat-card p {
+    color: var(--ump-muted);
+    margin: 6px 0 0;
+}
+
+.uptime-heartbeat-actions {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 150px;
+}
+
+.uptime-heartbeat-actions form {
+    width: 100%;
+}
+
+.uptime-heartbeat-actions .button {
+    box-sizing: border-box;
+    min-width: 0;
+    text-align: center;
+    width: 100%;
+}
+
 .uptime-monitor-dashboard .uptime-delete-button {
     border-color: rgba(180, 35, 24, 0.35);
     color: var(--ump-down);
@@ -942,6 +1062,7 @@
 
     .uptime-settings-grid,
     .uptime-settings-io-grid,
+    .uptime-heartbeat-grid,
     .uptime-rest-endpoint,
     .uptime-rest-token {
         grid-template-columns: 1fr;
@@ -975,7 +1096,8 @@
     }
 
     .uptime-settings-metrics,
-    .uptime-settings-fields {
+    .uptime-settings-fields,
+    .uptime-heartbeat-create-fields {
         grid-template-columns: 1fr;
     }
 
@@ -1015,5 +1137,32 @@
     .uptime-url-actions .button {
         flex: 1 1 auto;
         text-align: center;
+    }
+
+    .uptime-heartbeat-card {
+        grid-template-columns: minmax(0, 1fr) 150px;
+    }
+
+    .uptime-heartbeat-create .uptime-settings-actions .button {
+        width: auto;
+    }
+
+    .uptime-heartbeat-actions {
+        align-items: flex-end;
+    }
+}
+
+@media (max-width: 600px) {
+    .uptime-heartbeat-card {
+        grid-template-columns: 1fr;
+    }
+
+    .uptime-heartbeat-create .uptime-settings-actions .button {
+        width: 100%;
+    }
+
+    .uptime-heartbeat-actions {
+        align-items: stretch;
+        width: 100%;
     }
 }

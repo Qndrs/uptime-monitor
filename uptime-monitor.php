@@ -5,7 +5,7 @@ namespace SimpleUptimeMonitor;
  * Plugin Name: Simple Uptime Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor de beschikbaarheid van websites en ontvang meldingen via e-mail of Pushover. Beheer eenvoudig meerdere URL's vanuit het WordPress-beheerpaneel, met logging, JSON-import/export, REST-ondersteuning en intervalinstellingen.
- * Version: 3.4.0
+ * Version: 3.5.0
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  */
 class SimpleUptimeMonitor
 {
-    public const VERSION = '3.4.0';
+    public const VERSION = '3.5.0';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
@@ -41,6 +41,7 @@ class SimpleUptimeMonitor
     public const DEFAULT_RETRY_ATTEMPTS = 3;
     public const DEFAULT_REQUEST_TIMEOUT = 10;
     public const DEFAULT_DOWN_STATUS_CODES = '100-199,300-599';
+    public const DEFAULT_HEARTBEAT_INTERVAL = 300;
     private const CRON_HOOK = 'monitor_uptime_event';
     private const CRON_SCHEDULE = 'uptime_monitor_interval';
 
@@ -190,6 +191,63 @@ class SimpleUptimeMonitor
         return hash_equals($token_hash, self::hash_read_api_token($token));
     }
 
+    private static function get_request_token(\WP_REST_Request $request): string
+    {
+        $token = trim((string)$request->get_header('x_uptime_monitor_token'));
+
+        if ($token === '') {
+            $authorization = trim((string)$request->get_header('authorization'));
+            if (stripos($authorization, 'Bearer ') === 0) {
+                $token = trim(substr($authorization, 7));
+            }
+        }
+
+        if ($token === '' && isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authorization = trim(sanitize_text_field(wp_unslash($_SERVER['HTTP_AUTHORIZATION'])));
+            if (stripos($authorization, 'Bearer ') === 0) {
+                $token = trim(substr($authorization, 7));
+            }
+        }
+
+        if ($token === '' && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $authorization = trim(sanitize_text_field(wp_unslash($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])));
+            if (stripos($authorization, 'Bearer ') === 0) {
+                $token = trim(substr($authorization, 7));
+            }
+        }
+
+        return $token;
+    }
+
+    private function create_heartbeat_token(): string
+    {
+        return 'sumhb_' . wp_generate_password(40, false, false);
+    }
+
+    private function hash_heartbeat_token(string $token): string
+    {
+        return hash_hmac('sha256', $token, wp_salt('auth'));
+    }
+
+    private function find_heartbeat_monitor_index_by_token(array $urls, string $token): ?int
+    {
+        if ($token === '') {
+            return null;
+        }
+
+        $token_hash = $this->hash_heartbeat_token($token);
+        foreach ($urls as $index => $url_data) {
+            if (($url_data['type'] ?? 'http_check') !== 'heartbeat') {
+                continue;
+            }
+            if (!empty($url_data['token_hash']) && hash_equals((string)$url_data['token_hash'], $token_hash)) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
     private function save_pushover_settings_from_post(): void
     {
         $nonce = isset($_POST['uptime_monitor_settings_nonce']) ? sanitize_text_field(wp_unslash($_POST['uptime_monitor_settings_nonce'])) : '';
@@ -214,6 +272,82 @@ class SimpleUptimeMonitor
                 update_option('uptime_monitor_pushover_api_token', $posted_api_token, false);
             }
         }
+    }
+
+    private function add_heartbeat_monitor_from_post(): array
+    {
+        $name = isset($_POST['heartbeat_name']) ? sanitize_text_field(wp_unslash($_POST['heartbeat_name'])) : '';
+        if ($name === '') {
+            return ['token' => '', 'message' => __('Naam voor heartbeat monitor is verplicht.', 'uptime-monitor'), 'type' => 'error'];
+        }
+
+        $expected_interval = isset($_POST['heartbeat_expected_interval']) ? absint(wp_unslash($_POST['heartbeat_expected_interval'])) : self::DEFAULT_HEARTBEAT_INTERVAL;
+        $expected_interval = min(86400, max(60, $expected_interval));
+        $token = $this->create_heartbeat_token();
+        $urls = $this->normalize_stored_urls();
+        $urls[] = [
+            'id' => wp_generate_uuid4(),
+            'type' => 'heartbeat',
+            'name' => $name,
+            'url' => '',
+            'email' => !empty($_POST['heartbeat_email_alert']),
+            'pushover' => !empty($_POST['heartbeat_pushover_alert']),
+            'enabled' => true,
+            'expected_interval' => $expected_interval,
+            'token_hash' => $this->hash_heartbeat_token($token),
+            'token_last4' => substr($token, -4),
+            'token_created_at' => gmdate('Y-m-d H:i:s'),
+            'last_seen' => '',
+            'last_status' => 'unknown',
+            'last_message' => '',
+        ];
+
+        update_option('uptime_monitor_urls', $this->normalize_urls($urls));
+
+        return ['token' => $token, 'message' => __('Heartbeat monitor aangemaakt. Kopieer het token nu; het wordt niet opnieuw getoond.', 'uptime-monitor'), 'type' => 'updated'];
+    }
+
+    private function update_heartbeat_monitor_from_post(string $action): array
+    {
+        $id = isset($_POST['heartbeat_id']) ? sanitize_key(wp_unslash($_POST['heartbeat_id'])) : '';
+        if ($id === '') {
+            return ['token' => '', 'message' => __('Heartbeat monitor niet gevonden.', 'uptime-monitor'), 'type' => 'error'];
+        }
+
+        $urls = $this->normalize_stored_urls();
+        foreach ($urls as $index => $url_data) {
+            if (($url_data['type'] ?? 'http_check') !== 'heartbeat' || $url_data['id'] !== $id) {
+                continue;
+            }
+
+            if ($action === 'delete') {
+                unset($urls[$index]);
+                update_option('uptime_monitor_urls', array_values($urls));
+                $this->delete_status_history_for_url($id);
+                $this->delete_incident_for_url($id);
+
+                return ['token' => '', 'message' => __('Heartbeat monitor verwijderd.', 'uptime-monitor'), 'type' => 'updated'];
+            }
+
+            if ($action === 'toggle') {
+                $urls[$index]['enabled'] = empty($url_data['enabled']);
+                update_option('uptime_monitor_urls', $this->normalize_urls($urls));
+
+                return ['token' => '', 'message' => __('Heartbeat monitor bijgewerkt.', 'uptime-monitor'), 'type' => 'updated'];
+            }
+
+            if ($action === 'rotate') {
+                $token = $this->create_heartbeat_token();
+                $urls[$index]['token_hash'] = $this->hash_heartbeat_token($token);
+                $urls[$index]['token_last4'] = substr($token, -4);
+                $urls[$index]['token_created_at'] = gmdate('Y-m-d H:i:s');
+                update_option('uptime_monitor_urls', $this->normalize_urls($urls));
+
+                return ['token' => $token, 'message' => __('Heartbeat-token vernieuwd. Kopieer het token nu; het wordt niet opnieuw getoond.', 'uptime-monitor'), 'type' => 'updated'];
+            }
+        }
+
+        return ['token' => '', 'message' => __('Heartbeat monitor niet gevonden.', 'uptime-monitor'), 'type' => 'error'];
     }
 
     private function sanitize_status_code_ranges($value): string
@@ -296,7 +430,16 @@ class SimpleUptimeMonitor
 
     private function normalize_url_record($url_data): ?array
     {
-        if (!is_array($url_data) || empty($url_data['url'])) {
+        if (!is_array($url_data)) {
+            return null;
+        }
+
+        $type = isset($url_data['type']) ? sanitize_key($url_data['type']) : 'http_check';
+        if ($type === 'heartbeat') {
+            return $this->normalize_heartbeat_record($url_data);
+        }
+
+        if (empty($url_data['url'])) {
             return null;
         }
 
@@ -307,10 +450,47 @@ class SimpleUptimeMonitor
 
         return [
             'id' => !empty($url_data['id']) ? sanitize_key($url_data['id']) : wp_generate_uuid4(),
+            'type' => 'http_check',
             'url' => $url,
             'email' => !empty($url_data['email']),
             'pushover' => !empty($url_data['pushover']),
             'enabled' => array_key_exists('enabled', $url_data) ? (bool)$url_data['enabled'] : true,
+        ];
+    }
+
+    private function normalize_heartbeat_record(array $url_data): ?array
+    {
+        $name = isset($url_data['name']) ? sanitize_text_field($url_data['name']) : '';
+        if ($name === '' && !empty($url_data['url'])) {
+            $name = sanitize_text_field((string)$url_data['url']);
+        }
+        if ($name === '') {
+            return null;
+        }
+
+        $expected_interval = isset($url_data['expected_interval']) ? absint($url_data['expected_interval']) : self::DEFAULT_HEARTBEAT_INTERVAL;
+        $expected_interval = min(86400, max(60, $expected_interval));
+        $last_seen = isset($url_data['last_seen']) ? sanitize_text_field((string)$url_data['last_seen']) : '';
+        $last_status = isset($url_data['last_status']) ? sanitize_key((string)$url_data['last_status']) : 'unknown';
+        if (!in_array($last_status, ['up', 'down', 'error', 'unknown'], true)) {
+            $last_status = 'unknown';
+        }
+
+        return [
+            'id' => !empty($url_data['id']) ? sanitize_key($url_data['id']) : wp_generate_uuid4(),
+            'type' => 'heartbeat',
+            'name' => $name,
+            'url' => '',
+            'email' => !empty($url_data['email']),
+            'pushover' => !empty($url_data['pushover']),
+            'enabled' => array_key_exists('enabled', $url_data) ? (bool)$url_data['enabled'] : true,
+            'expected_interval' => $expected_interval,
+            'token_hash' => isset($url_data['token_hash']) ? sanitize_text_field((string)$url_data['token_hash']) : '',
+            'token_last4' => isset($url_data['token_last4']) ? sanitize_text_field((string)$url_data['token_last4']) : '',
+            'token_created_at' => isset($url_data['token_created_at']) ? sanitize_text_field((string)$url_data['token_created_at']) : '',
+            'last_seen' => $last_seen,
+            'last_status' => $last_status,
+            'last_message' => isset($url_data['last_message']) ? sanitize_text_field((string)$url_data['last_message']) : '',
         ];
     }
 
@@ -327,6 +507,52 @@ class SimpleUptimeMonitor
         }
 
         return $url;
+    }
+
+    private function get_monitor_display_name(array $url_data): string
+    {
+        if (($url_data['type'] ?? 'http_check') === 'heartbeat') {
+            return isset($url_data['name']) ? (string)$url_data['name'] : __('Heartbeat monitor', 'uptime-monitor');
+        }
+
+        return isset($url_data['url']) ? (string)$url_data['url'] : '';
+    }
+
+    private function get_heartbeat_last_seen_epoch(array $url_data): ?int
+    {
+        $last_seen = isset($url_data['last_seen']) ? (string)$url_data['last_seen'] : '';
+
+        return $this->history_timestamp_to_epoch($last_seen);
+    }
+
+    private function is_heartbeat_stale(array $url_data): bool
+    {
+        if (($url_data['type'] ?? 'http_check') !== 'heartbeat') {
+            return false;
+        }
+
+        if (isset($url_data['enabled']) && $url_data['enabled'] === false) {
+            return false;
+        }
+
+        $last_seen_epoch = $this->get_heartbeat_last_seen_epoch($url_data);
+        if ($last_seen_epoch === null) {
+            return true;
+        }
+
+        $expected_interval = isset($url_data['expected_interval']) ? absint($url_data['expected_interval']) : self::DEFAULT_HEARTBEAT_INTERVAL;
+        $stale_after = max(120, $expected_interval * 2);
+
+        return (time() - $last_seen_epoch) > $stale_after;
+    }
+
+    private function get_log_safe_monitor_records(array $urls): array
+    {
+        return array_map(function (array $url_data): array {
+            unset($url_data['token_hash']);
+
+            return $url_data;
+        }, $urls);
     }
 
     /**
@@ -378,13 +604,15 @@ class SimpleUptimeMonitor
         ];
 
         if ($hook_suffix === 'index.php' || in_array($hook_suffix, $plugin_pages, true)) {
-            // Enqueue admin styles
-            wp_enqueue_style('uptime-monitor-styles', plugin_dir_url(__FILE__) . 'css/uptime-monitor.css', [], self::VERSION);
+            $style_file = plugin_dir_path(__FILE__) . 'css/uptime-monitor.css';
+            $style_version = file_exists($style_file) ? (string)filemtime($style_file) : self::VERSION;
+            wp_enqueue_style('uptime-monitor-styles', plugin_dir_url(__FILE__) . 'css/uptime-monitor.css', [], $style_version);
         }
 
         if ($hook_suffix === 'index.php' || in_array($hook_suffix, $plugin_pages, true)) {
-            // Enqueue admin scripts
-            wp_enqueue_script('uptime-monitor-scripts', plugin_dir_url(__FILE__) . 'js/uptime-monitor.js', ['jquery'], self::VERSION, true);
+            $script_file = plugin_dir_path(__FILE__) . 'js/uptime-monitor.js';
+            $script_version = file_exists($script_file) ? (string)filemtime($script_file) : self::VERSION;
+            wp_enqueue_script('uptime-monitor-scripts', plugin_dir_url(__FILE__) . 'js/uptime-monitor.js', ['jquery'], $script_version, true);
             // Localize AJAX script
             wp_localize_script('uptime-monitor-scripts', 'uptimeMonitorAjax', [
                 'ajax_url' => admin_url('admin-ajax.php'),
@@ -393,47 +621,51 @@ class SimpleUptimeMonitor
             ]);
             // Localize script for translations
             wp_localize_script('uptime-monitor-scripts', 'uptimeMonitorL10n', [
-                'add_success' => __('URL added successfully!', 'uptime-monitor'),
-                'delete_success' => __('URL deleted successfully!', 'uptime-monitor'),
-                'error' => __('An error occurred: ', 'uptime-monitor'),
-                'error_generic' => __('A general error occurred. Please try again.', 'uptime-monitor'),
-                'no_urls' => __('No URLs available. Add one!', 'uptime-monitor'),
-                'delete' => __('Delete', 'uptime-monitor'),
-                'enabled' => __('Enabled', 'uptime-monitor'),
-                'disabled' => __('Disabled', 'uptime-monitor'),
-                'history' => __('Status History', 'uptime-monitor'),
-                'no_history' => __('No checks yet.', 'uptime-monitor'),
-                'status_up' => __('Up', 'uptime-monitor'),
+                'add_success' => __('URL succesvol toegevoegd.', 'uptime-monitor'),
+                'delete_success' => __('URL succesvol verwijderd.', 'uptime-monitor'),
+                'error' => __('Er is een fout opgetreden: ', 'uptime-monitor'),
+                'error_generic' => __('Er is een algemene fout opgetreden. Probeer het opnieuw.', 'uptime-monitor'),
+                'no_urls' => __('Geen URLs beschikbaar. Voeg er een toe.', 'uptime-monitor'),
+                'delete' => __('Verwijderen', 'uptime-monitor'),
+                'enabled' => __('Ingeschakeld', 'uptime-monitor'),
+                'disabled' => __('Uitgeschakeld', 'uptime-monitor'),
+                'history' => __('Statusgeschiedenis', 'uptime-monitor'),
+                'no_history' => __('Nog geen controles.', 'uptime-monitor'),
+                'status_up' => __('Online', 'uptime-monitor'),
                 'status_down' => __('Down', 'uptime-monitor'),
-                'status_error' => __('Error', 'uptime-monitor'),
+                'status_error' => __('Fout', 'uptime-monitor'),
                 /* translators: %d: HTTP status code. */
                 'http_status' => __('HTTP %d', 'uptime-monitor'),
                 /* translators: %d: Response time in milliseconds. */
                 'response_time_ms' => __('%d ms', 'uptime-monitor'),
                 /* translators: %d: Average response time in milliseconds. */
-                'average_response_time_ms' => __('Avg %d ms', 'uptime-monitor'),
-                'trend_faster' => __('Faster', 'uptime-monitor'),
-                'trend_slower' => __('Slower', 'uptime-monitor'),
-                'trend_stable' => __('Stable', 'uptime-monitor'),
+                'average_response_time_ms' => __('Gem. %d ms', 'uptime-monitor'),
+                'trend_faster' => __('Sneller', 'uptime-monitor'),
+                'trend_slower' => __('Langzamer', 'uptime-monitor'),
+                'trend_stable' => __('Stabiel', 'uptime-monitor'),
                 'uptime' => __('Uptime', 'uptime-monitor'),
-                'status_paused' => __('Paused', 'uptime-monitor'),
-                'status_unknown' => __('Unknown', 'uptime-monitor'),
-                'status_degraded' => __('Degraded', 'uptime-monitor'),
-                'operational' => __('Operational', 'uptime-monitor'),
-                'incident_active' => __('Incident active', 'uptime-monitor'),
-                'no_incident' => __('No incident', 'uptime-monitor'),
+                'status_paused' => __('Gepauzeerd', 'uptime-monitor'),
+                'status_unknown' => __('Onbekend', 'uptime-monitor'),
+                'status_degraded' => __('Verminderd', 'uptime-monitor'),
+                'operational' => __('Operationeel', 'uptime-monitor'),
+                'incident_active' => __('Incident actief', 'uptime-monitor'),
+                'no_incident' => __('Geen incident', 'uptime-monitor'),
                 'incident_open' => __('Incident open', 'uptime-monitor'),
-                'no_alerts' => __('No alerts', 'uptime-monitor'),
+                'no_alerts' => __('Geen alarmen', 'uptime-monitor'),
                 'details' => __('Details', 'uptime-monitor'),
-                'hide_details' => __('Hide details', 'uptime-monitor'),
+                'hide_details' => __('Details verbergen', 'uptime-monitor'),
                 'monitoring' => __('Monitoring', 'uptime-monitor'),
-                'dismiss' => __('Dismiss this notice.', 'uptime-monitor'),
-                'copy_success' => __('Copied to clipboard.', 'uptime-monitor'),
-                'copy_failed' => __('Could not copy to clipboard.', 'uptime-monitor'),
-                'refresh_now' => __('Refresh now', 'uptime-monitor'),
-                'refreshing' => __('Refreshing...', 'uptime-monitor'),
-                'refreshed' => __('Updated just now.', 'uptime-monitor'),
+                'dismiss' => __('Deze melding sluiten.', 'uptime-monitor'),
+                'copy_success' => __('Gekopieerd naar het klembord.', 'uptime-monitor'),
+                'copy_failed' => __('Kopieren naar het klembord is mislukt.', 'uptime-monitor'),
+                'refresh_now' => __('Nu verversen', 'uptime-monitor'),
+                'refreshing' => __('Verversen...', 'uptime-monitor'),
+                'refreshed' => __('Net bijgewerkt.', 'uptime-monitor'),
                 'auto_refresh' => __('Auto-refresh', 'uptime-monitor'),
+                'heartbeat' => __('Heartbeat', 'uptime-monitor'),
+                'http_check' => __('HTTP check', 'uptime-monitor'),
+                /* translators: %d: Expected heartbeat interval in seconds. */
+                'expected_every_seconds' => __('Elke %d seconden verwacht', 'uptime-monitor'),
             ]);
         }
     }
@@ -609,17 +841,18 @@ class SimpleUptimeMonitor
             return;
         }
 
+        $monitor_name = $this->get_monitor_display_name($url_data);
         if (!empty($url_data['email'])) {
-            $this->send_email_recovery_alert($url_data['url'], $status_code);
+            $this->send_email_recovery_alert($monitor_name, $status_code);
         }
         if (!empty($url_data['pushover'])) {
-            $this->send_pushover_recovery_alert($url_data['url'], $status_code);
+            $this->send_pushover_recovery_alert($monitor_name, $status_code);
         }
 
         unset($incidents[$url_id]);
         update_option('uptime_monitor_incidents', $incidents, false);
         $this->log_to_json('info', 'Recovery alert sent and incident reset.', [
-            'url' => $url_data['url'],
+            'monitor' => $monitor_name,
             'status_code' => $status_code,
         ]);
     }
@@ -641,25 +874,26 @@ class SimpleUptimeMonitor
         $alert_count = isset($incident['alert_count']) ? absint($incident['alert_count']) : 0;
         $should_send_alert = $alert_count < self::MAX_INCIDENT_ALERTS;
         $is_final_alert = ($alert_count + 1) >= self::MAX_INCIDENT_ALERTS;
+        $monitor_name = $this->get_monitor_display_name($url_data);
 
         if ($should_send_alert) {
             if (!empty($url_data['email'])) {
-                $this->send_email_alert($url_data['url'], $status_code, $error_message, $is_final_alert);
+                $this->send_email_alert($monitor_name, $status_code, $error_message, $is_final_alert);
             }
             if (!empty($url_data['pushover'])) {
-                $this->send_pushover_alert($url_data['url'], $status_code, $error_message, $is_final_alert);
+                $this->send_pushover_alert($monitor_name, $status_code, $error_message, $is_final_alert);
             }
 
             $alert_count++;
             $incident['last_alert_at'] = gmdate('Y-m-d H:i:s');
             $this->log_to_json('info', 'Down alert processed.', [
-                'url' => $url_data['url'],
+                'monitor' => $monitor_name,
                 'alert_count' => $alert_count,
                 'final_alert_until_recovery' => $is_final_alert,
             ]);
         } else {
             $this->log_to_json('info', 'Down alert suppressed until recovery.', [
-                'url' => $url_data['url'],
+                'monitor' => $monitor_name,
                 'alert_count' => $alert_count,
             ]);
         }
@@ -749,13 +983,45 @@ class SimpleUptimeMonitor
     private function get_url_dashboard_data(array $url_data, array $history, array $incidents): array
     {
         $url_id = isset($url_data['id']) ? sanitize_key($url_data['id']) : '';
+        $type = isset($url_data['type']) ? sanitize_key($url_data['type']) : 'http_check';
         $latest = $this->get_latest_history_entry($history);
         $incident_open = $url_id !== '' && isset($incidents[$url_id]);
         $incident = $incident_open && is_array($incidents[$url_id]) ? $incidents[$url_id] : [];
         $status = 'unknown';
+        $incident_label = $incident_open ? __('Incident open', 'uptime-monitor') : __('No incident', 'uptime-monitor');
+        $incident_duration_display = $this->get_incident_duration_display($incident);
 
         if (isset($url_data['enabled']) && $url_data['enabled'] === false) {
             $status = 'paused';
+        } elseif ($type === 'heartbeat') {
+            $heartbeat_stale = $this->is_heartbeat_stale($url_data);
+            $last_status = isset($url_data['last_status']) ? sanitize_key((string)$url_data['last_status']) : 'unknown';
+
+            if ($latest === null && !empty($url_data['last_seen'])) {
+                $last_seen = (string)$url_data['last_seen'];
+                $latest = [
+                    'timestamp' => $last_seen,
+                    'display_timestamp' => $this->format_history_timestamp($last_seen),
+                    'status' => in_array($last_status, ['up', 'down', 'error'], true) ? $last_status : 'up',
+                    'status_code' => null,
+                    'response_time_ms' => null,
+                    'message' => isset($url_data['last_message']) ? (string)$url_data['last_message'] : '',
+                ];
+            }
+
+            if ($heartbeat_stale) {
+                $status = 'down';
+                $incident_open = true;
+                $incident_label = __('Heartbeat stale', 'uptime-monitor');
+                $last_seen_epoch = $this->get_heartbeat_last_seen_epoch($url_data);
+                $incident_duration_display = $last_seen_epoch !== null
+                    ? sprintf(__('Missing for %s', 'uptime-monitor'), human_time_diff($last_seen_epoch, time()))
+                    : __('No ping received', 'uptime-monitor');
+            } elseif (in_array($last_status, ['down', 'error'], true)) {
+                $status = 'down';
+            } elseif ($last_status === 'up' || $latest !== null) {
+                $status = 'up';
+            }
         } elseif ($incident_open) {
             $status = 'down';
         } elseif ($latest !== null) {
@@ -779,8 +1045,8 @@ class SimpleUptimeMonitor
             'average_response_time_ms' => $average_response_time_ms,
             'average_response_time_display' => $average_response_display,
             'incident_open' => $incident_open,
-            'incident_label' => $incident_open ? __('Incident open', 'uptime-monitor') : __('No incident', 'uptime-monitor'),
-            'incident_duration_display' => $this->get_incident_duration_display($incident),
+            'incident_label' => $incident_label,
+            'incident_duration_display' => $incident_duration_display,
             'notifications_label' => $this->get_notifications_label($url_data),
         ];
     }
@@ -986,6 +1252,12 @@ class SimpleUptimeMonitor
                 ],
             ],
         ]);
+
+        register_rest_route('uptime-monitor/v1', '/heartbeat', [
+            'methods' => \WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'rest_receive_heartbeat'],
+            'permission_callback' => [$this, 'rest_check_heartbeat_permissions'],
+        ]);
     }
 
     public function rest_check_permissions(\WP_REST_Request $request = null): bool
@@ -999,30 +1271,21 @@ class SimpleUptimeMonitor
 
     public static function request_has_valid_read_api_token(\WP_REST_Request $request): bool
     {
-        $token = trim((string)$request->get_header('x_uptime_monitor_token'));
+        return self::verify_read_api_token(self::get_request_token($request));
+    }
 
+    public function rest_check_heartbeat_permissions(\WP_REST_Request $request)
+    {
+        $token = self::get_request_token($request);
         if ($token === '') {
-            $authorization = trim((string)$request->get_header('authorization'));
-            if (stripos($authorization, 'Bearer ') === 0) {
-                $token = trim(substr($authorization, 7));
-            }
+            return new \WP_Error('uptime_monitor_heartbeat_token_missing', __('Heartbeat token is missing.', 'uptime-monitor'), ['status' => 401]);
         }
 
-        if ($token === '' && isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            $authorization = trim(sanitize_text_field(wp_unslash($_SERVER['HTTP_AUTHORIZATION'])));
-            if (stripos($authorization, 'Bearer ') === 0) {
-                $token = trim(substr($authorization, 7));
-            }
+        if ($this->find_heartbeat_monitor_index_by_token($this->normalize_stored_urls(), $token) === null) {
+            return new \WP_Error('uptime_monitor_heartbeat_token_invalid', __('Heartbeat token is invalid.', 'uptime-monitor'), ['status' => 403]);
         }
 
-        if ($token === '' && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-            $authorization = trim(sanitize_text_field(wp_unslash($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])));
-            if (stripos($authorization, 'Bearer ') === 0) {
-                $token = trim(substr($authorization, 7));
-            }
-        }
-
-        return self::verify_read_api_token($token);
+        return true;
     }
 
     public function rest_get_status(\WP_REST_Request $request): \WP_REST_Response
@@ -1044,6 +1307,62 @@ class SimpleUptimeMonitor
         }
 
         return new \WP_Error('uptime_monitor_url_not_found', __('URL not found.', 'uptime-monitor'), ['status' => 404]);
+    }
+
+    public function rest_receive_heartbeat(\WP_REST_Request $request)
+    {
+        $token = self::get_request_token($request);
+        if ($token === '') {
+            return new \WP_Error('uptime_monitor_heartbeat_token_missing', __('Heartbeat token is missing.', 'uptime-monitor'), ['status' => 401]);
+        }
+
+        $urls = $this->normalize_stored_urls();
+        $matched_index = $this->find_heartbeat_monitor_index_by_token($urls, $token);
+
+        if ($matched_index === null) {
+            return new \WP_Error('uptime_monitor_heartbeat_token_invalid', __('Heartbeat token is invalid.', 'uptime-monitor'), ['status' => 403]);
+        }
+
+        $url_data = $urls[$matched_index];
+        if (isset($url_data['enabled']) && $url_data['enabled'] === false) {
+            return new \WP_Error('uptime_monitor_heartbeat_disabled', __('Heartbeat monitor is disabled.', 'uptime-monitor'), ['status' => 403]);
+        }
+
+        $status = sanitize_key((string)$request->get_param('status'));
+        if (!in_array($status, ['up', 'down', 'error'], true)) {
+            $status = 'up';
+        }
+
+        $message = sanitize_text_field((string)$request->get_param('message'));
+        $timestamp = gmdate('Y-m-d H:i:s');
+        $url_data['last_seen'] = $timestamp;
+        $url_data['last_status'] = $status;
+        $url_data['last_message'] = $message;
+        $urls[$matched_index] = $url_data;
+        update_option('uptime_monitor_urls', $urls);
+
+        $history_message = $message !== '' ? $message : __('Heartbeat received.', 'uptime-monitor');
+        $this->record_status_history($url_data, $status, null, null, $history_message);
+
+        if ($status === 'up') {
+            $this->handle_up_incident_state($url_data, null);
+        } else {
+            $this->handle_down_incident_state($url_data, null, $history_message);
+        }
+
+        $this->log_to_json('info', 'Heartbeat received.', [
+            'id' => $url_data['id'],
+            'name' => $this->get_monitor_display_name($url_data),
+            'status' => $status,
+        ]);
+
+        return new \WP_REST_Response([
+            'success' => true,
+            'id' => $url_data['id'],
+            'name' => $this->get_monitor_display_name($url_data),
+            'status' => $status,
+            'last_seen' => $timestamp,
+        ], 200);
     }
 
     private function get_rest_status_payload(array $dashboard): array
@@ -1090,8 +1409,16 @@ class SimpleUptimeMonitor
 
         return [
             'id' => isset($url_data['id']) ? (string)$url_data['id'] : '',
+            'type' => isset($url_data['type']) ? (string)$url_data['type'] : 'http_check',
+            'name' => isset($url_data['name']) ? (string)$url_data['name'] : '',
             'url' => isset($url_data['url']) ? (string)$url_data['url'] : '',
             'enabled' => !isset($url_data['enabled']) || (bool)$url_data['enabled'],
+            'heartbeat' => ($url_data['type'] ?? 'http_check') === 'heartbeat' ? [
+                'expected_interval' => isset($url_data['expected_interval']) ? absint($url_data['expected_interval']) : self::DEFAULT_HEARTBEAT_INTERVAL,
+                'last_seen' => isset($url_data['last_seen']) ? (string)$url_data['last_seen'] : '',
+                'last_status' => isset($url_data['last_status']) ? (string)$url_data['last_status'] : 'unknown',
+                'last_message' => isset($url_data['last_message']) ? (string)$url_data['last_message'] : '',
+            ] : null,
             'alerts' => [
                 'email' => !empty($url_data['email']),
                 'pushover' => !empty($url_data['pushover']),
@@ -1399,9 +1726,12 @@ class SimpleUptimeMonitor
         $dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
         $status = isset($dashboard['status']) ? sanitize_key($dashboard['status']) : 'unknown';
         $status_label = isset($dashboard['status_label']) ? (string)$dashboard['status_label'] : $this->get_dashboard_status_label($status);
+        $type = isset($url_data['type']) ? sanitize_key($url_data['type']) : 'http_check';
         $url = isset($url_data['url']) ? esc_url_raw($url_data['url']) : '';
         $host = $url !== '' ? wp_parse_url($url, PHP_URL_HOST) : '';
-        $title = is_string($host) && $host !== '' ? $host : $url;
+        $title = $type === 'heartbeat'
+            ? $this->get_monitor_display_name($url_data)
+            : (is_string($host) && $host !== '' ? $host : $url);
         $latest = isset($dashboard['latest']) && is_array($dashboard['latest']) ? $dashboard['latest'] : null;
         $detail = '';
 
@@ -1424,10 +1754,10 @@ class SimpleUptimeMonitor
         echo '<strong>' . esc_html($title) . '</strong>';
         echo '<span><b>' . esc_html($status_label) . '</b>';
         if ($detail !== '') {
-            echo ' · ' . esc_html($detail);
+            echo ' Â· ' . esc_html($detail);
         }
         if ($incident_duration !== '') {
-            echo ' · ' . esc_html($incident_duration);
+            echo ' Â· ' . esc_html($incident_duration);
         }
         echo '</span>';
         echo '</div>';
@@ -1474,12 +1804,15 @@ class SimpleUptimeMonitor
     {
         $history = isset($url_data['history']) && is_array($url_data['history']) ? $url_data['history'] : [];
         $dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
+        $type = isset($url_data['type']) ? sanitize_key($url_data['type']) : 'http_check';
         $status = isset($dashboard['status']) ? sanitize_key($dashboard['status']) : 'unknown';
         $status_label = isset($dashboard['status_label']) ? $dashboard['status_label'] : $this->get_dashboard_status_label($status);
         $latest = isset($dashboard['latest']) && is_array($dashboard['latest']) ? $dashboard['latest'] : null;
         $url = isset($url_data['url']) ? esc_url_raw($url_data['url']) : '';
         $host = $url !== '' ? wp_parse_url($url, PHP_URL_HOST) : '';
-        $title = is_string($host) && $host !== '' ? $host : $url;
+        $title = $type === 'heartbeat'
+            ? $this->get_monitor_display_name($url_data)
+            : (is_string($host) && $host !== '' ? $host : $url);
         $enabled = !isset($url_data['enabled']) || (bool)$url_data['enabled'];
         $incident_open = !empty($dashboard['incident_open']);
         $notifications_label = isset($dashboard['notifications_label']) ? $dashboard['notifications_label'] : $this->get_notifications_label($url_data);
@@ -1494,8 +1827,11 @@ class SimpleUptimeMonitor
 
         echo '<div class="uptime-url-identity">';
         echo '<strong>' . esc_html($title) . '</strong>';
-        if ($url !== '') {
+        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html($type === 'heartbeat' ? __('Heartbeat', 'uptime-monitor') : __('HTTP check', 'uptime-monitor')) . '</span>';
+        if ($type !== 'heartbeat' && $url !== '') {
             echo '<a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer">' . esc_html($url) . '</a>';
+        } elseif ($type === 'heartbeat' && !empty($url_data['expected_interval'])) {
+            echo '<span>' . esc_html(sprintf(__('Elke %d seconden verwacht', 'uptime-monitor'), absint($url_data['expected_interval']))) . '</span>';
         }
         echo '</div>';
 
@@ -1652,16 +1988,31 @@ class SimpleUptimeMonitor
     {
         $request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
         $generated_read_api_token = '';
+        $generated_heartbeat_token = '';
         // Opslaan van instellingen
 	    if ($request_method === 'POST') {
 		    check_admin_referer('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
 
             if (isset($_POST['generate_read_api_token'])) {
                 $generated_read_api_token = $this->create_read_api_token();
-                echo '<div class="updated"><p>' . esc_html__('Read-only API token generated. Copy it now; it will not be shown again.', 'uptime-monitor') . '</p></div>';
+                echo '<div class="updated"><p>' . esc_html__('Alleen-lezen API-token gegenereerd. Kopieer het nu; het wordt niet opnieuw getoond.', 'uptime-monitor') . '</p></div>';
             } elseif (isset($_POST['clear_read_api_token'])) {
                 $this->clear_read_api_token();
-                echo '<div class="updated"><p>' . esc_html__('Read-only API token revoked.', 'uptime-monitor') . '</p></div>';
+                echo '<div class="updated"><p>' . esc_html__('Alleen-lezen API-token ingetrokken.', 'uptime-monitor') . '</p></div>';
+            } elseif (isset($_POST['add_heartbeat_monitor'])) {
+                $result = $this->add_heartbeat_monitor_from_post();
+                $generated_heartbeat_token = $result['token'];
+                echo '<div class="' . esc_attr($result['type']) . '"><p>' . esc_html($result['message']) . '</p></div>';
+            } elseif (isset($_POST['rotate_heartbeat_token'])) {
+                $result = $this->update_heartbeat_monitor_from_post('rotate');
+                $generated_heartbeat_token = $result['token'];
+                echo '<div class="' . esc_attr($result['type']) . '"><p>' . esc_html($result['message']) . '</p></div>';
+            } elseif (isset($_POST['toggle_heartbeat_monitor'])) {
+                $result = $this->update_heartbeat_monitor_from_post('toggle');
+                echo '<div class="' . esc_attr($result['type']) . '"><p>' . esc_html($result['message']) . '</p></div>';
+            } elseif (isset($_POST['delete_heartbeat_monitor'])) {
+                $result = $this->update_heartbeat_monitor_from_post('delete');
+                echo '<div class="' . esc_attr($result['type']) . '"><p>' . esc_html($result['message']) . '</p></div>';
             } else {
                 $import_json = isset($_POST['import_json']) ? sanitize_textarea_field(wp_unslash($_POST['import_json'])) : '';
 		    if ($import_json !== '') {
@@ -1693,7 +2044,7 @@ class SimpleUptimeMonitor
                         }
                         // Herplan cronjob
                         $this->reschedule_monitoring();
-                        echo '<div class="updated"><p>' . esc_html__('Configuration imported successfully!', 'uptime-monitor') . '</p></div>';
+                        echo '<div class="updated"><p>' . esc_html__('Configuratie succesvol geimporteerd.', 'uptime-monitor') . '</p></div>';
                     }
 			    }
 		    } else {
@@ -1720,12 +2071,12 @@ class SimpleUptimeMonitor
                         );
 
                     if ($test_sent) {
-                        echo '<div class="updated"><p>' . esc_html__('Settings saved and Pushover test notification sent.', 'uptime-monitor') . '</p></div>';
+                        echo '<div class="updated"><p>' . esc_html__('Instellingen opgeslagen en Pushover-testmelding verzonden.', 'uptime-monitor') . '</p></div>';
                     } else {
-                        echo '<div class="error"><p>' . esc_html__('Settings saved, but the Pushover test notification failed. Check your credentials and logs.', 'uptime-monitor') . '</p></div>';
+                        echo '<div class="error"><p>' . esc_html__('Instellingen opgeslagen, maar de Pushover-testmelding is mislukt. Controleer credentials en logs.', 'uptime-monitor') . '</p></div>';
                     }
                 } else {
-			        echo '<div class="updated"><p>' . esc_html__('Settings saved!', 'uptime-monitor') . '</p></div>';
+			        echo '<div class="updated"><p>' . esc_html__('Instellingen opgeslagen.', 'uptime-monitor') . '</p></div>';
                 }
 		    }
             }
@@ -1742,6 +2093,13 @@ class SimpleUptimeMonitor
         $pushover_user_key_placeholder = $stored_pushover_user_key !== '' ? __('Configured', 'uptime-monitor') : '';
         $pushover_api_token_placeholder = $stored_pushover_api_token !== '' ? __('Configured', 'uptime-monitor') : '';
 	    $urls = $this->normalize_stored_urls();
+        $export_urls = array_map(function (array $url_data): array {
+            if (($url_data['type'] ?? 'http_check') === 'heartbeat') {
+                unset($url_data['token_hash'], $url_data['token_last4'], $url_data['token_created_at']);
+            }
+
+            return $url_data;
+        }, $urls);
 
 	    $export_data = [
 		    'settings' => [
@@ -1750,44 +2108,44 @@ class SimpleUptimeMonitor
                 'request_timeout' => $request_timeout,
                 'down_status_codes' => $down_status_codes,
             ],
-		    'urls'     => $urls,
+		    'urls'     => $export_urls,
 	    ];
 
 	    $json_export = json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 
         $pushover_status = $this->pushover_uses_constants()
-            ? __('wp-config.php constants', 'uptime-monitor')
-            : ($this->has_pushover_credentials() ? __('Configured in database', 'uptime-monitor') : __('Not configured', 'uptime-monitor'));
+            ? __('wp-config.php-constanten', 'uptime-monitor')
+            : ($this->has_pushover_credentials() ? __('In database ingesteld', 'uptime-monitor') : __('Niet ingesteld', 'uptime-monitor'));
         $read_api_token_last4 = (string)get_option('uptime_monitor_read_api_token_last4', '');
         $read_api_token_created_at = (string)get_option('uptime_monitor_read_api_token_created_at', '');
         $read_api_token_configured = $this->has_read_api_token();
-        $read_api_token_status = $read_api_token_configured ? __('Token configured', 'uptime-monitor') : __('No token configured', 'uptime-monitor');
+        $read_api_token_status = $read_api_token_configured ? __('Token ingesteld', 'uptime-monitor') : __('Geen token ingesteld', 'uptime-monitor');
         $read_api_token_created_display = $read_api_token_created_at !== '' ? $this->format_history_timestamp($read_api_token_created_at) : '';
 
 	    echo '<div class="wrap uptime-monitor-admin uptime-monitor-dashboard uptime-monitor-settings-page">';
         echo '<div class="uptime-dashboard-header">';
-        echo '<h1>' . esc_html__('Uptime Monitor Settings', 'uptime-monitor') . '</h1>';
+        echo '<h1>' . esc_html__('Uptime Monitor-instellingen', 'uptime-monitor') . '</h1>';
         echo '</div>';
 
-        echo '<section class="uptime-statusbar uptime-settings-statusbar is-up" aria-label="' . esc_attr__('Settings summary', 'uptime-monitor') . '">';
+        echo '<section class="uptime-statusbar uptime-settings-statusbar is-up" aria-label="' . esc_attr__('Instellingenoverzicht', 'uptime-monitor') . '">';
         echo '<div class="uptime-statusbar__state">';
         echo '<span class="uptime-status-light is-up" aria-hidden="true"></span>';
-        echo '<strong>' . esc_html__('Configuration panel', 'uptime-monitor') . '</strong>';
+        echo '<strong>' . esc_html__('Configuratiepaneel', 'uptime-monitor') . '</strong>';
         echo '</div>';
-        echo '<span><strong>' . esc_html((string)count($urls)) . '</strong> ' . esc_html__('monitored URLs', 'uptime-monitor') . '</span>';
+        echo '<span><strong>' . esc_html((string)count($urls)) . '</strong> ' . esc_html__('monitors', 'uptime-monitor') . '</span>';
         echo '<span>' . esc_html__('Interval:', 'uptime-monitor') . ' <strong>' . esc_html((string)$monitor_interval) . 's</strong></span>';
-        echo '<span>' . esc_html__('Retries:', 'uptime-monitor') . ' <strong>' . esc_html((string)$retry_attempts) . '</strong></span>';
+        echo '<span>' . esc_html__('Pogingen:', 'uptime-monitor') . ' <strong>' . esc_html((string)$retry_attempts) . '</strong></span>';
         echo '<span>' . esc_html__('Timeout:', 'uptime-monitor') . ' <strong>' . esc_html((string)$request_timeout) . 's</strong></span>';
         echo '<span>' . esc_html__('Pushover:', 'uptime-monitor') . ' <strong>' . esc_html($pushover_status) . '</strong></span>';
         echo '</section>';
 
-        echo '<section class="uptime-metric-grid uptime-settings-metrics" aria-label="' . esc_attr__('Current settings', 'uptime-monitor') . '">';
-        $this->render_dashboard_metric(__('Monitor interval', 'uptime-monitor'), (string)$monitor_interval . 's', __('Minimum 60 seconds', 'uptime-monitor'));
-        $this->render_dashboard_metric(__('Retry attempts', 'uptime-monitor'), (string)$retry_attempts, __('Before status is final', 'uptime-monitor'));
-        $this->render_dashboard_metric(__('Request timeout', 'uptime-monitor'), (string)$request_timeout . 's', __('Per HTTP attempt', 'uptime-monitor'));
-        $this->render_dashboard_metric(__('Down codes', 'uptime-monitor'), $down_status_codes, __('HTTP status ranges', 'uptime-monitor'));
-        $this->render_dashboard_metric(__('Pushover', 'uptime-monitor'), $pushover_status, __('Credential source', 'uptime-monitor'));
+        echo '<section class="uptime-metric-grid uptime-settings-metrics" aria-label="' . esc_attr__('Huidige instellingen', 'uptime-monitor') . '">';
+        $this->render_dashboard_metric(__('Monitorinterval', 'uptime-monitor'), (string)$monitor_interval . 's', __('Minimaal 60 seconden', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Herhaalpogingen', 'uptime-monitor'), (string)$retry_attempts, __('Voordat de status definitief is', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Verzoek-timeout', 'uptime-monitor'), (string)$request_timeout . 's', __('Per HTTP-poging', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Down-statuscodes', 'uptime-monitor'), $down_status_codes, __('HTTP-statusbereiken', 'uptime-monitor'));
+        $this->render_dashboard_metric(__('Pushover', 'uptime-monitor'), $pushover_status, __('Bron van toegangsgegevens', 'uptime-monitor'));
         echo '</section>';
 
         $status_endpoint = rest_url('uptime-monitor/v1/status');
@@ -1796,35 +2154,35 @@ class SimpleUptimeMonitor
         echo '<section class="uptime-settings-panel uptime-rest-viewer" aria-label="' . esc_attr__('REST API viewer', 'uptime-monitor') . '">';
         echo '<div class="uptime-settings-panel__header">';
         echo '<h2>' . esc_html__('REST API', 'uptime-monitor') . '</h2>';
-        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Admin authentication required', 'uptime-monitor') . '</span>';
+        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Admin-authenticatie vereist', 'uptime-monitor') . '</span>';
         echo '</div>';
         echo '<div class="uptime-rest-grid">';
-        $this->render_rest_endpoint_row(__('Overall status', 'uptime-monitor'), __('Complete monitor status response.', 'uptime-monitor'), $status_endpoint);
-        $this->render_rest_endpoint_row(__('URL status', 'uptime-monitor'), __('Single monitored URL status by ID.', 'uptime-monitor'), $status_detail_endpoint);
+        $this->render_rest_endpoint_row(__('Algemene status', 'uptime-monitor'), __('Volledige monitorstatusresponse.', 'uptime-monitor'), $status_endpoint);
+        $this->render_rest_endpoint_row(__('URL-status', 'uptime-monitor'), __('Status van een monitor op basis van ID.', 'uptime-monitor'), $status_detail_endpoint);
         $this->render_rest_endpoint_row(
-            __('Logs', 'uptime-monitor'),
-            __('Existing admin-only log endpoint.', 'uptime-monitor'),
+            __('Logboek', 'uptime-monitor'),
+            __('Bestaand logendpoint, alleen voor admins.', 'uptime-monitor'),
             $logs_endpoint,
             '<strong>Parameters:</strong> <code>type</code>, <code>url</code>, <code>date_from</code>, <code>date_to</code>, <code>page</code>, <code>per_page</code>, <code>limit</code>, <code>order</code><br><span class="uptime-rest-endpoint__example"><code>?type=error&amp;url=example.com&amp;limit=10&amp;order=desc</code></span>'
         );
         echo '</div>';
         echo '<div class="uptime-rest-token">';
         echo '<div class="uptime-rest-token__main">';
-        echo '<strong>' . esc_html__('Read-only API token', 'uptime-monitor') . '</strong>';
+        echo '<strong>' . esc_html__('Alleen-lezen API-token', 'uptime-monitor') . '</strong>';
         echo '<span class="uptime-chip' . ($read_api_token_configured ? '' : ' is-warning') . '">' . esc_html($read_api_token_status) . '</span>';
-        echo '<p>' . esc_html__('Use this token for external dashboards that only need the status endpoints.', 'uptime-monitor') . '</p>';
-        echo '<code>' . esc_html__('Authorization: Bearer your-token', 'uptime-monitor') . '</code>';
+        echo '<p>' . esc_html__('Gebruik dit token voor externe dashboards die alleen de status-endpoints nodig hebben.', 'uptime-monitor') . '</p>';
+        echo '<code>' . esc_html__('Authorization: Bearer jouw-token', 'uptime-monitor') . '</code>';
         if ($read_api_token_configured && $read_api_token_last4 !== '') {
             /* translators: %s: Last four characters of the read-only API token. */
-            echo '<p class="uptime-rest-token__meta">' . esc_html(sprintf(__('Current token ends with %s.', 'uptime-monitor'), $read_api_token_last4)) . '</p>';
+            echo '<p class="uptime-rest-token__meta">' . esc_html(sprintf(__('Huidig token eindigt op %s.', 'uptime-monitor'), $read_api_token_last4)) . '</p>';
         }
         if ($read_api_token_created_display !== '') {
             /* translators: %s: Token creation date. */
-            echo '<p class="uptime-rest-token__meta">' . esc_html(sprintf(__('Created: %s', 'uptime-monitor'), $read_api_token_created_display)) . '</p>';
+            echo '<p class="uptime-rest-token__meta">' . esc_html(sprintf(__('Aangemaakt: %s', 'uptime-monitor'), $read_api_token_created_display)) . '</p>';
         }
         if ($generated_read_api_token !== '') {
             echo '<div class="uptime-rest-token__generated">';
-            echo '<strong>' . esc_html__('Copy this token now. It will not be shown again.', 'uptime-monitor') . '</strong>';
+            echo '<strong>' . esc_html__('Kopieer dit token nu. Het wordt niet opnieuw getoond.', 'uptime-monitor') . '</strong>';
             echo '<code>' . esc_html($generated_read_api_token) . '</code>';
             echo '<button type="button" class="button uptime-copy-endpoint" data-copy-value="' . esc_attr($generated_read_api_token) . '"><span class="dashicons dashicons-clipboard" aria-hidden="true"></span>' . esc_html__('Copy', 'uptime-monitor') . '</button>';
             echo '</div>';
@@ -1832,11 +2190,100 @@ class SimpleUptimeMonitor
         echo '</div>';
         echo '<form method="post" class="uptime-rest-token__actions">';
         wp_nonce_field('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
-        echo '<button type="submit" class="button button-primary" name="generate_read_api_token" value="1"><span class="dashicons dashicons-update" aria-hidden="true"></span>' . esc_html($read_api_token_configured ? __('Rotate token', 'uptime-monitor') : __('Generate token', 'uptime-monitor')) . '</button>';
+        echo '<button type="submit" class="button button-primary" name="generate_read_api_token" value="1"><span class="dashicons dashicons-update" aria-hidden="true"></span>' . esc_html($read_api_token_configured ? __('Token vernieuwen', 'uptime-monitor') : __('Token genereren', 'uptime-monitor')) . '</button>';
         if ($read_api_token_configured) {
-            echo '<button type="submit" class="button uptime-delete-button" name="clear_read_api_token" value="1"><span class="dashicons dashicons-trash" aria-hidden="true"></span>' . esc_html__('Revoke token', 'uptime-monitor') . '</button>';
+            echo '<button type="submit" class="button uptime-delete-button" name="clear_read_api_token" value="1"><span class="dashicons dashicons-trash" aria-hidden="true"></span>' . esc_html__('Token intrekken', 'uptime-monitor') . '</button>';
         }
         echo '</form>';
+        echo '</div>';
+        echo '</section>';
+
+        $heartbeat_endpoint = rest_url('uptime-monitor/v1/heartbeat');
+        $heartbeat_monitors = array_values(array_filter($urls, function (array $url_data): bool {
+            return ($url_data['type'] ?? 'http_check') === 'heartbeat';
+        }));
+        echo '<section class="uptime-settings-panel uptime-settings-panel-wide uptime-heartbeat-panel" aria-label="' . esc_attr__('Heartbeat monitors', 'uptime-monitor') . '">';
+        echo '<div class="uptime-settings-panel__header">';
+        echo '<h2>' . esc_html__('Heartbeat monitors', 'uptime-monitor') . '</h2>';
+        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Uitgaande clientpings', 'uptime-monitor') . '</span>';
+        echo '</div>';
+        echo '<p class="uptime-settings-note">' . esc_html__('Gebruik heartbeat monitors voor computers, jobs, Home Assistant, NAS-apparaten of interne apps die deze monitor via uitgaande HTTPS kunnen bereiken, maar zelf niet van buitenaf bereikbaar zijn.', 'uptime-monitor') . '</p>';
+        echo '<div class="uptime-rest-endpoint uptime-heartbeat-endpoint">';
+        echo '<div class="uptime-rest-endpoint__main">';
+        echo '<strong>' . esc_html__('Heartbeat-endpoint', 'uptime-monitor') . '</strong>';
+        echo '<span>' . esc_html__('Clients sturen een POST naar dit endpoint met hun eigen heartbeat-token.', 'uptime-monitor') . '</span>';
+        echo '<code>' . esc_html($heartbeat_endpoint) . '</code>';
+        echo '</div>';
+        echo '<div class="uptime-rest-endpoint__actions">';
+        echo '<button type="button" class="button uptime-copy-endpoint" data-copy-value="' . esc_attr($heartbeat_endpoint) . '"><span class="dashicons dashicons-clipboard" aria-hidden="true"></span>' . esc_html__('Kopieren', 'uptime-monitor') . '</button>';
+        echo '</div>';
+        echo '</div>';
+        if ($generated_heartbeat_token !== '') {
+            $curl_example = "curl -X POST " . $heartbeat_endpoint . " -H \"Authorization: Bearer " . $generated_heartbeat_token . "\" -H \"Content-Type: application/json\" -d \"{\\\"status\\\":\\\"up\\\",\\\"message\\\":\\\"heartbeat ok\\\"}\"";
+            echo '<div class="uptime-rest-token__generated uptime-heartbeat-token">';
+            echo '<strong>' . esc_html__('Kopieer dit heartbeat-token nu. Het wordt niet opnieuw getoond.', 'uptime-monitor') . '</strong>';
+            echo '<code>' . esc_html($generated_heartbeat_token) . '</code>';
+            echo '<button type="button" class="button uptime-copy-endpoint" data-copy-value="' . esc_attr($generated_heartbeat_token) . '"><span class="dashicons dashicons-clipboard" aria-hidden="true"></span>' . esc_html__('Token kopieren', 'uptime-monitor') . '</button>';
+            echo '<pre class="uptime-settings-code">' . esc_html($curl_example) . '</pre>';
+            echo '<button type="button" class="button uptime-copy-endpoint" data-copy-value="' . esc_attr($curl_example) . '"><span class="dashicons dashicons-clipboard" aria-hidden="true"></span>' . esc_html__('curl-voorbeeld kopieren', 'uptime-monitor') . '</button>';
+            echo '</div>';
+        }
+        echo '<div class="uptime-heartbeat-grid">';
+        echo '<form method="post" class="uptime-heartbeat-create">';
+        wp_nonce_field('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
+        echo '<h3>' . esc_html__('Heartbeat monitor toevoegen', 'uptime-monitor') . '</h3>';
+        echo '<div class="uptime-heartbeat-create-fields">';
+        echo '<div class="uptime-settings-field">';
+        echo '<label for="heartbeat_name">' . esc_html__('Naam', 'uptime-monitor') . '</label>';
+        echo '<input type="text" id="heartbeat_name" name="heartbeat_name" class="regular-text" placeholder="' . esc_attr__('Home Assistant', 'uptime-monitor') . '" required>';
+        echo '</div>';
+        echo '<div class="uptime-settings-field">';
+        echo '<label for="heartbeat_expected_interval">' . esc_html__('Verwacht interval (seconden)', 'uptime-monitor') . '</label>';
+        echo '<input type="number" id="heartbeat_expected_interval" name="heartbeat_expected_interval" value="' . esc_attr((string)self::DEFAULT_HEARTBEAT_INTERVAL) . '" min="60" max="86400" step="60">';
+        echo '<p class="description">' . esc_html__('De status wordt stale/down na ongeveer twee keer dit interval zonder ping.', 'uptime-monitor') . '</p>';
+        echo '</div>';
+        echo '<div class="uptime-heartbeat-alert-options">';
+        echo '<label class="uptime-settings-checkbox"><input type="checkbox" name="heartbeat_email_alert" value="1"> ' . esc_html__('E-mailalarm', 'uptime-monitor') . '</label>';
+        echo '<label class="uptime-settings-checkbox"><input type="checkbox" name="heartbeat_pushover_alert" value="1"> ' . esc_html__('Pushover-alarm', 'uptime-monitor') . '</label>';
+        echo '</div>';
+        echo '</div>';
+        echo '<div class="uptime-settings-actions"><button type="submit" class="button button-primary" name="add_heartbeat_monitor" value="1"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>' . esc_html__('Heartbeat monitor toevoegen', 'uptime-monitor') . '</button></div>';
+        echo '</form>';
+        echo '<div class="uptime-heartbeat-list">';
+        echo '<h3>' . esc_html__('Ingestelde heartbeat monitors', 'uptime-monitor') . '</h3>';
+        if (empty($heartbeat_monitors)) {
+            echo '<p class="uptime-settings-note">' . esc_html__('Er zijn nog geen heartbeat monitors ingesteld.', 'uptime-monitor') . '</p>';
+        } else {
+            foreach ($heartbeat_monitors as $heartbeat_monitor) {
+                $dashboard = isset($heartbeat_monitor['dashboard']) && is_array($heartbeat_monitor['dashboard']) ? $heartbeat_monitor['dashboard'] : $this->get_url_dashboard_data($heartbeat_monitor, $this->get_status_history_for_url($heartbeat_monitor['id']), $this->get_incidents());
+                $status = isset($dashboard['status']) ? sanitize_key($dashboard['status']) : 'unknown';
+                $last_seen = !empty($heartbeat_monitor['last_seen']) ? $this->format_history_timestamp((string)$heartbeat_monitor['last_seen']) : __('Geen ping ontvangen', 'uptime-monitor');
+                $token_last4 = !empty($heartbeat_monitor['token_last4']) ? (string)$heartbeat_monitor['token_last4'] : __('Niet ingesteld', 'uptime-monitor');
+                echo '<article class="uptime-heartbeat-card is-' . esc_attr($status) . '">';
+                echo '<div>';
+                echo '<strong>' . esc_html($heartbeat_monitor['name']) . '</strong>';
+                echo '<span class="uptime-chip uptime-status-' . esc_attr($status) . '">' . esc_html($this->get_dashboard_status_label($status)) . '</span>';
+                echo '<p>' . esc_html__('Laatste ping:', 'uptime-monitor') . ' <strong>' . esc_html($last_seen) . '</strong></p>';
+                echo '<p>' . esc_html__('Verwacht interval:', 'uptime-monitor') . ' <strong>' . esc_html((string)$heartbeat_monitor['expected_interval']) . 's</strong> - ' . esc_html__('Token:', 'uptime-monitor') . ' <strong>' . esc_html($token_last4) . '</strong></p>';
+                echo '</div>';
+                echo '<div class="uptime-heartbeat-actions">';
+                foreach ([
+                    'toggle_heartbeat_monitor' => !empty($heartbeat_monitor['enabled']) ? __('Pauzeren', 'uptime-monitor') : __('Hervatten', 'uptime-monitor'),
+                    'rotate_heartbeat_token' => __('Token vernieuwen', 'uptime-monitor'),
+                    'delete_heartbeat_monitor' => __('Verwijderen', 'uptime-monitor'),
+                ] as $action_name => $button_label) {
+                    echo '<form method="post">';
+                    wp_nonce_field('uptime_monitor_settings_nonce_action', 'uptime_monitor_settings_nonce');
+                    echo '<input type="hidden" name="heartbeat_id" value="' . esc_attr($heartbeat_monitor['id']) . '">';
+                    $button_class = $action_name === 'delete_heartbeat_monitor' ? 'button uptime-delete-button' : 'button';
+                    echo '<button type="submit" class="' . esc_attr($button_class) . '" name="' . esc_attr($action_name) . '" value="1">' . esc_html($button_label) . '</button>';
+                    echo '</form>';
+                }
+                echo '</div>';
+                echo '</article>';
+            }
+        }
+        echo '</div>';
         echo '</div>';
         echo '</section>';
 
@@ -1846,83 +2293,83 @@ class SimpleUptimeMonitor
         echo '<div class="uptime-settings-grid">';
         echo '<section class="uptime-settings-panel">';
         echo '<div class="uptime-settings-panel__header">';
-        echo '<h2>' . esc_html__('Monitoring Settings', 'uptime-monitor') . '</h2>';
-        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Cron and HTTP checks', 'uptime-monitor') . '</span>';
+        echo '<h2>' . esc_html__('Monitoringinstellingen', 'uptime-monitor') . '</h2>';
+        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Cron en HTTP-checks', 'uptime-monitor') . '</span>';
         echo '</div>';
         echo '<div class="uptime-settings-fields">';
         echo '<div class="uptime-settings-field">';
-        echo '<label for="monitor_interval">' . esc_html__('Monitor Interval (seconds)', 'uptime-monitor') . '</label>';
+        echo '<label for="monitor_interval">' . esc_html__('Monitorinterval (seconden)', 'uptime-monitor') . '</label>';
         echo '<input type="number" id="monitor_interval" name="monitor_interval" value="' . esc_attr($monitor_interval) . '" min="60" step="60">';
-        echo '<p class="description">' . esc_html__('How often WordPress cron should schedule monitoring checks.', 'uptime-monitor') . '</p>';
+        echo '<p class="description">' . esc_html__('Hoe vaak WordPress cron monitoringchecks moet plannen.', 'uptime-monitor') . '</p>';
         echo '</div>';
         echo '<div class="uptime-settings-field">';
-        echo '<label for="retry_attempts">' . esc_html__('Retry Attempts', 'uptime-monitor') . '</label>';
+        echo '<label for="retry_attempts">' . esc_html__('Herhaalpogingen', 'uptime-monitor') . '</label>';
         echo '<input type="number" id="retry_attempts" name="retry_attempts" value="' . esc_attr($retry_attempts) . '" min="1" max="10" step="1">';
-        echo '<p class="description">' . esc_html__('Extra attempts before a URL is considered down.', 'uptime-monitor') . '</p>';
+        echo '<p class="description">' . esc_html__('Extra pogingen voordat een URL als down wordt gezien.', 'uptime-monitor') . '</p>';
         echo '</div>';
         echo '<div class="uptime-settings-field">';
-        echo '<label for="request_timeout">' . esc_html__('Request Timeout (seconds)', 'uptime-monitor') . '</label>';
+        echo '<label for="request_timeout">' . esc_html__('Verzoek-timeout (seconden)', 'uptime-monitor') . '</label>';
         echo '<input type="number" id="request_timeout" name="request_timeout" value="' . esc_attr($request_timeout) . '" min="1" max="60" step="1">';
-        echo '<p class="description">' . esc_html__('Maximum wait time per HTTP request attempt.', 'uptime-monitor') . '</p>';
+        echo '<p class="description">' . esc_html__('Maximale wachttijd per HTTP-poging.', 'uptime-monitor') . '</p>';
         echo '</div>';
         echo '<div class="uptime-settings-field is-wide">';
-        echo '<label for="down_status_codes">' . esc_html__('Down Status Codes', 'uptime-monitor') . '</label>';
+        echo '<label for="down_status_codes">' . esc_html__('Down-statuscodes', 'uptime-monitor') . '</label>';
         echo '<input type="text" id="down_status_codes" name="down_status_codes" value="' . esc_attr($down_status_codes) . '" class="regular-text">';
-        echo '<p class="description">' . esc_html__('Use comma-separated HTTP status codes or ranges. Default: 100-199,300-599.', 'uptime-monitor') . '</p>';
+        echo '<p class="description">' . esc_html__('Gebruik komma-gescheiden HTTP-statuscodes of bereiken. Standaard: 100-199,300-599.', 'uptime-monitor') . '</p>';
         echo '</div>';
         echo '</div>';
         echo '</section>';
 
         echo '<section class="uptime-settings-panel">';
         echo '<div class="uptime-settings-panel__header">';
-        echo '<h2>' . esc_html__('Pushover Configuration', 'uptime-monitor') . '</h2>';
+        echo '<h2>' . esc_html__('Pushover-configuratie', 'uptime-monitor') . '</h2>';
         echo '<span class="uptime-chip' . ($this->has_pushover_credentials() ? '' : ' is-warning') . '">' . esc_html($pushover_status) . '</span>';
         echo '</div>';
         if ($this->pushover_uses_constants()) {
-            echo '<p class="uptime-settings-note">' . esc_html__('Pushover constants are defined in wp-config.php and take precedence over stored settings.', 'uptime-monitor') . '</p>';
+            echo '<p class="uptime-settings-note">' . esc_html__('Pushover-constanten zijn ingesteld in wp-config.php en krijgen voorrang op opgeslagen instellingen.', 'uptime-monitor') . '</p>';
         } else {
-            echo '<p class="uptime-settings-note">' . esc_html__('Store Pushover credentials here when file access to wp-config.php is not available.', 'uptime-monitor') . '</p>';
+            echo '<p class="uptime-settings-note">' . esc_html__('Sla Pushover-toegangsgegevens hier op wanneer bestandstoegang tot wp-config.php niet beschikbaar is.', 'uptime-monitor') . '</p>';
         }
         echo '<pre class="uptime-settings-code">' . esc_html("define('PUSHOVER_USER_KEY', 'your-pushover-user-key');\ndefine('PUSHOVER_API_TOKEN', 'your-pushover-api-token');") . '</pre>';
         echo '<div class="uptime-settings-fields">';
         echo '<div class="uptime-settings-field is-wide">';
-        echo '<label for="pushover_user_key">' . esc_html__('Pushover User Key', 'uptime-monitor') . '</label>';
+        echo '<label for="pushover_user_key">' . esc_html__('Pushover-gebruikerssleutel', 'uptime-monitor') . '</label>';
         echo '<input type="password" id="pushover_user_key" name="pushover_user_key" value="" placeholder="' . esc_attr($pushover_user_key_placeholder) . '" class="regular-text" autocomplete="new-password">';
         if ($stored_pushover_user_key !== '') {
-            echo '<label class="uptime-settings-checkbox"><input type="checkbox" name="clear_pushover_user_key" value="1"> ' . esc_html__('Clear stored user key', 'uptime-monitor') . '</label>';
+            echo '<label class="uptime-settings-checkbox"><input type="checkbox" name="clear_pushover_user_key" value="1"> ' . esc_html__('Opgeslagen user key wissen', 'uptime-monitor') . '</label>';
         }
         echo '</div>';
         echo '<div class="uptime-settings-field is-wide">';
-        echo '<label for="pushover_api_token">' . esc_html__('Pushover API Token', 'uptime-monitor') . '</label>';
+        echo '<label for="pushover_api_token">' . esc_html__('Pushover API-token', 'uptime-monitor') . '</label>';
         echo '<input type="password" id="pushover_api_token" name="pushover_api_token" value="" placeholder="' . esc_attr($pushover_api_token_placeholder) . '" class="regular-text" autocomplete="new-password">';
         if ($stored_pushover_api_token !== '') {
-            echo '<label class="uptime-settings-checkbox"><input type="checkbox" name="clear_pushover_api_token" value="1"> ' . esc_html__('Clear stored API token', 'uptime-monitor') . '</label>';
+            echo '<label class="uptime-settings-checkbox"><input type="checkbox" name="clear_pushover_api_token" value="1"> ' . esc_html__('Opgeslagen API-token wissen', 'uptime-monitor') . '</label>';
         }
         echo '</div>';
         echo '</div>';
-        echo '<div class="uptime-settings-actions"><button type="submit" class="button" name="test_pushover" value="1"><span class="dashicons dashicons-megaphone" aria-hidden="true"></span>' . esc_html__('Send Pushover Test', 'uptime-monitor') . '</button></div>';
+        echo '<div class="uptime-settings-actions"><button type="submit" class="button" name="test_pushover" value="1"><span class="dashicons dashicons-megaphone" aria-hidden="true"></span>' . esc_html__('Pushover-test verzenden', 'uptime-monitor') . '</button></div>';
         echo '</section>';
         echo '</div>';
 
         echo '<section class="uptime-settings-panel uptime-settings-panel-wide">';
         echo '<div class="uptime-settings-panel__header">';
-        echo '<h2>' . esc_html__('Configuration Import / Export', 'uptime-monitor') . '</h2>';
-        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Secrets excluded', 'uptime-monitor') . '</span>';
+        echo '<h2>' . esc_html__('Configuratie importeren / exporteren', 'uptime-monitor') . '</h2>';
+        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('Geheimen uitgesloten', 'uptime-monitor') . '</span>';
         echo '</div>';
         echo '<div class="uptime-settings-io-grid">';
         echo '<div class="uptime-settings-field is-wide">';
-	    echo '<label for="uptime_export_json">' . esc_html__('Export Configuration', 'uptime-monitor') . '</label>';
+	    echo '<label for="uptime_export_json">' . esc_html__('Configuratie exporteren', 'uptime-monitor') . '</label>';
 	    echo '<textarea id="uptime_export_json" readonly rows="10" class="uptime-settings-textarea">' . esc_textarea($json_export) . '</textarea>';
         echo '</div>';
         echo '<div class="uptime-settings-field is-wide">';
-	    echo '<label for="import_json">' . esc_html__('Import Configuration', 'uptime-monitor') . '</label>';
-	    echo '<textarea id="import_json" name="import_json" rows="10" class="uptime-settings-textarea" placeholder="' . esc_attr__('Paste a previously exported JSON configuration here.', 'uptime-monitor') . '"></textarea>';
+	    echo '<label for="import_json">' . esc_html__('Configuratie importeren', 'uptime-monitor') . '</label>';
+	    echo '<textarea id="import_json" name="import_json" rows="10" class="uptime-settings-textarea" placeholder="' . esc_attr__('Plak hier een eerder geexporteerde JSON-configuratie.', 'uptime-monitor') . '"></textarea>';
         echo '</div>';
         echo '</div>';
         echo '</section>';
 
 	    echo '<div class="uptime-settings-savebar">';
-        echo '<button type="submit" class="button button-primary"><span class="dashicons dashicons-saved" aria-hidden="true"></span>' . esc_html__('Save Settings', 'uptime-monitor') . '</button>';
+        echo '<button type="submit" class="button button-primary"><span class="dashicons dashicons-saved" aria-hidden="true"></span>' . esc_html__('Instellingen opslaan', 'uptime-monitor') . '</button>';
         echo '</div>';
         echo '</form>';
         echo '</div>';
@@ -1935,11 +2382,24 @@ class SimpleUptimeMonitor
     {
         $this->log_to_json('info', 'Cron job started.', ['task' => 'monitor_uptime_event']);
         $urls = $this->normalize_stored_urls();
-        $this->log_to_json('info', 'URLs to monitor.', ['urls' => $urls]);
+        $this->log_to_json('info', 'URLs to monitor.', ['urls' => $this->get_log_safe_monitor_records($urls)]);
         $retry_attempts = $this->get_retry_attempts();
         $request_timeout = $this->get_request_timeout();
 
         foreach ($urls as $url_data) {
+            if (($url_data['type'] ?? 'http_check') === 'heartbeat') {
+                if (isset($url_data['enabled']) && $url_data['enabled'] === false) {
+                    $this->log_to_json('info', 'Heartbeat monitoring disabled.', ['name' => $this->get_monitor_display_name($url_data)]);
+                    continue;
+                }
+
+                if ($this->is_heartbeat_stale($url_data)) {
+                    $this->log_to_json('error', 'Heartbeat monitor is stale.', ['name' => $this->get_monitor_display_name($url_data)]);
+                    $this->handle_down_incident_state($url_data, null, __('Heartbeat is stale.', 'uptime-monitor'));
+                }
+                continue;
+            }
+
 	        if (isset($url_data['enabled']) && $url_data['enabled'] === false) {
 		        $this->log_to_json('info', 'Monitoring disabled for URL.', ['url' => $url_data['url']]);
 		        continue;
@@ -2475,3 +2935,4 @@ add_filter('cron_schedules', function ($schedules) {
 
     return $schedules;
 });
+

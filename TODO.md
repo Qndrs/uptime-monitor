@@ -4,18 +4,23 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 
 ## Huidige status
 
-- Pauzepunt: 2026-07-07.
+- Pauzepunt: 2026-07-11.
 - Release `v3.4.0` is afgerond, getagd en gepusht.
-- Tag `v3.4.0` wijst naar de releasecode commit `Release 3.4.0 live dashboard refresh`.
-- Laatste main-commit bij pauze: `Release 3.4.0 live dashboard refresh`.
+- Release `v3.5.0` is gecommit voor push met heartbeat monitors.
+- Tag `v3.4.0` wijst naar releasecode commit `10b31f6` (`Release 3.4.0 live dashboard refresh`).
+- Laatste main-commit bij pauze: `10b31f6` (`Release 3.4.0 live dashboard refresh`).
 - Lokale releasechecks zijn groen gedraaid: PHP syntax, JavaScript syntax en `scripts/check-release.ps1`.
-- Testsite `https://qndrs.training/simpleuptimemonitor/` draaide gezond na deployment van de dashboardwidget.
+- Heartbeat monitor MVP is lokaal uitgewerkt, naar de testsite geplaatst en gebumpt naar `v3.5.0`.
+- Gewijzigde heartbeat-werkset bij pauze: `uptime-monitor.php`, `js/uptime-monitor.js`, `css/uptime-monitor.css`, `README.md`, `readme.txt`, `TODO.md` en nieuw `docs/heartbeat-monitors.md`.
+- Testsite `https://qndrs.training/simpleuptimemonitor/` draaide gezond na deployment van de heartbeat-MVP.
+- Heartbeat endpoint-check zonder token geeft correct `401 Heartbeat token is missing`.
 - Deploymentroute op dit moment: SFTP naar `/home/qndrs/public_html/simpleuptimemonitor/wp-content/plugins/uptime-monitor`.
 - Huidige SSH-account heeft geen shell; server-side Git deploy is daarmee nog niet mogelijk.
 - Releasepakket is lokaal reproduceerbaar via `scripts/build-release.ps1`.
 - Lokale releasechecks draaien via `scripts/check-release.ps1`.
 - Dashboard/API-werk is afgerond tot en met compact dashboard, status-REST, read-only token, logfilters/paginering, WP-dashboardwidget en dashboard/widget-refresh zonder page reload.
-- Volgende inhoudelijke fase: client-plugin/heartbeat voor firewalled sites of deployment/contributor-documentatie opruimen.
+- Punt 5 heartbeat-MVP is inhoudelijk gebouwd: handmatige heartbeat monitors, tokenrotatie, REST endpoint, dashboardintegratie en documentatievoorbeelden.
+- Volgende stap: na push eventueel een tag/releasepakket voor `v3.5.0` maken.
 
 ## 1. Stabilisatie
 
@@ -135,19 +140,32 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
   - Mogelijk: haal de actuele dashboarddata op via AJAX, zonder een volledige admin page refresh.
   - Status: Uptime Monitor-dashboard heeft een handmatige refreshknop en optionele auto-refresh switch. De WP-dashboardwidget ververst automatisch en toont een smalle visuele aftellijn. Refresh haalt elke 30 seconden de opgeslagen statusdata op en voert geen extra monitorcheck uit.
 
-## 5. Client Plugin / Firewalled Sites
+## 5. Heartbeat Monitors / Firewalled Sites
 
-- [ ] Werk de client-plugin architectuur uit.
-  - Probleem: README claimt support voor sites achter firewalls, maar de concrete heartbeat-flow ontbreekt nog.
+- [x] Werk het heartbeat-monitor datamodel uit.
+  - Doel: ondersteun sites, apps of jobs die niet inbound bereikbaar zijn, maar wel outbound HTTPS naar de monitor kunnen doen.
+  - Scope: geen auto-registratie en geen aparte client-plugin in de eerste versie.
+  - Mogelijk: nieuw monitortype naast gewone HTTP-checks, bijvoorbeeld `http_check` en `heartbeat`.
+  - Status: monitorrecords hebben een `type`; heartbeat monitors slaan naam/label, token-hash, verwacht interval, laatst gezien, laatste status en laatste bericht op.
 
-- [ ] Maak een heartbeat endpoint.
-  - Mogelijk: client sites melden periodiek hun status aan de monitor.
+- [x] Voeg beheer voor heartbeat monitors toe aan het instellingenpaneel.
+  - Reden: dit is een zeldzame/geavanceerde feature met tokenbeheer en voorbeeldcommando's; de gewone URL-toevoegflow moet simpel blijven.
+  - Mogelijk: beheerder maakt handmatig een heartbeat monitor aan, kiest een verwacht interval, genereert/roteert token en ziet endpoint plus copyable `curl` voorbeeld.
+  - Status: heartbeat monitors kunnen worden aangemaakt, gepauzeerd, verwijderd en van een nieuw token voorzien via het instellingenpaneel; tokens worden eenmalig getoond en tokenhashes worden niet geexporteerd of gelogd.
 
-- [ ] Voeg tokenbeveiliging toe voor client pings.
-  - Mogelijk: per site een geheim token, rotatebaar vanuit admin.
+- [x] Maak een heartbeat REST endpoint.
+  - Mogelijk: `POST /wp-json/uptime-monitor/v1/heartbeat` met `Authorization: Bearer <token>` of `X-Uptime-Monitor-Token`.
+  - Payload MVP: optioneel `status`, `message` en eventueel eenvoudige metadata; standaard geldt een geldige ping als `up`.
+  - Status: alleen vooraf aangemaakte heartbeat monitors met geldig token kunnen hun `last_seen`, status en bericht bijwerken.
 
-- [ ] Documenteer installatie van de client plugin.
-  - Klaar wanneer: README of aparte docs de setup stap voor stap uitlegt.
+- [x] Toon heartbeat monitors in het hoofddashboard.
+  - Mogelijk: gewone HTTP-monitors en heartbeat monitors verschijnen samen in de statuslijst, met een duidelijke typebadge.
+  - Statuslogica: `up` zolang `last_seen` binnen het verwachte interval plus marge valt; anders `down` of `stale`.
+  - Status: heartbeat monitors verschijnen tussen gewone HTTP-monitors, tellen mee in de globale status en worden `down` wanneer de laatste ping te oud is.
+
+- [x] Documenteer clientconfiguratie als generieke voorbeelden.
+  - Mogelijk: `curl` via cron, systemd timer, Windows Task Scheduler en eenvoudige applicatievoorbeelden.
+  - Status: `docs/heartbeat-monitors.md` bevat voorbeelden voor `curl`, cron, systemd timer, Windows Task Scheduler en Home Assistant; README en readme.txt verwijzen naar heartbeat monitors.
 
 ## 6. Deployment En Samenwerking
 

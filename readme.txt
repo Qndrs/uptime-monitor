@@ -4,7 +4,7 @@ Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 3.4.0
+Stable tag: 3.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ Monitor external websites from WordPress and receive downtime alerts by email or
 
 == Description ==
 
-Simple Uptime Monitor checks external URLs from the WordPress dashboard. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, configurable Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, and an authenticated REST endpoint for logs.
+Simple Uptime Monitor checks external URLs from the WordPress dashboard. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, configurable Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, heartbeat monitors for firewalled clients, and authenticated REST endpoints.
 
 == Installation ==
 
@@ -42,7 +42,18 @@ Logs are stored in the WordPress database option `uptime_monitor_logs` and cappe
 
 No. REST endpoints require a user with the `manage_options` capability or the plugin read-only API token.
 
+= How do heartbeat monitors work? =
+
+Create a heartbeat monitor from the settings page. The plugin shows a one-time token and curl example. A client sends outbound HTTPS POST requests to `/wp-json/uptime-monitor/v1/heartbeat`; the monitor becomes stale/down when no ping arrives in time.
+
 == Changelog ==
+
+= 3.5.0 =
+
+* Added heartbeat monitors for firewalled machines, jobs, Home Assistant, NAS devices and internal apps.
+* Added a token-protected heartbeat REST endpoint with manual token rotation.
+* Added heartbeat monitor management to the settings page with copyable endpoint and curl examples.
+* Added documentation for cron, systemd timers, Windows Task Scheduler and Home Assistant heartbeat clients.
 
 = 3.4.0 =
 
