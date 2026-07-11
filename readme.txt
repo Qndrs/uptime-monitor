@@ -58,6 +58,11 @@ Pushover API documentation: https://pushover.net/api
 Pushover terms: https://pushover.net/terms
 Pushover privacy policy: https://pushover.net/privacy
 
+== Screenshots ==
+
+1. Uptime monitor overview with website checks and heartbeat monitor status.
+2. Settings page with REST endpoints, heartbeat monitor setup, notifications and import/export.
+
 == Changelog ==
 
 = 3.5.0 =
