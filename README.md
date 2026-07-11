@@ -61,6 +61,16 @@ define('PUSHOVER_USER_KEY', 'your-user-key');
 define('PUSHOVER_API_TOKEN', 'your-api-token');
 ```
 
+### External service disclosure
+
+Pushover is optional and disabled by default. The plugin only contacts Pushover when an administrator configures Pushover credentials and enables Pushover alerts for a monitor.
+
+When enabled, the plugin sends an HTTPS POST request to `https://api.pushover.net/1/messages.json`. The request contains the configured Pushover application token, the configured Pushover user or group key, and a notification title/message with the monitored URL or monitor name, status information, and HTTP status code or error message when available.
+
+- Pushover API documentation: https://pushover.net/api
+- Pushover terms: https://pushover.net/terms
+- Pushover privacy policy: https://pushover.net/privacy
+
 ## REST API
 
 Endpoint:
@@ -84,7 +94,7 @@ Query parameters:
 
 Heartbeat monitors are for machines, jobs, Home Assistant instances, NAS devices, Docker hosts or internal applications that are not reachable inbound, but can send outbound HTTPS requests to the monitor.
 
-Create them manually in **Uptime Monitor > Settings > Heartbeat Monitors**. The plugin shows a one-time token and a copyable `curl` example. See `docs/heartbeat-monitors.md` for cron, systemd, Windows Task Scheduler and Home Assistant examples.
+Create them manually in **Uptime Monitor > Settings > Heartbeat Monitors**. The plugin shows a one-time token and a copyable `curl` example. See `docs/heartbeat-monitors.md` for cron, systemd, Windows Task Scheduler and Home Assistant examples. Dutch documentation is available in `docs/heartbeat-monitors.nl.md`.
 
 Authentication:
 

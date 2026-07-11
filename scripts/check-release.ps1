@@ -58,5 +58,7 @@ Assert-True ($plugin -match "normalize_stored_urls") "URL normalization is missi
 
 $buildScript = Join-Path $root "scripts\build-release.ps1"
 Assert-True (Test-Path -LiteralPath $buildScript) "Release build script is missing"
+Assert-True ($readme -match "docs/heartbeat-monitors\.nl\.md") "README must link to Dutch heartbeat documentation"
+Assert-True ($wpReadme -match "docs/heartbeat-monitors\.nl\.md") "readme.txt must link to Dutch heartbeat documentation"
 
 Write-Output "Release checks passed."

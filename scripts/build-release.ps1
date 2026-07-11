@@ -34,6 +34,7 @@ $files = @(
 
 $directories = @(
     "css",
+    "docs",
     "js",
     "languages"
 )

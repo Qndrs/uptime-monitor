@@ -46,6 +46,18 @@ No. REST endpoints require a user with the `manage_options` capability or the pl
 
 Create a heartbeat monitor from the settings page. The plugin shows a one-time token and curl example. A client sends outbound HTTPS POST requests to `/wp-json/uptime-monitor/v1/heartbeat`; the monitor becomes stale/down when no ping arrives in time.
 
+Detailed heartbeat client examples are included in `docs/heartbeat-monitors.md`. Dutch documentation is included in `docs/heartbeat-monitors.nl.md`.
+
+== External services ==
+
+This plugin can optionally send downtime and recovery notifications through Pushover. Pushover is disabled by default and is only used when a site administrator configures Pushover credentials and enables Pushover alerts for a monitor.
+
+When Pushover is enabled, the plugin sends an HTTPS POST request to `https://api.pushover.net/1/messages.json`. The request contains the configured Pushover application token, the configured Pushover user or group key, and a notification title/message with the monitored URL or monitor name, status information, and HTTP status code or error message when available.
+
+Pushover API documentation: https://pushover.net/api
+Pushover terms: https://pushover.net/terms
+Pushover privacy policy: https://pushover.net/privacy
+
 == Changelog ==
 
 = 3.5.0 =

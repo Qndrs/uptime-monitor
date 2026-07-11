@@ -183,3 +183,25 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 - [ ] Beslis over server-side Git of SFTP als lange termijn route.
   - Context: huidige SSH-account heeft geen shell, SFTP werkt wel.
   - Klaar wanneer: team weet welke deploymentroute standaard is.
+
+## 7. Publieke Ontsluiting / WordPress.org
+
+- [x] Scan repository op tokens en secrets.
+  - Status: tracked files en Git-history bevatten geen echte heartbeat tokens, Pushover tokens, private keys of wachtwoorden; gevonden matches zijn codepatronen, placeholders of genegeerde lokale bestanden.
+
+- [x] Rond publieke readme af.
+  - Status: `readme.txt` bevat versie `3.5.0`, heartbeat-uitleg en een expliciete Pushover external service disclosure met API-, terms- en privacy-links.
+
+- [x] Voeg Nederlandse heartbeat-documentatie toe.
+  - Status: Engelse documentatie blijft beschikbaar in `docs/heartbeat-monitors.md`; Nederlandse documentatie staat in `docs/heartbeat-monitors.nl.md`.
+
+- [x] Neem documentatie mee in releasepakket.
+  - Status: `scripts/build-release.ps1` kopieert de `docs` map naar het releasepakket.
+
+- [ ] Maak WordPress.org assets.
+  - Mogelijk: Qndrs.nl-logo gebruiken als plugin icon en banner/screenshotset maken.
+  - Klaar wanneer: icon, banner en screenshots klaarstaan voor de WordPress.org SVN assets-map.
+
+- [ ] Maak definitieve release-tag.
+  - Mogelijk: Git tag `v3.5.0` voor GitHub en SVN tag `3.5.0` voor WordPress.org.
+  - Klaar wanneer: GitHub release en WordPress.org SVN-release dezelfde bronbestanden gebruiken.
