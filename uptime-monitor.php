@@ -2,7 +2,7 @@
 
 namespace SimpleUptimeMonitor;
 /**
- * Plugin Name: Simple Uptime Monitor
+ * Plugin Name: Simple Uptime Monitor with Heartbeat
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor website availability and receive alerts by email or Pushover. Manage multiple URLs from the WordPress admin with logging, JSON import/export, REST support, dashboard refresh and heartbeat monitors.
  * Version: 3.5.0
@@ -2081,7 +2081,7 @@ class SimpleUptimeMonitor
                         && $this->send_pushover_message(
                             home_url('/'),
                             __('Uptime Monitor Test', 'uptime-monitor'),
-                            __('This is a test notification from Simple Uptime Monitor.', 'uptime-monitor')
+                            __('This is a test notification from Simple Uptime Monitor with Heartbeat.', 'uptime-monitor')
                         );
 
                     if ($test_sent) {

@@ -1,4 +1,4 @@
-=== Simple Uptime Monitor ===
+=== Simple Uptime Monitor with Heartbeat ===
 Contributors: qndrs
 Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
@@ -8,16 +8,16 @@ Stable tag: 3.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Monitor external websites from WordPress and receive downtime alerts by email or Pushover.
+Monitor websites and heartbeat clients from WordPress with email or Pushover downtime alerts.
 
 == Description ==
 
-Simple Uptime Monitor checks external URLs from the WordPress dashboard. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, configurable Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, heartbeat monitors for firewalled clients, and authenticated REST endpoints.
+Simple Uptime Monitor with Heartbeat checks external URLs from the WordPress dashboard and can also monitor firewalled clients through outbound heartbeat pings. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, configurable Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, heartbeat monitors, and authenticated REST endpoints.
 
 == Installation ==
 
 1. Upload the plugin folder to `/wp-content/plugins/uptime-monitor`.
-2. Activate Simple Uptime Monitor from the WordPress plugins page.
+2. Activate Simple Uptime Monitor with Heartbeat from the WordPress plugins page.
 3. Open Uptime Monitor in the WordPress admin menu.
 4. Add one or more URLs and choose notification channels.
 
