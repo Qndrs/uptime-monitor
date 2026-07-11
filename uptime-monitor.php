@@ -276,6 +276,11 @@ class SimpleUptimeMonitor
 
     private function add_heartbeat_monitor_from_post(): array
     {
+        $nonce = isset($_POST['uptime_monitor_settings_nonce']) ? sanitize_text_field(wp_unslash($_POST['uptime_monitor_settings_nonce'])) : '';
+        if (!wp_verify_nonce($nonce, 'uptime_monitor_settings_nonce_action')) {
+            return ['token' => '', 'message' => __('Ongeldig formulierverzoek.', 'uptime-monitor'), 'type' => 'error'];
+        }
+
         $name = isset($_POST['heartbeat_name']) ? sanitize_text_field(wp_unslash($_POST['heartbeat_name'])) : '';
         if ($name === '') {
             return ['token' => '', 'message' => __('Naam voor heartbeat monitor is verplicht.', 'uptime-monitor'), 'type' => 'error'];
@@ -309,6 +314,11 @@ class SimpleUptimeMonitor
 
     private function update_heartbeat_monitor_from_post(string $action): array
     {
+        $nonce = isset($_POST['uptime_monitor_settings_nonce']) ? sanitize_text_field(wp_unslash($_POST['uptime_monitor_settings_nonce'])) : '';
+        if (!wp_verify_nonce($nonce, 'uptime_monitor_settings_nonce_action')) {
+            return ['token' => '', 'message' => __('Ongeldig formulierverzoek.', 'uptime-monitor'), 'type' => 'error'];
+        }
+
         $id = isset($_POST['heartbeat_id']) ? sanitize_key(wp_unslash($_POST['heartbeat_id'])) : '';
         if ($id === '') {
             return ['token' => '', 'message' => __('Heartbeat monitor niet gevonden.', 'uptime-monitor'), 'type' => 'error'];
@@ -1014,9 +1024,12 @@ class SimpleUptimeMonitor
                 $incident_open = true;
                 $incident_label = __('Heartbeat stale', 'uptime-monitor');
                 $last_seen_epoch = $this->get_heartbeat_last_seen_epoch($url_data);
-                $incident_duration_display = $last_seen_epoch !== null
-                    ? sprintf(__('Missing for %s', 'uptime-monitor'), human_time_diff($last_seen_epoch, time()))
-                    : __('No ping received', 'uptime-monitor');
+                if ($last_seen_epoch !== null) {
+                    /* translators: %s: Human-readable time since the last heartbeat ping. */
+                    $incident_duration_display = sprintf(__('Missing for %s', 'uptime-monitor'), human_time_diff($last_seen_epoch, time()));
+                } else {
+                    $incident_duration_display = __('No ping received', 'uptime-monitor');
+                }
             } elseif (in_array($last_status, ['down', 'error'], true)) {
                 $status = 'down';
             } elseif ($last_status === 'up' || $latest !== null) {
@@ -1831,6 +1844,7 @@ class SimpleUptimeMonitor
         if ($type !== 'heartbeat' && $url !== '') {
             echo '<a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer">' . esc_html($url) . '</a>';
         } elseif ($type === 'heartbeat' && !empty($url_data['expected_interval'])) {
+            /* translators: %d: Expected heartbeat interval in seconds. */
             echo '<span>' . esc_html(sprintf(__('Elke %d seconden verwacht', 'uptime-monitor'), absint($url_data['expected_interval']))) . '</span>';
         }
         echo '</div>';
