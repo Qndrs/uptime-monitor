@@ -1754,10 +1754,10 @@ class SimpleUptimeMonitor
         echo '<strong>' . esc_html($title) . '</strong>';
         echo '<span><b>' . esc_html($status_label) . '</b>';
         if ($detail !== '') {
-            echo ' Â· ' . esc_html($detail);
+            echo ' - ' . esc_html($detail);
         }
         if ($incident_duration !== '') {
-            echo ' Â· ' . esc_html($incident_duration);
+            echo ' - ' . esc_html($incident_duration);
         }
         echo '</span>';
         echo '</div>';
