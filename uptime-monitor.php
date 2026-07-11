@@ -1,6 +1,4 @@
 <?php
-
-namespace SimpleUptimeMonitor;
 /**
  * Plugin Name: Simple Uptime Monitor with Heartbeat
  * Plugin URI: https://github.com/qndrs/uptime-monitor
@@ -22,6 +20,8 @@ namespace SimpleUptimeMonitor;
  * - Dashboard and widget refresh without a full page reload
  * - Heartbeat monitors for clients behind firewalls
  */
+
+namespace SimpleUptimeMonitor;
 
 if (!defined('ABSPATH')) {
     exit;
