@@ -13,7 +13,7 @@ Simple Uptime Monitor is a lightweight WordPress plugin for monitoring external 
 - Requires at least: WordPress 6.0
 - Tested up to: WordPress 7.0
 - Requires PHP: 8.0+
-- Stable tag: 3.3.0
+- Stable tag: 3.4.0
 - License: GPLv2 or later
 - License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -121,6 +121,12 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 The checks validate PHP syntax, JavaScript syntax when Node.js is available, version consistency, and release packaging basics.
 
 ## Changelog
+
+### 3.4.0
+
+- Added live dashboard refresh without full page reload.
+- Added optional auto-refresh for the Uptime Monitor admin dashboard.
+- Added automatic WordPress dashboard widget refresh with a visual countdown indicator.
 
 ### 3.3.0
 

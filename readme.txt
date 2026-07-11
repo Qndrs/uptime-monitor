@@ -4,7 +4,7 @@ Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 3.3.0
+Stable tag: 3.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -43,6 +43,12 @@ Logs are stored in the WordPress database option `uptime_monitor_logs` and cappe
 No. REST endpoints require a user with the `manage_options` capability or the plugin read-only API token.
 
 == Changelog ==
+
+= 3.4.0 =
+
+* Added live dashboard refresh without full page reload.
+* Added optional auto-refresh for the Uptime Monitor admin dashboard.
+* Added automatic WordPress dashboard widget refresh with a visual countdown indicator.
 
 = 3.3.0 =
 

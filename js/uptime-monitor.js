@@ -1,4 +1,11 @@
 jQuery(document).ready(function ($) {
+    const refreshIntervalMs = parseInt(uptimeMonitorAjax.refresh_interval_ms, 10) || 30000;
+    const autoRefreshStorageKey = 'uptimeMonitorAutoRefresh';
+    let autoRefreshTimer = null;
+    let dashboardRefreshRequest = null;
+    let widgetRefreshTimer = null;
+    let widgetRefreshRequest = null;
+
     function escapeHtml(value) {
         return $('<div>').text(value || '').html();
     }
@@ -220,7 +227,7 @@ jQuery(document).ready(function ($) {
             : '';
 
         return `
-            <article class="uptime-url-row is-${status}">
+            <article class="uptime-url-row is-${status}" data-id="${escapeHtml(urlData.id)}">
                 <div class="uptime-url-status">
                     <span class="uptime-status-light is-${status}" aria-hidden="true"></span>
                     <strong>${escapeHtml(statusLabel)}</strong>
@@ -255,6 +262,17 @@ jQuery(document).ready(function ($) {
 
     function updateUrlList(urls) {
         const list = $('.uptime-url-list');
+        const expandedIds = [];
+
+        list.find('.uptime-url-row').each(function () {
+            const row = $(this);
+            const id = row.data('id') || row.find('.toggle-monitoring').data('id');
+
+            if (id && row.find('.toggle-history').attr('aria-expanded') === 'true') {
+                expandedIds.push(String(id));
+            }
+        });
+
         list.empty();
 
         if (!Array.isArray(urls) || urls.length === 0) {
@@ -264,6 +282,22 @@ jQuery(document).ready(function ($) {
 
         urls.forEach(function (urlData) {
             list.append(renderUrlRow(urlData));
+        });
+
+        expandedIds.forEach(function (id) {
+            const row = list.find('.uptime-url-row').filter(function () {
+                return String($(this).data('id')) === id;
+            }).first();
+            const button = row.find('.toggle-history').first();
+
+            if (!row.length || !button.length) {
+                return;
+            }
+
+            button.attr('aria-expanded', 'true');
+            button.addClass('is-expanded');
+            button.find('.uptime-action-label').text(uptimeMonitorL10n.hide_details);
+            row.find('.uptime-url-history').first().prop('hidden', false);
         });
     }
 
@@ -303,6 +337,136 @@ jQuery(document).ready(function ($) {
         return uptimeMonitorL10n.error_generic;
     }
 
+    function setRefreshState(message) {
+        $('.uptime-refresh-state').text(message || '');
+    }
+
+    function refreshDashboard(options) {
+        const settings = $.extend({ silent: false }, options || {});
+        const refreshButton = $('.uptime-refresh-dashboard');
+
+        if (!refreshButton.length || dashboardRefreshRequest) {
+            return;
+        }
+
+        if (!settings.silent) {
+            setRefreshState(uptimeMonitorL10n.refreshing);
+        }
+
+        refreshButton.prop('disabled', true);
+        dashboardRefreshRequest = $.ajax({
+            url: uptimeMonitorAjax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'refresh_uptime_dashboard',
+                nonce: uptimeMonitorAjax.nonce
+            },
+            success: function (response) {
+                if (response.success) {
+                    updateDashboardResponse(response.data);
+                    setRefreshState(uptimeMonitorL10n.refreshed);
+                    return;
+                }
+
+                if (!settings.silent) {
+                    showNotice(getErrorMessage(response), 'error');
+                }
+            },
+            error: function (jqXHR) {
+                if (!settings.silent) {
+                    showNotice(getErrorMessage(jqXHR), 'error');
+                }
+            },
+            complete: function () {
+                refreshButton.prop('disabled', false);
+                dashboardRefreshRequest = null;
+            }
+        });
+    }
+
+    function updateDashboardWidget(html) {
+        if (!html) {
+            return;
+        }
+
+        const parsed = $('<div>').html(html);
+        const widget = parsed.find('.uptime-dashboard-widget');
+
+        if (widget.length) {
+            $('.uptime-dashboard-widget').replaceWith(widget);
+        }
+    }
+
+    function refreshDashboardWidget() {
+        if (!$('.uptime-dashboard-widget').length || widgetRefreshRequest) {
+            return;
+        }
+
+        widgetRefreshRequest = $.ajax({
+            url: uptimeMonitorAjax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'refresh_uptime_dashboard',
+                nonce: uptimeMonitorAjax.nonce
+            },
+            success: function (response) {
+                if (response.success && response.data) {
+                    updateDashboardWidget(response.data.widget_html);
+                }
+            },
+            complete: function () {
+                widgetRefreshRequest = null;
+            }
+        });
+    }
+
+    function startDashboardWidgetRefresh() {
+        if (!$('.uptime-dashboard-widget').length || $('.uptime-refresh-dashboard').length) {
+            return;
+        }
+
+        widgetRefreshTimer = window.setInterval(function () {
+            if (document.hidden) {
+                return;
+            }
+
+            refreshDashboardWidget();
+        }, refreshIntervalMs);
+    }
+
+    function stopAutoRefresh() {
+        if (autoRefreshTimer) {
+            window.clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+        }
+    }
+
+    function startAutoRefresh() {
+        stopAutoRefresh();
+        autoRefreshTimer = window.setInterval(function () {
+            if (document.hidden) {
+                return;
+            }
+
+            refreshDashboard({ silent: true });
+        }, refreshIntervalMs);
+    }
+
+    function setAutoRefresh(enabled) {
+        const isEnabled = !!enabled;
+
+        $('.uptime-auto-refresh-input').prop('checked', isEnabled);
+        window.localStorage.setItem(autoRefreshStorageKey, isEnabled ? '1' : '0');
+
+        if (isEnabled) {
+            startAutoRefresh();
+            refreshDashboard({ silent: true });
+            return;
+        }
+
+        stopAutoRefresh();
+    }
+
     function showNotice(message, type) {
         const noticeType = type === 'error' ? 'error' : 'success';
         let notices = $('.uptime-monitor-notices').first();
@@ -328,6 +492,20 @@ jQuery(document).ready(function ($) {
             });
         }, 4500);
     }
+
+    $('.uptime-refresh-dashboard').on('click', function () {
+        refreshDashboard();
+    });
+
+    $('.uptime-auto-refresh-input').on('change', function () {
+        setAutoRefresh($(this).is(':checked'));
+    });
+
+    if ($('.uptime-auto-refresh-input').length && window.localStorage.getItem(autoRefreshStorageKey) === '1') {
+        setAutoRefresh(true);
+    }
+
+    startDashboardWidgetRefresh();
 
     $('#uptime-monitor-form').on('submit', function (e) {
         e.preventDefault();

@@ -5,16 +5,16 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 ## Huidige status
 
 - Pauzepunt: 2026-07-07.
-- Release `v3.3.0` is afgerond, getagd en gepusht.
-- Tag `v3.3.0` wijst naar releasecode commit `09abf4b` (`Release 3.3.0 dashboard widget`).
-- Laatste main-commit bij pauze: `09abf4b` (`Release 3.3.0 dashboard widget`).
+- Release `v3.4.0` is afgerond, getagd en gepusht.
+- Tag `v3.4.0` wijst naar de releasecode commit `Release 3.4.0 live dashboard refresh`.
+- Laatste main-commit bij pauze: `Release 3.4.0 live dashboard refresh`.
 - Lokale releasechecks zijn groen gedraaid: PHP syntax, JavaScript syntax en `scripts/check-release.ps1`.
 - Testsite `https://qndrs.training/simpleuptimemonitor/` draaide gezond na deployment van de dashboardwidget.
 - Deploymentroute op dit moment: SFTP naar `/home/qndrs/public_html/simpleuptimemonitor/wp-content/plugins/uptime-monitor`.
 - Huidige SSH-account heeft geen shell; server-side Git deploy is daarmee nog niet mogelijk.
 - Releasepakket is lokaal reproduceerbaar via `scripts/build-release.ps1`.
 - Lokale releasechecks draaien via `scripts/check-release.ps1`.
-- Dashboard/API-werk is afgerond tot en met compact dashboard, status-REST, read-only token, logfilters/paginering en WP-dashboardwidget.
+- Dashboard/API-werk is afgerond tot en met compact dashboard, status-REST, read-only token, logfilters/paginering, WP-dashboardwidget en dashboard/widget-refresh zonder page reload.
 - Volgende inhoudelijke fase: client-plugin/heartbeat voor firewalled sites of deployment/contributor-documentatie opruimen.
 
 ## 1. Stabilisatie
@@ -130,6 +130,10 @@ Werkdocument voor verbeteringen aan Simple Uptime Monitor. De volgorde hieronder
 - [x] Onderzoek een WordPress dashboard widget.
   - Lage prioriteit / leuk later: compacte widget op het WP-dashboard met een duidelijk alarm/zwaailicht-signaal bij actieve incidenten.
   - Status: minimale WP-dashboardwidget toegevoegd met globale status, subtiele alarm-beacon bij actieve incidenten, maximaal vijf niet-up URLs en een link naar het Uptime Monitor-dashboard.
+
+- [x] Voeg dashboard/widget-refresh zonder page reload toe.
+  - Mogelijk: haal de actuele dashboarddata op via AJAX, zonder een volledige admin page refresh.
+  - Status: Uptime Monitor-dashboard heeft een handmatige refreshknop en optionele auto-refresh switch. De WP-dashboardwidget ververst automatisch en toont een smalle visuele aftellijn. Refresh haalt elke 30 seconden de opgeslagen statusdata op en voert geen extra monitorcheck uit.
 
 ## 5. Client Plugin / Firewalled Sites
 

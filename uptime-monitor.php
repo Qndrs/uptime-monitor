@@ -5,7 +5,7 @@ namespace SimpleUptimeMonitor;
  * Plugin Name: Simple Uptime Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor de beschikbaarheid van websites en ontvang meldingen via e-mail of Pushover. Beheer eenvoudig meerdere URL's vanuit het WordPress-beheerpaneel, met logging, JSON-import/export, REST-ondersteuning en intervalinstellingen.
- * Version: 3.3.0
+ * Version: 3.4.0
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  */
 class SimpleUptimeMonitor
 {
-    public const VERSION = '3.3.0';
+    public const VERSION = '3.4.0';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
@@ -61,7 +61,8 @@ class SimpleUptimeMonitor
         // AJAX hooks
         add_action('wp_ajax_add_uptime_url', [$this, 'ajax_add_url']);
         add_action('wp_ajax_delete_uptime_url', [$this, 'ajax_delete_url']);
-	    add_action('wp_ajax_toggle_uptime_monitoring', [$this, 'ajax_toggle_monitoring']);
+        add_action('wp_ajax_refresh_uptime_dashboard', [$this, 'ajax_refresh_dashboard']);
+        add_action('wp_ajax_toggle_uptime_monitoring', [$this, 'ajax_toggle_monitoring']);
     }
     /**
      * Activation hook.
@@ -381,13 +382,14 @@ class SimpleUptimeMonitor
             wp_enqueue_style('uptime-monitor-styles', plugin_dir_url(__FILE__) . 'css/uptime-monitor.css', [], self::VERSION);
         }
 
-        if (in_array($hook_suffix, $plugin_pages, true)) {
+        if ($hook_suffix === 'index.php' || in_array($hook_suffix, $plugin_pages, true)) {
             // Enqueue admin scripts
             wp_enqueue_script('uptime-monitor-scripts', plugin_dir_url(__FILE__) . 'js/uptime-monitor.js', ['jquery'], self::VERSION, true);
             // Localize AJAX script
             wp_localize_script('uptime-monitor-scripts', 'uptimeMonitorAjax', [
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('uptime_monitor_nonce'),
+                'refresh_interval_ms' => 30000,
             ]);
             // Localize script for translations
             wp_localize_script('uptime-monitor-scripts', 'uptimeMonitorL10n', [
@@ -428,6 +430,10 @@ class SimpleUptimeMonitor
                 'dismiss' => __('Dismiss this notice.', 'uptime-monitor'),
                 'copy_success' => __('Copied to clipboard.', 'uptime-monitor'),
                 'copy_failed' => __('Could not copy to clipboard.', 'uptime-monitor'),
+                'refresh_now' => __('Refresh now', 'uptime-monitor'),
+                'refreshing' => __('Refreshing...', 'uptime-monitor'),
+                'refreshed' => __('Updated just now.', 'uptime-monitor'),
+                'auto_refresh' => __('Auto-refresh', 'uptime-monitor'),
             ]);
         }
     }
@@ -950,9 +956,14 @@ class SimpleUptimeMonitor
         $this->render_dashboard_overview($dashboard);
         $dashboard_html = ob_get_clean();
 
+        ob_start();
+        $this->render_dashboard_widget_content($dashboard);
+        $widget_html = ob_get_clean();
+
         return [
             'urls' => $dashboard['urls'],
             'dashboard_html' => $dashboard_html,
+            'widget_html' => $widget_html,
         ];
     }
 
@@ -1334,6 +1345,11 @@ class SimpleUptimeMonitor
         }
 
         $dashboard = $this->get_dashboard_summary($this->normalize_stored_urls());
+        $this->render_dashboard_widget_content($dashboard);
+    }
+
+    private function render_dashboard_widget_content(array $dashboard): void
+    {
         $overall_status = isset($dashboard['overall_status']) ? sanitize_key($dashboard['overall_status']) : 'operational';
         $status_class = $overall_status === 'incident' ? 'down' : ($overall_status === 'degraded' ? 'degraded' : 'up');
         $attention_urls = array_values(array_filter($dashboard['urls'], function (array $url_data): bool {
@@ -1344,6 +1360,7 @@ class SimpleUptimeMonitor
         }));
 
         echo '<div class="uptime-monitor-dashboard uptime-dashboard-widget is-' . esc_attr($status_class) . '">';
+        echo '<div class="uptime-widget-refresh-meter" aria-hidden="true"><span></span></div>';
         echo '<div class="uptime-widget-status">';
         if ($overall_status === 'incident') {
             echo '<span class="uptime-widget-beacon" aria-hidden="true"></span>';
@@ -1469,7 +1486,7 @@ class SimpleUptimeMonitor
         $incident_label = isset($dashboard['incident_label']) ? $dashboard['incident_label'] : __('No incident', 'uptime-monitor');
         $incident_duration_display = isset($dashboard['incident_duration_display']) ? (string)$dashboard['incident_duration_display'] : '';
 
-        echo '<article class="uptime-url-row is-' . esc_attr($status) . '">';
+        echo '<article class="uptime-url-row is-' . esc_attr($status) . '" data-id="' . esc_attr($url_data['id']) . '">';
         echo '<div class="uptime-url-status">';
         echo '<span class="uptime-status-light is-' . esc_attr($status) . '" aria-hidden="true"></span>';
         echo '<strong>' . esc_html($status_label) . '</strong>';
@@ -1604,6 +1621,11 @@ class SimpleUptimeMonitor
         echo '<div class="wrap uptime-monitor-admin uptime-monitor-dashboard">';
         echo '<div class="uptime-dashboard-header">';
         echo '<h1>' . esc_html__('Uptime Monitor', 'uptime-monitor') . '</h1>';
+        echo '<div class="uptime-dashboard-actions">';
+        echo '<button type="button" class="button uptime-refresh-dashboard"><span class="dashicons dashicons-update" aria-hidden="true"></span><span>' . esc_html__('Refresh now', 'uptime-monitor') . '</span></button>';
+        echo '<label class="uptime-auto-refresh-toggle"><input type="checkbox" class="uptime-auto-refresh-input"> <span>' . esc_html__('Auto-refresh', 'uptime-monitor') . '</span></label>';
+        echo '<span class="uptime-refresh-state" aria-live="polite"></span>';
+        echo '</div>';
         echo '</div>';
         echo '<div class="uptime-monitor-notices" aria-live="polite" aria-atomic="true"></div>';
 
@@ -2211,6 +2233,18 @@ class SimpleUptimeMonitor
         }
         wp_send_json_error(['message' => __('URL not found.', 'uptime-monitor')], 404);
     }
+
+    public function ajax_refresh_dashboard(): void
+    {
+        check_ajax_referer('uptime_monitor_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You are not allowed to view uptime data.', 'uptime-monitor')], 403);
+        }
+
+        wp_send_json_success($this->get_dashboard_ajax_payload($this->normalize_stored_urls()));
+    }
+
 	/**
 	 * Handles AJAX request to toggle monitoring for a specific URL.
 	 *

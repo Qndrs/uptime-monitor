@@ -17,6 +17,32 @@
     max-width: none;
 }
 
+.uptime-widget-refresh-meter {
+    background: rgba(34, 113, 177, 0.12);
+    border-radius: 999px;
+    height: 3px;
+    margin: 0 0 8px;
+    overflow: hidden;
+}
+
+.uptime-widget-refresh-meter span {
+    animation: uptime-widget-refresh-countdown 30s linear infinite;
+    background: var(--ump-info);
+    border-radius: inherit;
+    display: block;
+    height: 100%;
+    transform-origin: left center;
+    width: 100%;
+}
+
+.uptime-dashboard-widget.is-down .uptime-widget-refresh-meter span {
+    background: var(--ump-down);
+}
+
+.uptime-dashboard-widget.is-degraded .uptime-widget-refresh-meter span {
+    background: var(--ump-warning);
+}
+
 .uptime-widget-status {
     align-items: center;
     border: 1px solid var(--ump-border);
@@ -100,8 +126,18 @@
     }
 }
 
+@keyframes uptime-widget-refresh-countdown {
+    from {
+        transform: scaleX(1);
+    }
+    to {
+        transform: scaleX(0);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .uptime-widget-beacon::after {
+    .uptime-widget-beacon::after,
+    .uptime-widget-refresh-meter span {
         animation: none;
     }
 }
@@ -111,6 +147,36 @@
     display: flex;
     gap: 12px;
     justify-content: space-between;
+}
+
+.uptime-dashboard-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    justify-content: flex-end;
+}
+
+.uptime-dashboard-actions .dashicons {
+    font-size: 16px;
+    height: 16px;
+    line-height: 1;
+    margin-right: 4px;
+    vertical-align: text-bottom;
+    width: 16px;
+}
+
+.uptime-auto-refresh-toggle {
+    align-items: center;
+    display: inline-flex;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.uptime-refresh-state {
+    color: var(--ump-muted);
+    font-size: 12px;
+    min-height: 18px;
 }
 
 .uptime-monitor-admin h1 {
