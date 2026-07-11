@@ -1,9 +1,9 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple Uptime Monitor 3.3.0\n"
+"Project-Id-Version: Simple Uptime Monitor 3.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-05 22:15+0200\n"
-"PO-Revision-Date: 2026-07-05 22:15+0200\n"
+"POT-Creation-Date: 2026-07-11 18:45+0200\n"
+"PO-Revision-Date: 2026-07-11 18:45+0200\n"
 "Last-Translator: Robert Kuunders\n"
 "Language-Team: Nederlands\n"
 "Language: nl_NL\n"
@@ -41,8 +41,17 @@ msgstr "Actieve incidenten: %1$d; actieve URLs: %2$d"
 msgid "Add URL"
 msgstr "URL toevoegen"
 
+msgid "Add heartbeat monitor"
+msgstr "Heartbeat monitor toevoegen"
+
+msgid "Admin authentication required"
+msgstr "Admin-authenticatie vereist"
+
 msgid "An error occurred: "
 msgstr "Er is een fout opgetreden: "
+
+msgid "Authorization: Bearer your-token"
+msgstr "Authorization: Bearer jouw-token"
 
 msgid "Average over recent checks"
 msgstr "Gemiddelde over recente checks"
@@ -65,11 +74,20 @@ msgstr "Opgeslagen API-token wissen"
 msgid "Clear stored user key"
 msgstr "Opgeslagen user key wissen"
 
+msgid "Clients send a POST request to this endpoint with their own heartbeat token."
+msgstr "Clients sturen een POST naar dit endpoint met hun eigen heartbeat-token."
+
+msgid "Complete monitor status response."
+msgstr "Volledige monitorstatusresponse."
+
 msgid "Configuration Import / Export"
 msgstr "Configuratie importeren / exporteren"
 
 msgid "Configuration imported successfully!"
 msgstr "Configuratie succesvol geïmporteerd!"
+
+msgid "Configuration imported successfully."
+msgstr "Configuratie succesvol geimporteerd."
 
 msgid "Configuration panel"
 msgstr "Configuratiepaneel"
@@ -77,11 +95,38 @@ msgstr "Configuratiepaneel"
 msgid "Configured"
 msgstr "Geconfigureerd"
 
+msgid "Configured heartbeat monitors"
+msgstr "Ingestelde heartbeat monitors"
+
 msgid "Configured in database"
-msgstr "Geconfigureerd in database"
+msgstr "In database ingesteld"
+
+msgid "Copied to clipboard."
+msgstr "Gekopieerd naar het klembord."
+
+msgid "Copy"
+msgstr "Kopieren"
+
+msgid "Copy curl example"
+msgstr "curl-voorbeeld kopieren"
+
+msgid "Copy this heartbeat token now. It will not be shown again."
+msgstr "Kopieer dit heartbeat-token nu. Het wordt niet opnieuw getoond."
+
+msgid "Copy this token now. It will not be shown again."
+msgstr "Kopieer dit token nu. Het wordt niet opnieuw getoond."
+
+msgid "Copy token"
+msgstr "Token kopieren"
+
+msgid "Could not copy to clipboard."
+msgstr "Kopieren naar het klembord is mislukt."
+
+msgid "Created: %s"
+msgstr "Aangemaakt: %s"
 
 msgid "Credential source"
-msgstr "Bron van credentials"
+msgstr "Bron van toegangsgegevens"
 
 msgid "Cron and HTTP checks"
 msgstr "Cron en HTTP-checks"
@@ -91,6 +136,9 @@ msgstr "Huidige gezondheid"
 
 msgid "Current settings"
 msgstr "Huidige instellingen"
+
+msgid "Current token ends with %s."
+msgstr "Huidig token eindigt op %s."
 
 msgid "Degraded"
 msgstr "Verminderd"
@@ -110,13 +158,16 @@ msgstr "Deze melding sluiten."
 msgid "Down"
 msgstr "Down"
 
+msgid "Down Status Codes"
+msgstr "Down-statuscodes"
+
 msgid "Down codes"
 msgstr "Down-codes"
 
 msgid "Down for %s"
 msgstr "Down sinds %s"
 
-msgid "Down Status Codes"
+msgid "Down status codes"
 msgstr "Down-statuscodes"
 
 msgid "Email"
@@ -128,6 +179,9 @@ msgstr "E-mail / Pushover ingeschakeld"
 msgid "Email Alert"
 msgstr "E-mailalarm"
 
+msgid "Email alert"
+msgstr "E-mailalarm"
+
 msgid "Enabled"
 msgstr "Ingeschakeld"
 
@@ -136,6 +190,18 @@ msgstr "Fout"
 
 msgid "Every %d seconds"
 msgstr "Elke %d seconden"
+
+msgid "Existing admin-only log endpoint."
+msgstr "Bestaand logendpoint, alleen voor admins."
+
+msgid "Expected every %d seconds"
+msgstr "Elke %d seconden verwacht"
+
+msgid "Expected interval (seconds)"
+msgstr "Verwacht interval (seconden)"
+
+msgid "Expected interval:"
+msgstr "Verwacht interval:"
 
 msgid "Export Configuration"
 msgstr "Configuratie exporteren"
@@ -146,17 +212,41 @@ msgstr "Extra pogingen voordat een URL als down wordt gezien."
 msgid "Faster"
 msgstr "Sneller"
 
-msgid "Hide details"
-msgstr "Details verbergen"
-
-msgid "How often WordPress cron should schedule monitoring checks."
-msgstr "Hoe vaak WordPress cron monitoringchecks moet plannen."
+msgid "Generate token"
+msgstr "Token genereren"
 
 msgid "HTTP %d"
 msgstr "HTTP %d"
 
 msgid "HTTP status ranges"
 msgstr "HTTP-statusbereiken"
+
+msgid "Heartbeat endpoint"
+msgstr "Heartbeat-endpoint"
+
+msgid "Heartbeat monitor created. Copy the token now; it will not be shown again."
+msgstr "Heartbeat monitor aangemaakt. Kopieer het token nu; het wordt niet opnieuw getoond."
+
+msgid "Heartbeat monitor deleted."
+msgstr "Heartbeat monitor verwijderd."
+
+msgid "Heartbeat monitor name is required."
+msgstr "Naam voor heartbeat monitor is verplicht."
+
+msgid "Heartbeat monitor not found."
+msgstr "Heartbeat monitor niet gevonden."
+
+msgid "Heartbeat monitor updated."
+msgstr "Heartbeat monitor bijgewerkt."
+
+msgid "Heartbeat token rotated. Copy the token now; it will not be shown again."
+msgstr "Heartbeat-token vernieuwd. Kopieer het token nu; het wordt niet opnieuw getoond."
+
+msgid "Hide details"
+msgstr "Details verbergen"
+
+msgid "How often WordPress cron should schedule monitoring checks."
+msgstr "Hoe vaak WordPress cron monitoringchecks moet plannen."
 
 msgid "Import Configuration"
 msgstr "Configuratie importeren"
@@ -173,9 +263,6 @@ msgstr "Interval:"
 msgid "Invalid JSON format."
 msgstr "Ongeldig JSON-formaat."
 
-msgid "Invalid log date parameter: %s."
-msgstr "Ongeldige logdatumparameter: %s."
-
 msgid "Invalid URL."
 msgstr "Ongeldige URL."
 
@@ -185,8 +272,17 @@ msgstr "Ongeldige URL:"
 msgid "Invalid URL: %s"
 msgstr "Ongeldige URL: %s"
 
+msgid "Invalid form request."
+msgstr "Ongeldig formulierverzoek."
+
 msgid "Last check:"
 msgstr "Laatste check:"
+
+msgid "Last ping:"
+msgstr "Laatste ping:"
+
+msgid "Logs"
+msgstr "Logboek"
 
 msgid "Maximum wait time per HTTP request attempt."
 msgstr "Maximale wachttijd per HTTP-poging."
@@ -194,14 +290,14 @@ msgstr "Maximale wachttijd per HTTP-poging."
 msgid "Minimum 60 seconds"
 msgstr "Minimaal 60 seconden"
 
-msgid "Monitor interval"
-msgstr "Monitorinterval"
-
 msgid "Monitor Interval (seconds)"
 msgstr "Monitorinterval (seconden)"
 
-msgid "monitored"
-msgstr "gemonitord"
+msgid "Monitor interval"
+msgstr "Monitorinterval"
+
+msgid "Monitor status by ID."
+msgstr "Status van een monitor op basis van ID."
 
 msgid "Monitored URLs"
 msgstr "Gemonitorde URLs"
@@ -209,23 +305,29 @@ msgstr "Gemonitorde URLs"
 msgid "Monitoring"
 msgstr "Monitoring"
 
-msgid "Monitoring metrics"
-msgstr "Monitoringstatistieken"
-
 msgid "Monitoring Settings"
 msgstr "Monitoringinstellingen"
+
+msgid "Monitoring metrics"
+msgstr "Monitoringstatistieken"
 
 msgid "Monitoring summary"
 msgstr "Monitoringsamenvatting"
 
+msgid "Name"
+msgstr "Naam"
+
 msgid "Next check"
 msgstr "Volgende check"
 
+msgid "No URLs available. Add one!"
+msgstr "Geen URLs beschikbaar. Voeg er een toe."
+
 msgid "No alerts"
-msgstr "Geen meldingen"
+msgstr "Geen alarmen"
 
 msgid "No checks yet."
-msgstr "Nog geen checks."
+msgstr "Nog geen controles."
 
 msgid "No data"
 msgstr "Geen data"
@@ -233,17 +335,23 @@ msgstr "Geen data"
 msgid "No further alerts will be sent for this incident until the website is reachable again."
 msgstr "Voor dit incident worden geen verdere meldingen verzonden totdat de website weer bereikbaar is."
 
+msgid "No heartbeat monitors configured yet."
+msgstr "Er zijn nog geen heartbeat monitors ingesteld."
+
 msgid "No incident"
 msgstr "Geen incident"
 
 msgid "No logs found."
 msgstr "Geen logs gevonden."
 
-msgid "No URLs available. Add one!"
-msgstr "Geen URLs beschikbaar. Voeg er een toe!"
+msgid "No ping received"
+msgstr "Geen ping ontvangen"
+
+msgid "No token configured"
+msgstr "Geen token ingesteld"
 
 msgid "Not configured"
-msgstr "Niet geconfigureerd"
+msgstr "Niet ingesteld"
 
 msgid "Not scheduled"
 msgstr "Niet gepland"
@@ -254,8 +362,17 @@ msgstr "Meldingen"
 msgid "Operational"
 msgstr "Operationeel"
 
+msgid "Outbound client pings"
+msgstr "Uitgaande clientpings"
+
+msgid "Overall status"
+msgstr "Algemene status"
+
 msgid "Paste a previously exported JSON configuration here."
-msgstr "Plak hier een eerder geëxporteerde JSON-configuratie."
+msgstr "Plak hier een eerder geexporteerde JSON-configuratie."
+
+msgid "Pause"
+msgstr "Pauzeren"
 
 msgid "Paused"
 msgstr "Gepauzeerd"
@@ -266,35 +383,68 @@ msgstr "Per HTTP-poging"
 msgid "Pushover"
 msgstr "Pushover"
 
-msgid "Pushover Alert"
-msgstr "Pushover-alarm"
-
 msgid "Pushover API Token"
 msgstr "Pushover API-token"
+
+msgid "Pushover Alert"
+msgstr "Pushover-alarm"
 
 msgid "Pushover Configuration"
 msgstr "Pushover-configuratie"
 
+msgid "Pushover User Key"
+msgstr "Pushover-gebruikerssleutel"
+
+msgid "Pushover alert"
+msgstr "Pushover-alarm"
+
 msgid "Pushover constants are defined in wp-config.php and take precedence over stored settings."
 msgstr "Pushover-constanten zijn ingesteld in wp-config.php en krijgen voorrang op opgeslagen instellingen."
-
-msgid "Pushover User Key"
-msgstr "Pushover user key"
 
 msgid "Pushover:"
 msgstr "Pushover:"
 
-msgid "Request timeout"
-msgstr "Request-timeout"
+msgid "REST API"
+msgstr "REST API"
+
+msgid "REST API viewer"
+msgstr "REST API-viewer"
+
+msgid "Read-only API token"
+msgstr "Alleen-lezen API-token"
+
+msgid "Read-only API token generated. Copy it now; it will not be shown again."
+msgstr "Read-only API-token gegenereerd. Kopieer het nu; het wordt niet opnieuw getoond."
+
+msgid "Read-only API token revoked."
+msgstr "Read-only API-token ingetrokken."
+
+msgid "Refresh now"
+msgstr "Nu verversen"
+
+msgid "Refreshing..."
+msgstr "Verversen..."
 
 msgid "Request Timeout (seconds)"
-msgstr "Request-timeout (seconden)"
+msgstr "Verzoek-timeout (seconden)"
+
+msgid "Request timeout"
+msgstr "Verzoek-timeout"
+
+msgid "Resume"
+msgstr "Hervatten"
 
 msgid "Retries:"
-msgstr "Retries:"
+msgstr "Pogingen:"
 
 msgid "Retry attempts"
-msgstr "Retry-pogingen"
+msgstr "Herhaalpogingen"
+
+msgid "Revoke token"
+msgstr "Token intrekken"
+
+msgid "Rotate token"
+msgstr "Token vernieuwen"
 
 msgid "Save Settings"
 msgstr "Instellingen opslaan"
@@ -303,7 +453,7 @@ msgid "Scheduled WordPress cron"
 msgstr "Geplande WordPress-cron"
 
 msgid "Secrets excluded"
-msgstr "Secrets uitgesloten"
+msgstr "Geheimen uitgesloten"
 
 msgid "Send Pushover Test"
 msgstr "Pushover-test verzenden"
@@ -317,17 +467,26 @@ msgstr "Instellingen opgeslagen en Pushover-testmelding verzonden."
 msgid "Settings saved!"
 msgstr "Instellingen opgeslagen!"
 
+msgid "Settings saved, but the Pushover test notification failed. Check credentials and logs."
+msgstr "Instellingen opgeslagen, maar de Pushover-testmelding is mislukt. Controleer toegangsgegevens en logs."
+
 msgid "Settings saved, but the Pushover test notification failed. Check your credentials and logs."
 msgstr "Instellingen opgeslagen, maar de Pushover-testmelding is mislukt. Controleer de credentials en logs."
 
+msgid "Settings saved."
+msgstr "Instellingen opgeslagen."
+
 msgid "Settings summary"
-msgstr "Instellingensamenvatting"
+msgstr "Instellingenoverzicht"
 
 msgid "Simple Uptime Monitor"
 msgstr "Simple Uptime Monitor"
 
+msgid "Single monitored URL status by ID."
+msgstr "Status van één gemonitorde URL op basis van ID."
+
 msgid "Slower"
-msgstr "Trager"
+msgstr "Langzamer"
 
 msgid "Stable"
 msgstr "Stabiel"
@@ -335,8 +494,11 @@ msgstr "Stabiel"
 msgid "Status History"
 msgstr "Statusgeschiedenis"
 
+msgid "Status becomes stale/down after roughly twice this interval without a ping."
+msgstr "De status wordt stale/down na ongeveer twee keer dit interval zonder ping."
+
 msgid "Store Pushover credentials here when file access to wp-config.php is not available."
-msgstr "Sla Pushover-credentials hier op wanneer bestandstoegang tot wp-config.php niet beschikbaar is."
+msgstr "Sla Pushover-toegangsgegevens hier op wanneer bestandstoegang tot wp-config.php niet beschikbaar is."
 
 msgid "The website %1$s is down. Error: %2$s."
 msgstr "De website %1$s is down. Fout: %2$s."
@@ -356,32 +518,17 @@ msgstr "Dit is een testmelding van Simple Uptime Monitor."
 msgid "Timeout:"
 msgstr "Timeout:"
 
-msgid "Unknown"
-msgstr "Onbekend"
-
-msgid "up"
-msgstr "up"
-
-msgid "Uptime"
-msgstr "Uptime"
-
-msgid "Uptime Monitor"
-msgstr "Uptime Monitor"
-
-msgid "Uptime Monitor Settings"
-msgstr "Uptime Monitor-instellingen"
-
-msgid "Uptime Monitor Test"
-msgstr "Uptime Monitor-test"
+msgid "Token configured"
+msgstr "Token ingesteld"
 
 msgid "URL"
 msgstr "URL"
 
 msgid "URL added successfully!"
-msgstr "URL succesvol toegevoegd!"
+msgstr "URL succesvol toegevoegd."
 
 msgid "URL deleted successfully!"
-msgstr "URL succesvol verwijderd!"
+msgstr "URL succesvol verwijderd."
 
 msgid "URL is down."
 msgstr "URL is down."
@@ -398,8 +545,38 @@ msgstr "URL is up."
 msgid "URL not found."
 msgstr "URL niet gevonden."
 
+msgid "URL status"
+msgstr "URL-status"
+
+msgid "Unknown"
+msgstr "Onbekend"
+
+msgid "Up"
+msgstr "Online"
+
+msgid "Updated just now."
+msgstr "Net bijgewerkt."
+
+msgid "Uptime"
+msgstr "Uptime"
+
+msgid "Uptime Monitor"
+msgstr "Uptime Monitor"
+
+msgid "Uptime Monitor Settings"
+msgstr "Uptime Monitor-instellingen"
+
+msgid "Uptime Monitor Test"
+msgstr "Uptime Monitor-test"
+
 msgid "Use comma-separated HTTP status codes or ranges. Default: 100-199,300-599."
 msgstr "Gebruik komma-gescheiden HTTP-statuscodes of bereiken. Standaard: 100-199,300-599."
+
+msgid "Use heartbeat monitors for computers, jobs, Home Assistant, NAS devices or internal apps that can reach this monitor through outbound HTTPS, but cannot be reached inbound."
+msgstr "Gebruik heartbeat monitors voor computers, jobs, Home Assistant, NAS-apparaten of interne apps die deze monitor via uitgaande HTTPS kunnen bereiken, maar zelf niet van buitenaf bereikbaar zijn."
+
+msgid "Use this token for external dashboards that only need the status endpoints."
+msgstr "Gebruik dit token voor externe dashboards die alleen de status-endpoints nodig hebben."
 
 msgid "Website Down Alert"
 msgstr "Website down-alarm"
@@ -413,92 +590,15 @@ msgstr "Website hersteld"
 msgid "Website Recovered: %s"
 msgstr "Website hersteld: %s"
 
-msgid "wp-config.php constants"
-msgstr "wp-config.php-constanten"
-
 msgid "You are not allowed to manage uptime URLs."
 msgstr "Je hebt geen toestemming om uptime-URLs te beheren."
 
-msgid "Admin authentication required"
-msgstr "Admin-authenticatie vereist"
+msgid "monitored"
+msgstr "gemonitord"
 
-msgid "Complete monitor status response."
-msgstr "Volledige monitorstatusresponse."
+msgid "up"
+msgstr "up"
 
-msgid "Copied to clipboard."
-msgstr "Gekopieerd naar het klembord."
+msgid "wp-config.php constants"
+msgstr "wp-config.php-constanten"
 
-msgid "Copy"
-msgstr "Kopiëren"
-
-msgid "Could not copy to clipboard."
-msgstr "Kopiëren naar het klembord is niet gelukt."
-
-msgid "Existing admin-only log endpoint."
-msgstr "Bestaand logendpoint, alleen voor admins."
-
-msgid "Logs"
-msgstr "Logs"
-
-msgid "Overall status"
-msgstr "Algemene status"
-
-msgid "REST API"
-msgstr "REST API"
-
-msgid "REST API viewer"
-msgstr "REST API-viewer"
-
-msgid "Single monitored URL status by ID."
-msgstr "Status van één gemonitorde URL op basis van ID."
-
-msgid "URL status"
-msgstr "URL-status"
-
-msgid "Authorization: Bearer your-token"
-msgstr "Authorization: Bearer jouw-token"
-
-msgid "Copy this token now. It will not be shown again."
-msgstr "Kopieer dit token nu. Het wordt niet opnieuw getoond."
-
-msgid "Created: %s"
-msgstr "Aangemaakt: %s"
-
-msgid "Current token ends with %s."
-msgstr "Huidig token eindigt op %s."
-
-msgid "Generate token"
-msgstr "Token genereren"
-
-msgid "No token configured"
-msgstr "Geen token geconfigureerd"
-
-msgid "Read-only API token"
-msgstr "Read-only API-token"
-
-msgid "Read-only API token generated. Copy it now; it will not be shown again."
-msgstr "Read-only API-token gegenereerd. Kopieer het nu; het wordt niet opnieuw getoond."
-
-msgid "Read-only API token revoked."
-msgstr "Read-only API-token ingetrokken."
-
-msgid "Revoke token"
-msgstr "Token intrekken"
-
-msgid "Rotate token"
-msgstr "Token vernieuwen"
-
-msgid "Token configured"
-msgstr "Token geconfigureerd"
-
-msgid "Use this token for external dashboards that only need the status endpoints."
-msgstr "Gebruik dit token voor externe dashboards die alleen de status-endpoints nodig hebben."
-
-msgid "%d more URLs need attention."
-msgstr "%d extra URLs vragen aandacht."
-
-msgid "All monitored URLs are reachable."
-msgstr "Alle gemonitorde URLs zijn bereikbaar."
-
-msgid "Open Uptime Monitor"
-msgstr "Uptime Monitor openen"

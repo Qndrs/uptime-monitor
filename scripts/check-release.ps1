@@ -39,6 +39,30 @@ if ($node) {
     Write-Output "Skipping JavaScript syntax check because Node.js is not available."
 }
 
+Write-Output "Checking i18n source strings..."
+$i18nScript = Join-Path $root "scripts\check-i18n.py"
+$python = Get-Command python -ErrorAction SilentlyContinue
+$pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+if ($python) {
+    & python $i18nScript | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        throw "i18n check failed"
+    }
+} elseif ($pyLauncher) {
+    & py $i18nScript | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        throw "i18n check failed"
+    }
+} else {
+    Write-Output "Python is not available; using minimal PowerShell i18n fallback."
+    $pluginForI18n = Get-Content -LiteralPath $pluginFile -Raw
+    Assert-True ($pluginForI18n -notmatch "Net bijgewerkt|Uptime Monitor-instellingen|Instellingen opslaan|Configuratiepaneel|Heartbeat monitor toevoegen") "Dutch source strings found in PHP gettext calls"
+    $poFile = Join-Path $root "languages\uptime-monitor-nl_NL.po"
+    $po = Get-Content -LiteralPath $poFile -Raw
+    Assert-True ($po -match 'msgid "Updated just now\."\s+msgstr "Net bijgewerkt\."') "Dutch translation for Updated just now is missing"
+    Assert-True ($po -match 'msgid "Delete"\s+msgstr "Verwijderen"') "Dutch translation for Delete is missing"
+}
+
 $plugin = Get-Content -LiteralPath $pluginFile -Raw
 $readme = Get-Content -LiteralPath $readmeFile -Raw
 $wpReadme = Get-Content -LiteralPath $wpReadmeFile -Raw
