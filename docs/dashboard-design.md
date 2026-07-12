@@ -1,6 +1,6 @@
 # Dashboard Design Notes
 
-Werknotitie voor de dashboardfase van Simple Uptime Monitor.
+Werknotitie voor de dashboardfase van Qndrs Availability and Heartbeat Monitor.
 
 ## Doel
 

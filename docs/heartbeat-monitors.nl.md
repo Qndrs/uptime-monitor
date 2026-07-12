@@ -2,14 +2,14 @@
 
 Heartbeat monitors zijn bedoeld voor computers, jobs, Home Assistant-installaties, NAS-apparaten, Docker-hosts en interne applicaties die niet van buitenaf bereikbaar zijn, maar wel zelf uitgaand HTTPS-verkeer naar de monitor kunnen sturen.
 
-De monitor wordt handmatig aangemaakt via **Uptime Monitor > Instellingen > Heartbeat monitors**. Auto-registratie is bewust geen onderdeel van deze eerste versie.
+De monitor wordt handmatig aangemaakt via **Qndrs Monitor > Instellingen > Heartbeat monitors**. Auto-registratie is bewust geen onderdeel van deze eerste versie.
 
 ## Basisverzoek
 
 Vervang `TOKEN` door het eenmalige token dat wordt getoond wanneer je een heartbeat monitor aanmaakt of het token vernieuwt.
 
 ```bash
-curl -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" \
+curl -X POST "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat" \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"status":"up","message":"heartbeat ok"}'
@@ -20,7 +20,7 @@ curl -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" \
 ## Linux cron
 
 ```cron
-*/5 * * * * curl -fsS -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" -d '{"status":"up","message":"cron heartbeat"}' >/dev/null
+*/5 * * * * curl -fsS -X POST "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat" -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" -d '{"status":"up","message":"cron heartbeat"}' >/dev/null
 ```
 
 ## systemd timer
@@ -29,7 +29,7 @@ Gebruik een klein script zoals `/usr/local/bin/uptime-heartbeat.sh`:
 
 ```bash
 #!/usr/bin/env sh
-curl -fsS -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" \
+curl -fsS -X POST "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat" \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"status":"up","message":"systemd heartbeat"}'
@@ -47,7 +47,7 @@ Maak `C:\Scripts\uptime-heartbeat.bat` met deze inhoud:
 
 ```bat
 @echo off
-curl.exe -fsS -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"up\",\"message\":\"windows heartbeat\"}"
+curl.exe -fsS -X POST "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat" -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"up\",\"message\":\"windows heartbeat\"}"
 ```
 
 Kies bij opslaan vanuit Kladblok voor **Alle bestanden** als bestandstype, zodat het bestand niet eindigt als `uptime-heartbeat.bat.txt`.
@@ -56,7 +56,7 @@ Kies bij opslaan vanuit Kladblok voor **Alle bestanden** als bestandstype, zodat
 
 1. Open **Taakplanner** via het Windows-startmenu.
 2. Kies **Basistaak maken...**.
-3. Vul een naam in, bijvoorbeeld `Uptime Monitor Heartbeat`.
+3. Vul een naam in, bijvoorbeeld `Qndrs Monitor Heartbeat`.
 4. Kies **Dagelijks** als trigger. De herhaling stel je in de volgende stap in.
 5. Kies **Een programma starten** als actie.
 6. Blader naar `C:\Scripts\uptime-heartbeat.bat`.
@@ -85,8 +85,8 @@ Open `configuration.yaml` met File Editor, VS Code of een Samba-share en voeg to
 
 ```yaml
 rest_command:
-  uptime_monitor_heartbeat:
-    url: "https://example.com/wp-json/uptime-monitor/v1/heartbeat"
+  qndrs_ahm_heartbeat:
+    url: "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat"
     method: POST
     headers:
       Authorization: "Bearer TOKEN"
@@ -123,7 +123,7 @@ trigger:
     minutes: "/5"
 condition: []
 action:
-  - action: rest_command.uptime_monitor_heartbeat
+  - action: rest_command.qndrs_ahm_heartbeat
 mode: single
 ```
 
@@ -132,7 +132,7 @@ Sla de automatisering op.
 ### Handmatig testen
 
 1. Ga naar **Ontwikkelaarstools > Acties**.
-2. Zoek naar `rest_command.uptime_monitor_heartbeat`.
+2. Zoek naar `rest_command.qndrs_ahm_heartbeat`.
 3. Voer de actie uit.
 
 De trigger `minutes: "/5"` draait op elke minuut die deelbaar is door vijf, bijvoorbeeld `:00`, `:05` en `:10`.

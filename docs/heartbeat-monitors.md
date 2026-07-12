@@ -2,14 +2,14 @@
 
 Heartbeat monitors are for machines, jobs, Home Assistant instances, NAS devices, Docker hosts or internal applications that are not reachable inbound, but can send outbound HTTPS requests to the monitor.
 
-The monitor must be created manually in **Uptime Monitor > Settings > Heartbeat Monitors**. Auto-registration is intentionally not part of the MVP.
+The monitor must be created manually in **Qndrs Monitor > Settings > Heartbeat Monitors**. Auto-registration is intentionally not part of the MVP.
 
 ## Basic request
 
 Replace `TOKEN` with the one-time token shown when creating or rotating a heartbeat monitor.
 
 ```bash
-curl -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" \
+curl -X POST "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat" \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"status":"up","message":"heartbeat ok"}'
@@ -20,7 +20,7 @@ curl -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" \
 ## Linux cron
 
 ```cron
-*/5 * * * * curl -fsS -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" -d '{"status":"up","message":"cron heartbeat"}' >/dev/null
+*/5 * * * * curl -fsS -X POST "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat" -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" -d '{"status":"up","message":"cron heartbeat"}' >/dev/null
 ```
 
 ## systemd timer
@@ -29,7 +29,7 @@ Use a small script such as `/usr/local/bin/uptime-heartbeat.sh`:
 
 ```bash
 #!/usr/bin/env sh
-curl -fsS -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" \
+curl -fsS -X POST "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat" \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"status":"up","message":"systemd heartbeat"}'
@@ -47,7 +47,7 @@ Create `C:\Scripts\uptime-heartbeat.bat` with this content:
 
 ```bat
 @echo off
-curl.exe -fsS -X POST "https://example.com/wp-json/uptime-monitor/v1/heartbeat" -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"up\",\"message\":\"windows heartbeat\"}"
+curl.exe -fsS -X POST "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat" -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" -d "{\"status\":\"up\",\"message\":\"windows heartbeat\"}"
 ```
 
 When saving from Notepad, choose **All files** as the file type so the file does not become `uptime-heartbeat.bat.txt`.
@@ -56,7 +56,7 @@ When saving from Notepad, choose **All files** as the file type so the file does
 
 1. Open **Task Scheduler** from the Windows Start menu.
 2. Choose **Create Basic Task...**.
-3. Enter a name such as `Uptime Monitor Heartbeat`.
+3. Enter a name such as `Qndrs Monitor Heartbeat`.
 4. Choose **Daily** as the trigger. The repetition interval is configured in the next step.
 5. Choose **Start a program** as the action.
 6. Browse to `C:\Scripts\uptime-heartbeat.bat`.
@@ -85,8 +85,8 @@ Open `configuration.yaml` with File Editor, VS Code or a Samba share and add:
 
 ```yaml
 rest_command:
-  uptime_monitor_heartbeat:
-    url: "https://example.com/wp-json/uptime-monitor/v1/heartbeat"
+  qndrs_ahm_heartbeat:
+    url: "https://example.com/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat"
     method: POST
     headers:
       Authorization: "Bearer TOKEN"
@@ -123,7 +123,7 @@ trigger:
     minutes: "/5"
 condition: []
 action:
-  - action: rest_command.uptime_monitor_heartbeat
+  - action: rest_command.qndrs_ahm_heartbeat
 mode: single
 ```
 
@@ -134,7 +134,7 @@ Save the automation.
 To test manually:
 
 1. Go to **Developer Tools > Actions**.
-2. Search for `rest_command.uptime_monitor_heartbeat`.
+2. Search for `rest_command.qndrs_ahm_heartbeat`.
 3. Run the action.
 
 The `minutes: "/5"` trigger runs on every minute divisible by five, for example `:00`, `:05`, `:10` and so on.

@@ -1,10 +1,10 @@
-# Simple Uptime Monitor with Heartbeat
+# Qndrs Availability and Heartbeat Monitor
 
 ![WordPress version](https://img.shields.io/badge/WordPress-7.0-blue)
 ![PHP version](https://img.shields.io/badge/PHP-8.0+-blue)
 ![License](https://img.shields.io/badge/license-GPLv2%2B-green)
 
-Simple Uptime Monitor with Heartbeat is a lightweight WordPress plugin for monitoring websites and heartbeat clients from the WordPress dashboard. It can check multiple URLs, track firewalled clients through outbound heartbeat pings, send downtime alerts by email or Pushover, store JSON logs, and expose authenticated REST endpoints.
+Qndrs Availability and Heartbeat Monitor is a lightweight WordPress plugin for monitoring websites and heartbeat clients from the WordPress dashboard. It can check multiple URLs, track firewalled clients through outbound heartbeat pings, send downtime alerts by email or Pushover, store JSON logs, and expose authenticated REST endpoints.
 
 ## Plugin Metadata
 
@@ -13,7 +13,7 @@ Simple Uptime Monitor with Heartbeat is a lightweight WordPress plugin for monit
 - Requires at least: WordPress 6.0
 - Tested up to: WordPress 7.0
 - Requires PHP: 8.0+
-- Stable tag: 3.5.0
+- Stable tag: 3.5.1
 - License: GPLv2 or later
 - License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -34,9 +34,9 @@ Simple Uptime Monitor with Heartbeat is a lightweight WordPress plugin for monit
 
 ## Installation
 
-1. Upload the plugin folder to `/wp-content/plugins/uptime-monitor`.
-2. Activate **Simple Uptime Monitor with Heartbeat** from the WordPress plugins page.
-3. Open **Uptime Monitor** in the WordPress admin menu.
+1. Upload the plugin folder to `/wp-content/plugins/qndrs-availability-heartbeat-monitor`.
+2. Activate **Qndrs Availability and Heartbeat Monitor** from the WordPress plugins page.
+3. Open **Qndrs Monitor** in the WordPress admin menu.
 4. Add one or more URLs and choose the notification channels.
 5. Optional: use a real server cron for more reliable checks:
 
@@ -76,7 +76,7 @@ When enabled, the plugin sends an HTTPS POST request to `https://api.pushover.ne
 Endpoint:
 
 ```http
-GET /wp-json/uptime-monitor/v1/logs
+GET /wp-json/qndrs-availability-heartbeat-monitor/v1/logs
 ```
 
 Query parameters:
@@ -94,7 +94,7 @@ Query parameters:
 
 Heartbeat monitors are for machines, jobs, Home Assistant instances, NAS devices, Docker hosts or internal applications that are not reachable inbound, but can send outbound HTTPS requests to the monitor.
 
-Create them manually in **Uptime Monitor > Settings > Heartbeat Monitors**. The plugin shows a one-time token and a copyable `curl` example. See `docs/heartbeat-monitors.md` for cron, systemd, Windows Task Scheduler and Home Assistant examples. Dutch documentation is available in `docs/heartbeat-monitors.nl.md`.
+Create them manually in **Qndrs Monitor > Settings > Heartbeat Monitors**. The plugin shows a one-time token and a copyable `curl` example. See `docs/heartbeat-monitors.md` for cron, systemd, Windows Task Scheduler and Home Assistant examples. Dutch documentation is available in `docs/heartbeat-monitors.nl.md`.
 
 Authentication:
 
@@ -109,13 +109,13 @@ Example response:
     "type": "info",
     "message": "Cron job started.",
     "data": {
-      "task": "monitor_uptime_event"
+      "task": "qndrs_ahm_monitor_event"
     }
   }
 ]
 ```
 
-Pagination metadata is returned in the `X-WP-Total`, `X-WP-TotalPages`, `X-Uptime-Monitor-Page`, and `X-Uptime-Monitor-Per-Page` headers. Logs are capped to prevent heavy responses from taking down the WordPress request.
+Pagination metadata is returned in the `X-WP-Total`, `X-WP-TotalPages`, `X-Qndrs-Ahm-Page`, and `X-Qndrs-Ahm-Per-Page` headers. Logs are capped to prevent heavy responses from taking down the WordPress request.
 
 ## Release Build
 
@@ -125,7 +125,7 @@ Create a clean plugin zip from the repository root:
 powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1
 ```
 
-The build script creates `dist/uptime-monitor-<version>.zip` and excludes `.git`, `.idea`, temporary files, and previous build artifacts.
+The build script creates `dist/qndrs-availability-heartbeat-monitor-<version>.zip` and excludes `.git`, `.idea`, temporary files, and previous build artifacts.
 
 ## Development Checks
 
@@ -139,6 +139,12 @@ The checks validate PHP syntax, JavaScript syntax when Node.js is available, ver
 
 ## Changelog
 
+### 3.5.1
+
+- Renamed the plugin for WordPress.org review with a distinctive Qndrs display name and slug.
+- Prefixed AJAX actions, REST namespace, cron hooks, options and token headers to avoid naming collisions.
+- Improved the release zip structure for WordPress plugin uploads.
+
 ### 3.5.0
 
 - Added heartbeat monitors for firewalled machines, jobs, Home Assistant, NAS devices and internal apps.
@@ -149,7 +155,7 @@ The checks validate PHP syntax, JavaScript syntax when Node.js is available, ver
 ### 3.4.0
 
 - Added live dashboard refresh without full page reload.
-- Added optional auto-refresh for the Uptime Monitor admin dashboard.
+- Added optional auto-refresh for the Qndrs Monitor admin dashboard.
 - Added automatic WordPress dashboard widget refresh with a visual countdown indicator.
 
 ### 3.3.0

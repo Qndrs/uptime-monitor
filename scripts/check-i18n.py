@@ -4,13 +4,13 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PLUGIN_FILE = ROOT / "uptime-monitor.php"
-PO_FILE = ROOT / "languages" / "uptime-monitor-nl_NL.po"
+PLUGIN_FILE = ROOT / "qndrs-availability-heartbeat-monitor.php"
+PO_FILE = ROOT / "languages" / "qndrs-availability-heartbeat-monitor-nl_NL.po"
 
 FORBIDDEN_SOURCE_PHRASES = [
     "Net bijgewerkt",
     "Verwijderen",
-    "Uptime Monitor-instellingen",
+    "Qndrs Monitor-instellingen",
     "Instellingen opslaan",
     "Configuratiepaneel",
     "Herhaalpogingen",
@@ -23,7 +23,7 @@ FORBIDDEN_SOURCE_PHRASES = [
 REQUIRED_DUTCH_TRANSLATIONS = {
     "Updated just now.": "Net bijgewerkt.",
     "Delete": "Verwijderen",
-    "Uptime Monitor Settings": "Uptime Monitor-instellingen",
+    "Qndrs Monitor Settings": "Qndrs Monitor-instellingen",
     "Save Settings": "Instellingen opslaan",
 }
 
@@ -70,7 +70,7 @@ def parse_po(path: Path) -> dict[str, str]:
 def main() -> None:
     plugin_source = PLUGIN_FILE.read_text(encoding="utf-8")
     gettext_calls = re.findall(
-        r"(?:__|esc_html__|esc_attr__)\(\s*'([^']+)'\s*,\s*'uptime-monitor'\s*\)",
+        r"(?:__|esc_html__|esc_attr__)\(\s*'([^']+)'\s*,\s*'qndrs-availability-heartbeat-monitor'\s*\)",
         plugin_source,
     )
 

@@ -15,7 +15,7 @@ Manual check route:
 1. Deploy the current plugin build to the testsite.
 2. Log in to WordPress admin.
 3. Open Plugin Check.
-4. Run checks for **Simple Uptime Monitor**.
+4. Run checks for **Qndrs Availability and Heartbeat Monitor**.
 5. Prioritize security, escaping, internationalization, and plugin metadata findings.
 6. Record blocking findings in `TODO.md` or a GitHub issue.
 

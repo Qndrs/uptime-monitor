@@ -1,10 +1,10 @@
-=== Simple Uptime Monitor with Heartbeat ===
+=== Qndrs Availability and Heartbeat Monitor ===
 Contributors: qndrs
 Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 3.5.0
+Stable tag: 3.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,13 +12,13 @@ Monitor websites and heartbeat clients from WordPress with email or Pushover dow
 
 == Description ==
 
-Simple Uptime Monitor with Heartbeat checks external URLs from the WordPress dashboard and can also monitor firewalled clients through outbound heartbeat pings. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, configurable Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, heartbeat monitors, and authenticated REST endpoints.
+Qndrs Availability and Heartbeat Monitor checks external URLs from the WordPress dashboard and can also monitor firewalled clients through outbound heartbeat pings. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, configurable Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, heartbeat monitors, and authenticated REST endpoints.
 
 == Installation ==
 
-1. Upload the plugin folder to `/wp-content/plugins/uptime-monitor`.
-2. Activate Simple Uptime Monitor with Heartbeat from the WordPress plugins page.
-3. Open Uptime Monitor in the WordPress admin menu.
+1. Upload the plugin folder to `/wp-content/plugins/qndrs-availability-heartbeat-monitor`.
+2. Activate Qndrs Availability and Heartbeat Monitor from the WordPress plugins page.
+3. Open Qndrs Monitor in the WordPress admin menu.
 4. Add one or more URLs and choose notification channels.
 
 For more reliable checks, configure a real server cron to call `wp-cron.php`.
@@ -36,7 +36,7 @@ You can also add these constants to `wp-config.php`; constants take precedence o
 
 = Where are logs stored? =
 
-Logs are stored in the WordPress database option `uptime_monitor_logs` and capped to avoid unbounded growth. The REST log endpoint supports `type`, `url`, `date_from`, `date_to`, `page`, `per_page`, `limit`, and `order` query parameters.
+Logs are stored in the WordPress database option `qndrs_ahm_logs` and capped to avoid unbounded growth. The REST log endpoint supports `type`, `url`, `date_from`, `date_to`, `page`, `per_page`, `limit`, and `order` query parameters.
 
 = Is the REST endpoint public? =
 
@@ -44,7 +44,7 @@ No. REST endpoints require a user with the `manage_options` capability or the pl
 
 = How do heartbeat monitors work? =
 
-Create a heartbeat monitor from the settings page. The plugin shows a one-time token and curl example. A client sends outbound HTTPS POST requests to `/wp-json/uptime-monitor/v1/heartbeat`; the monitor becomes stale/down when no ping arrives in time.
+Create a heartbeat monitor from the settings page. The plugin shows a one-time token and curl example. A client sends outbound HTTPS POST requests to `/wp-json/qndrs-availability-heartbeat-monitor/v1/heartbeat`; the monitor becomes stale/down when no ping arrives in time.
 
 Detailed heartbeat client examples are included in `docs/heartbeat-monitors.md`. Dutch documentation is included in `docs/heartbeat-monitors.nl.md`.
 
@@ -60,10 +60,16 @@ Pushover privacy policy: https://pushover.net/privacy
 
 == Screenshots ==
 
-1. Uptime monitor overview with website checks and heartbeat monitor status.
+1. Availability overview with uptime checks and heartbeat monitor status.
 2. Settings page with REST endpoints, heartbeat monitor setup, notifications and import/export.
 
 == Changelog ==
+
+= 3.5.1 =
+
+* Renamed the plugin for WordPress.org review with a distinctive Qndrs display name and slug.
+* Prefixed AJAX actions, REST namespace, cron hooks, options and token headers to avoid naming collisions.
+* Improved the release zip structure for WordPress plugin uploads.
 
 = 3.5.0 =
 
@@ -75,7 +81,7 @@ Pushover privacy policy: https://pushover.net/privacy
 = 3.4.0 =
 
 * Added live dashboard refresh without full page reload.
-* Added optional auto-refresh for the Uptime Monitor admin dashboard.
+* Added optional auto-refresh for the Qndrs Monitor admin dashboard.
 * Added automatic WordPress dashboard widget refresh with a visual countdown indicator.
 
 = 3.3.0 =
