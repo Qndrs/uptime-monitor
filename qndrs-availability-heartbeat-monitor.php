@@ -3,7 +3,7 @@
  * Plugin Name: Qndrs Availability and Heartbeat Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor website availability and receive alerts by email or Pushover. Manage multiple URLs from the WordPress admin with logging, JSON import/export, REST support, dashboard refresh and heartbeat monitors.
- * Version: 3.5.1
+ * Version: 3.5.2
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  */
 class AvailabilityHeartbeatMonitor
 {
-    public const VERSION = '3.5.1';
+    public const VERSION = '3.5.2';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
@@ -1767,7 +1767,7 @@ class AvailabilityHeartbeatMonitor
             }
         }
 
-        echo '<p class="uptime-widget-actions"><a class="button button-primary" href="' . esc_url(admin_url('admin.php?page=uptime-monitor')) . '">' . esc_html__('Open Uptime Monitor', 'qndrs-availability-heartbeat-monitor') . '</a></p>';
+        echo '<p class="uptime-widget-actions"><a class="button button-primary" href="' . esc_url(admin_url('admin.php?page=qndrs-availability-heartbeat-monitor')) . '">' . esc_html__('Open Uptime Monitor', 'qndrs-availability-heartbeat-monitor') . '</a></p>';
         echo '</div>';
     }
 

@@ -4,7 +4,7 @@ Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 3.5.1
+Stable tag: 3.5.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -64,6 +64,10 @@ Pushover privacy policy: https://pushover.net/privacy
 2. Settings page with REST endpoints, heartbeat monitor setup, notifications and import/export.
 
 == Changelog ==
+
+= 3.5.2 =
+
+* Fixed the WordPress dashboard widget button link after the WordPress.org slug rename.
 
 = 3.5.1 =
 

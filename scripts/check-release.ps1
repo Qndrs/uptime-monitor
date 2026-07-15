@@ -67,11 +67,11 @@ $plugin = Get-Content -LiteralPath $pluginFile -Raw
 $readme = Get-Content -LiteralPath $readmeFile -Raw
 $wpReadme = Get-Content -LiteralPath $wpReadmeFile -Raw
 
-Assert-True ($plugin -match "\*\s+Version:\s+3\.5\.1") "Plugin header version must be 3.5.1"
-Assert-True ($readme -match "Stable tag:\s+3\.5\.1") "README stable tag must be 3.5.1"
-Assert-True ($readme -match "### 3\.5\.1") "README changelog must include 3.5.1"
+Assert-True ($plugin -match "\*\s+Version:\s+3\.5\.2") "Plugin header version must be 3.5.2"
+Assert-True ($readme -match "Stable tag:\s+3\.5\.2") "README stable tag must be 3.5.2"
+Assert-True ($readme -match "### 3\.5\.2") "README changelog must include 3.5.2"
 Assert-True ($readme -notmatch "ð|â|Ÿ|Œ|§") "README still contains mojibake characters"
-Assert-True ($wpReadme -match "Stable tag:\s+3\.5\.1") "readme.txt stable tag must be 3.5.1"
+Assert-True ($wpReadme -match "Stable tag:\s+3\.5\.2") "readme.txt stable tag must be 3.5.2"
 Assert-True ($wpReadme -match "Tested up to:\s+7\.0") "readme.txt tested-up-to header is missing"
 Assert-True ($wpReadme -match "License:\s+GPLv2 or later") "readme.txt license header is missing"
 

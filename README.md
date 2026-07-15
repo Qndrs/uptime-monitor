@@ -13,7 +13,7 @@ Qndrs Availability and Heartbeat Monitor is a lightweight WordPress plugin for m
 - Requires at least: WordPress 6.0
 - Tested up to: WordPress 7.0
 - Requires PHP: 8.0+
-- Stable tag: 3.5.1
+- Stable tag: 3.5.2
 - License: GPLv2 or later
 - License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -138,6 +138,10 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 The checks validate PHP syntax, JavaScript syntax when Node.js is available, version consistency, and release packaging basics.
 
 ## Changelog
+
+### 3.5.2
+
+- Fixed the WordPress dashboard widget button link after the WordPress.org slug rename.
 
 ### 3.5.1
 
