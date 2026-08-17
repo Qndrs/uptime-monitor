@@ -18,6 +18,12 @@ delete_option('qndrs_ahm_pushover_api_token');
 delete_option('qndrs_ahm_read_api_token_hash');
 delete_option('qndrs_ahm_read_api_token_last4');
 delete_option('qndrs_ahm_read_api_token_created_at');
+delete_option('qndrs_ahm_data_schema_version');
+delete_option('qndrs_ahm_history_storage');
+delete_option('qndrs_ahm_history_last_pruned');
+
+global $wpdb;
+$wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}qndrs_ahm_history");
 
 delete_option('uptime_monitor_urls');
 delete_option('uptime_monitor_interval');

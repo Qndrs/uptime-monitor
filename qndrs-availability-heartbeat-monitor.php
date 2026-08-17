@@ -3,7 +3,7 @@
  * Plugin Name: Qndrs Availability and Heartbeat Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor website availability and receive alerts by email or Pushover. Manage multiple URLs from the WordPress admin with logging, JSON import/export, REST support, dashboard refresh and heartbeat monitors.
- * Version: 3.5.2
+ * Version: 3.6.0
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  */
 class AvailabilityHeartbeatMonitor
 {
-    public const VERSION = '3.5.2';
+    public const VERSION = '3.6.0';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
@@ -42,8 +42,16 @@ class AvailabilityHeartbeatMonitor
     public const DEFAULT_REQUEST_TIMEOUT = 10;
     public const DEFAULT_DOWN_STATUS_CODES = '100-199,300-599';
     public const DEFAULT_HEARTBEAT_INTERVAL = 300;
+    private const DATA_SCHEMA_VERSION = 2;
+    private const HISTORY_STORAGE_LEGACY = 'legacy';
+    private const HISTORY_STORAGE_TABLE_SHADOW = 'table_shadow';
+    private const HISTORY_STORAGE_TABLE = 'table';
     private const CRON_HOOK = 'qndrs_ahm_monitor_event';
     private const CRON_SCHEDULE = 'qndrs_ahm_interval';
+    private ?array $status_history_cache = null;
+    private ?int $request_timestamp = null;
+    private ?\DateTimeZone $display_timezone = null;
+    private ?bool $history_table_exists_cache = null;
 
     /**
      * Constructor.
@@ -73,7 +81,10 @@ class AvailabilityHeartbeatMonitor
     {
         $this->migrate_legacy_options();
         wp_clear_scheduled_hook('monitor_uptime_event');
-        $this->normalize_stored_urls();
+        $this->normalize_stored_urls(true);
+        $this->create_history_table();
+        $this->initialize_history_storage_mode();
+        update_option('qndrs_ahm_data_schema_version', self::DATA_SCHEMA_VERSION, false);
         $this->reschedule_monitoring();
     }
 
@@ -96,8 +107,14 @@ class AvailabilityHeartbeatMonitor
             return;
         }
 
-        $this->migrate_legacy_options();
-        $this->normalize_stored_urls();
+        $data_schema_version = (int)get_option('qndrs_ahm_data_schema_version', 0);
+        if ($data_schema_version < self::DATA_SCHEMA_VERSION) {
+            $this->migrate_legacy_options();
+            $this->normalize_stored_urls(true);
+            $this->create_history_table();
+            $this->initialize_history_storage_mode();
+            update_option('qndrs_ahm_data_schema_version', self::DATA_SCHEMA_VERSION, false);
+        }
 
         if (!wp_next_scheduled(self::CRON_HOOK)) {
             wp_schedule_event(time(), self::CRON_SCHEDULE, self::CRON_HOOK);
@@ -132,6 +149,89 @@ class AvailabilityHeartbeatMonitor
                 update_option($new_name, $legacy_value, false);
             }
         }
+    }
+
+    private function get_history_table_name(): string
+    {
+        global $wpdb;
+
+        return $wpdb->prefix . 'qndrs_ahm_history';
+    }
+
+    private function create_history_table(): void
+    {
+        global $wpdb;
+
+        $table_name = $this->get_history_table_name();
+        $charset_collate = $wpdb->get_charset_collate();
+        $sql = "CREATE TABLE {$table_name} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            event_id varchar(64) NOT NULL,
+            monitor_id varchar(64) NOT NULL,
+            checked_at datetime NOT NULL,
+            status varchar(10) NOT NULL,
+            status_code smallint(5) unsigned NULL,
+            response_time_ms int(10) unsigned NULL,
+            message text NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY event_id (event_id),
+            KEY monitor_checked (monitor_id, checked_at, id),
+            KEY checked_at (checked_at)
+        ) {$charset_collate};";
+
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        dbDelta($sql);
+        $this->history_table_exists_cache = null;
+    }
+
+    private function history_table_exists(): bool
+    {
+        global $wpdb;
+
+        if ($this->history_table_exists_cache !== null) {
+            return $this->history_table_exists_cache;
+        }
+
+        $table_name = $this->get_history_table_name();
+        $found_table = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name));
+        $this->history_table_exists_cache = $found_table === $table_name;
+
+        return $this->history_table_exists_cache;
+    }
+
+    private function initialize_history_storage_mode(): void
+    {
+        global $wpdb;
+
+        $stored_mode = get_option('qndrs_ahm_history_storage', '');
+        if (in_array($stored_mode, [self::HISTORY_STORAGE_LEGACY, self::HISTORY_STORAGE_TABLE_SHADOW, self::HISTORY_STORAGE_TABLE], true)) {
+            return;
+        }
+
+        $option_length = $wpdb->get_var($wpdb->prepare(
+            "SELECT LENGTH(option_value) FROM {$wpdb->options} WHERE option_name = %s",
+            'qndrs_ahm_history'
+        ));
+        $mode = (int)$option_length > 6 ? self::HISTORY_STORAGE_LEGACY : self::HISTORY_STORAGE_TABLE;
+        update_option('qndrs_ahm_history_storage', $mode, false);
+    }
+
+    private function get_history_storage_mode(): string
+    {
+        $mode = (string)get_option('qndrs_ahm_history_storage', self::HISTORY_STORAGE_LEGACY);
+        if (!in_array($mode, [self::HISTORY_STORAGE_LEGACY, self::HISTORY_STORAGE_TABLE_SHADOW, self::HISTORY_STORAGE_TABLE], true)) {
+            return self::HISTORY_STORAGE_LEGACY;
+        }
+        if ($mode !== self::HISTORY_STORAGE_LEGACY && !$this->history_table_exists()) {
+            return self::HISTORY_STORAGE_LEGACY;
+        }
+
+        return $mode;
+    }
+
+    private function history_table_is_read_source(): bool
+    {
+        return in_array($this->get_history_storage_mode(), [self::HISTORY_STORAGE_TABLE_SHADOW, self::HISTORY_STORAGE_TABLE], true);
     }
 
     private function get_monitor_interval(): int
@@ -446,11 +546,18 @@ class AvailabilityHeartbeatMonitor
         wp_schedule_event(time(), self::CRON_SCHEDULE, self::CRON_HOOK);
     }
 
-    private function normalize_stored_urls(): array
+    private function normalize_stored_urls(bool $prune_state = false): array
     {
-        $urls = $this->normalize_urls(get_option('qndrs_ahm_urls', []));
-        update_option('qndrs_ahm_urls', $urls);
-        $this->prune_monitor_state_to_urls($urls);
+        $stored_urls = get_option('qndrs_ahm_urls', []);
+        $urls = $this->normalize_urls($stored_urls);
+        $urls_changed = $stored_urls !== $urls;
+
+        if ($urls_changed) {
+            update_option('qndrs_ahm_urls', $urls);
+        }
+        if ($prune_state || $urls_changed) {
+            $this->prune_monitor_state_to_urls($urls);
+        }
 
         return $urls;
     }
@@ -587,7 +694,7 @@ class AvailabilityHeartbeatMonitor
         $expected_interval = isset($url_data['expected_interval']) ? absint($url_data['expected_interval']) : self::DEFAULT_HEARTBEAT_INTERVAL;
         $stale_after = max(120, $expected_interval * 2);
 
-        return (time() - $last_seen_epoch) > $stale_after;
+        return ($this->get_request_timestamp() - $last_seen_epoch) > $stale_after;
     }
 
     private function get_log_safe_monitor_records(array $urls): array
@@ -719,20 +826,174 @@ class AvailabilityHeartbeatMonitor
 
     private function get_status_history(): array
     {
-        $history = get_option('qndrs_ahm_history', []);
+        if ($this->status_history_cache !== null) {
+            return $this->status_history_cache;
+        }
 
-        return is_array($history) ? $history : [];
+        $history = get_option('qndrs_ahm_history', []);
+        $this->status_history_cache = is_array($history) ? $history : [];
+
+        return $this->status_history_cache;
+    }
+
+    private function update_status_history(array $history): void
+    {
+        $this->status_history_cache = $history;
+        update_option('qndrs_ahm_history', $history, false);
+    }
+
+    private function insert_history_table_entry(string $url_id, array $entry): bool
+    {
+        global $wpdb;
+
+        $entry = $this->normalize_status_history_entry($entry);
+        $event_id = $entry['event_id'] !== '' ? $entry['event_id'] : wp_generate_uuid4();
+        $inserted = $wpdb->insert(
+            $this->get_history_table_name(),
+            [
+                'event_id' => $event_id,
+                'monitor_id' => sanitize_key($url_id),
+                'checked_at' => $entry['timestamp'],
+                'status' => $entry['status'],
+                'status_code' => $entry['status_code'],
+                'response_time_ms' => $entry['response_time_ms'],
+                'message' => $entry['message'],
+            ],
+            ['%s', '%s', '%s', '%s', '%d', '%d', '%s']
+        );
+
+        if ($inserted !== false) {
+            $this->maybe_prune_history_table();
+        }
+
+        return $inserted !== false;
+    }
+
+    private function maybe_prune_history_table(): void
+    {
+        global $wpdb;
+
+        if ($this->get_history_storage_mode() !== self::HISTORY_STORAGE_TABLE) {
+            return;
+        }
+
+        $last_pruned = (int)get_option('qndrs_ahm_history_last_pruned', 0);
+        if (($this->get_request_timestamp() - $last_pruned) < HOUR_IN_SECONDS) {
+            return;
+        }
+
+        $cutoff = gmdate('Y-m-d H:i:s', $this->get_request_timestamp() - (self::MAX_STATUS_HISTORY_DAYS * DAY_IN_SECONDS));
+        $wpdb->query($wpdb->prepare(
+            'DELETE FROM ' . $this->get_history_table_name() . ' WHERE checked_at < %s',
+            $cutoff
+        ));
+        update_option('qndrs_ahm_history_last_pruned', $this->get_request_timestamp(), false);
+    }
+
+    private function get_recent_table_history_for_url(string $url_id, int $limit = 5): array
+    {
+        global $wpdb;
+
+        $limit = min(100, max(1, $limit));
+        $rows = $wpdb->get_results($wpdb->prepare(
+            'SELECT event_id, checked_at AS timestamp, status, status_code, response_time_ms, message
+             FROM ' . $this->get_history_table_name() . '
+             WHERE monitor_id = %s
+             ORDER BY checked_at DESC, id DESC
+             LIMIT %d',
+            sanitize_key($url_id),
+            $limit
+        ), ARRAY_A);
+
+        return array_reverse(array_map([$this, 'normalize_status_history_entry'], is_array($rows) ? $rows : []));
+    }
+
+    private function get_table_history_metrics(array $url_ids): array
+    {
+        global $wpdb;
+
+        $url_ids = array_values(array_unique(array_filter(array_map('sanitize_key', $url_ids))));
+        if (empty($url_ids)) {
+            return [];
+        }
+
+        $now = $this->get_request_timestamp();
+        $cutoff_24h = gmdate('Y-m-d H:i:s', $now - DAY_IN_SECONDS);
+        $cutoff_7d = gmdate('Y-m-d H:i:s', $now - (7 * DAY_IN_SECONDS));
+        $cutoff_30d = gmdate('Y-m-d H:i:s', $now - (self::MAX_STATUS_HISTORY_DAYS * DAY_IN_SECONDS));
+        $id_placeholders = implode(', ', array_fill(0, count($url_ids), '%s'));
+        $table_name = $this->get_history_table_name();
+        $aggregate_sql = "SELECT monitor_id,
+                SUM(CASE WHEN checked_at >= %s THEN 1 ELSE 0 END) AS total_24h,
+                SUM(CASE WHEN checked_at >= %s AND status = 'up' THEN 1 ELSE 0 END) AS up_24h,
+                SUM(CASE WHEN checked_at >= %s THEN 1 ELSE 0 END) AS total_7d,
+                SUM(CASE WHEN checked_at >= %s AND status = 'up' THEN 1 ELSE 0 END) AS up_7d,
+                SUM(CASE WHEN checked_at >= %s THEN 1 ELSE 0 END) AS total_30d,
+                SUM(CASE WHEN checked_at >= %s AND status = 'up' THEN 1 ELSE 0 END) AS up_30d,
+                COALESCE(SUM(response_time_ms), 0) AS response_sum,
+                COUNT(response_time_ms) AS response_count
+            FROM {$table_name}
+            WHERE monitor_id IN ({$id_placeholders})
+            GROUP BY monitor_id";
+        $aggregate_args = array_merge(
+            [$cutoff_24h, $cutoff_24h, $cutoff_7d, $cutoff_7d, $cutoff_30d, $cutoff_30d],
+            $url_ids
+        );
+        $aggregate_rows = $wpdb->get_results($wpdb->prepare($aggregate_sql, $aggregate_args), ARRAY_A);
+
+        $latest_sql = "SELECT history.monitor_id, history.response_time_ms
+            FROM {$table_name} history
+            INNER JOIN (
+                SELECT monitor_id, MAX(id) AS latest_id
+                FROM {$table_name}
+                WHERE monitor_id IN ({$id_placeholders})
+                  AND response_time_ms IS NOT NULL
+                GROUP BY monitor_id
+            ) latest ON history.id = latest.latest_id";
+        $latest_rows = $wpdb->get_results($wpdb->prepare(
+            $latest_sql,
+            $url_ids
+        ), ARRAY_A);
+        $latest_response_times = [];
+        foreach ((array)$latest_rows as $row) {
+            $latest_response_times[(string)$row['monitor_id']] = isset($row['response_time_ms']) ? (int)$row['response_time_ms'] : null;
+        }
+
+        $metrics = [];
+        foreach ($url_ids as $url_id) {
+            $metrics[$url_id] = $this->build_history_metrics_from_totals([], 0, 0, null);
+        }
+        foreach ((array)$aggregate_rows as $row) {
+            $monitor_id = (string)$row['monitor_id'];
+            $metrics[$monitor_id] = $this->build_history_metrics_from_totals(
+                [
+                    '24h' => ['total' => (int)$row['total_24h'], 'up' => (int)$row['up_24h']],
+                    '7d' => ['total' => (int)$row['total_7d'], 'up' => (int)$row['up_7d']],
+                    '30d' => ['total' => (int)$row['total_30d'], 'up' => (int)$row['up_30d']],
+                ],
+                (int)$row['response_sum'],
+                (int)$row['response_count'],
+                $latest_response_times[$monitor_id] ?? null
+            );
+        }
+
+        return $metrics;
     }
 
     private function get_status_history_for_url(string $url_id): array
     {
+        if ($this->history_table_is_read_source()) {
+            return $this->get_recent_table_history_for_url($url_id, 5);
+        }
+
         $history = $this->get_status_history();
         $url_history = isset($history[$url_id]) && is_array($history[$url_id]) ? $history[$url_id] : [];
 
-        return array_map(
-            [$this, 'normalize_status_history_entry'],
-            array_values(array_slice($url_history, -self::MAX_STATUS_HISTORY_PER_URL))
-        );
+        if (count($url_history) > self::MAX_STATUS_HISTORY_PER_URL) {
+            return array_values(array_slice($url_history, -self::MAX_STATUS_HISTORY_PER_URL));
+        }
+
+        return $url_history;
     }
 
     private function normalize_status_history_entry($entry): array
@@ -741,8 +1002,8 @@ class AvailabilityHeartbeatMonitor
         $timestamp = isset($entry['timestamp']) ? sanitize_text_field($entry['timestamp']) : '';
 
         return [
+            'event_id' => isset($entry['event_id']) ? sanitize_text_field((string)$entry['event_id']) : '',
             'timestamp' => $timestamp,
-            'display_timestamp' => $timestamp !== '' ? $this->format_history_timestamp($timestamp) : '',
             'status' => isset($entry['status']) ? sanitize_key($entry['status']) : 'error',
             'status_code' => isset($entry['status_code']) ? absint($entry['status_code']) : null,
             'response_time_ms' => isset($entry['response_time_ms']) ? absint($entry['response_time_ms']) : null,
@@ -750,14 +1011,37 @@ class AvailabilityHeartbeatMonitor
         ];
     }
 
+    private function prepare_status_history_entry_for_display($entry): array
+    {
+        $entry = $this->normalize_status_history_entry($entry);
+        unset($entry['event_id']);
+        $entry['display_timestamp'] = $entry['timestamp'] !== ''
+            ? $this->format_history_timestamp($entry['timestamp'])
+            : '';
+
+        return $entry;
+    }
+
     private function add_status_history_to_urls(array $urls): array
     {
         $incidents = $this->get_incidents();
+        $use_history_table = $this->history_table_is_read_source();
+        $table_metrics = [];
+        if ($use_history_table) {
+            $table_metrics = $this->get_table_history_metrics(array_column($urls, 'id'));
+        }
+
         foreach ($urls as &$url_data) {
             $history = $this->get_status_history_for_url($url_data['id']);
-            $url_data['history'] = $history;
-            $url_data['uptime'] = $this->get_uptime_percentages($history);
-            $url_data['dashboard'] = $this->get_url_dashboard_data($url_data, $history, $incidents);
+            $history_metrics = $use_history_table
+                ? ($table_metrics[$url_data['id']] ?? $this->build_history_metrics_from_totals([], 0, 0, null))
+                : $this->calculate_history_metrics($history);
+            $url_data['history'] = array_map(
+                [$this, 'prepare_status_history_entry_for_display'],
+                array_values(array_slice($history, -5))
+            );
+            $url_data['uptime'] = $history_metrics['uptime'];
+            $url_data['dashboard'] = $this->get_url_dashboard_data($url_data, $history, $incidents, $history_metrics);
         }
         unset($url_data);
 
@@ -776,9 +1060,8 @@ class AvailabilityHeartbeatMonitor
             $status = 'error';
         }
 
-        $history = $this->get_status_history();
-        $url_history = isset($history[$url_id]) && is_array($history[$url_id]) ? $history[$url_id] : [];
-        $url_history[] = [
+        $entry = [
+            'event_id' => wp_generate_uuid4(),
             'timestamp' => gmdate('Y-m-d H:i:s'),
             'status' => $status,
             'status_code' => $status_code,
@@ -786,13 +1069,25 @@ class AvailabilityHeartbeatMonitor
             'message' => sanitize_text_field($message),
         ];
 
-        $history[$url_id] = $this->prune_status_history($url_history);
-        update_option('qndrs_ahm_history', $history, false);
+        $storage_mode = $this->get_history_storage_mode();
+        if (in_array($storage_mode, [self::HISTORY_STORAGE_LEGACY, self::HISTORY_STORAGE_TABLE_SHADOW], true)) {
+            $history = $this->get_status_history();
+            $url_history = isset($history[$url_id]) && is_array($history[$url_id]) ? $history[$url_id] : [];
+            $url_history[] = $entry;
+            $history[$url_id] = $this->prune_status_history($url_history);
+            $this->update_status_history($history);
+        }
+
+        if ($this->history_table_exists() && !$this->insert_history_table_entry($url_id, $entry)) {
+            self::log_to_json('error', 'Failed to store status history in the history table.', [
+                'monitor_id' => $url_id,
+            ]);
+        }
     }
 
     private function prune_status_history(array $history): array
     {
-        $cutoff = time() - (self::MAX_STATUS_HISTORY_DAYS * 24 * 60 * 60);
+        $cutoff = $this->get_request_timestamp() - (self::MAX_STATUS_HISTORY_DAYS * 24 * 60 * 60);
         $filtered = [];
 
         foreach ($history as $entry) {
@@ -819,10 +1114,19 @@ class AvailabilityHeartbeatMonitor
 
     private function delete_status_history_for_url(string $url_id): void
     {
-        $history = $this->get_status_history();
-        if (isset($history[$url_id])) {
-            unset($history[$url_id]);
-            update_option('qndrs_ahm_history', $history, false);
+        global $wpdb;
+
+        $url_id = sanitize_key($url_id);
+        if ($this->history_table_exists()) {
+            $wpdb->delete($this->get_history_table_name(), ['monitor_id' => $url_id], ['%s']);
+        }
+
+        if ($this->get_history_storage_mode() !== self::HISTORY_STORAGE_TABLE) {
+            $history = $this->get_status_history();
+            if (isset($history[$url_id])) {
+                unset($history[$url_id]);
+                $this->update_status_history($history);
+            }
         }
     }
 
@@ -844,6 +1148,8 @@ class AvailabilityHeartbeatMonitor
 
     private function prune_monitor_state_to_urls(array $urls): void
     {
+        global $wpdb;
+
         $valid_ids = [];
         foreach ($urls as $url_data) {
             if (!empty($url_data['id'])) {
@@ -851,16 +1157,30 @@ class AvailabilityHeartbeatMonitor
             }
         }
 
-        $history = $this->get_status_history();
-        $history_changed = false;
-        foreach (array_keys($history) as $url_id) {
-            if (!isset($valid_ids[$url_id])) {
-                unset($history[$url_id]);
-                $history_changed = true;
+        if ($this->history_table_exists()) {
+            if (empty($valid_ids)) {
+                $wpdb->query('DELETE FROM ' . $this->get_history_table_name());
+            } else {
+                $placeholders = implode(', ', array_fill(0, count($valid_ids), '%s'));
+                $wpdb->query($wpdb->prepare(
+                    'DELETE FROM ' . $this->get_history_table_name() . " WHERE monitor_id NOT IN ({$placeholders})",
+                    array_keys($valid_ids)
+                ));
             }
         }
-        if ($history_changed) {
-            update_option('qndrs_ahm_history', $history, false);
+
+        if ($this->get_history_storage_mode() !== self::HISTORY_STORAGE_TABLE) {
+            $history = $this->get_status_history();
+            $history_changed = false;
+            foreach (array_keys($history) as $url_id) {
+                if (!isset($valid_ids[$url_id])) {
+                    unset($history[$url_id]);
+                    $history_changed = true;
+                }
+            }
+            if ($history_changed) {
+                $this->update_status_history($history);
+            }
         }
 
         $incidents = $this->get_incidents();
@@ -976,18 +1296,42 @@ class AvailabilityHeartbeatMonitor
 
     private function get_display_timezone_offset(int $epoch): int
     {
+        $timezone = $this->get_display_timezone();
+        $datetime = date_create('@' . $epoch);
+        if ($datetime === false) {
+            return 2 * HOUR_IN_SECONDS;
+        }
+
+        return timezone_offset_get($timezone, $datetime);
+    }
+
+    private function get_display_timezone(): \DateTimeZone
+    {
+        if ($this->display_timezone !== null) {
+            return $this->display_timezone;
+        }
+
         $timezone_name = get_option('timezone_string');
         if (!is_string($timezone_name) || $timezone_name === '' || $timezone_name === 'UTC') {
             $timezone_name = 'Europe/Amsterdam';
         }
 
-        $timezone = timezone_open($timezone_name);
-        $datetime = date_create('@' . $epoch);
-        if ($timezone === false || $datetime === false) {
-            return 2 * HOUR_IN_SECONDS;
+        try {
+            $this->display_timezone = new \DateTimeZone($timezone_name);
+        } catch (\Exception $exception) {
+            $this->display_timezone = new \DateTimeZone('Europe/Amsterdam');
         }
 
-        return timezone_offset_get($timezone, $datetime);
+        return $this->display_timezone;
+    }
+
+    private function get_request_timestamp(): int
+    {
+        if ($this->request_timestamp === null) {
+            $this->request_timestamp = time();
+        }
+
+        return $this->request_timestamp;
     }
 
     private function get_status_label(string $status): string
@@ -1024,11 +1368,12 @@ class AvailabilityHeartbeatMonitor
             return null;
         }
 
-        return $this->normalize_status_history_entry($history[count($history) - 1]);
+        return $this->prepare_status_history_entry_for_display($history[count($history) - 1]);
     }
 
-    private function get_url_dashboard_data(array $url_data, array $history, array $incidents): array
+    private function get_url_dashboard_data(array $url_data, array $history, array $incidents, ?array $history_metrics = null): array
     {
+        $history_metrics = $history_metrics ?? $this->calculate_history_metrics($history);
         $url_id = isset($url_data['id']) ? sanitize_key($url_data['id']) : '';
         $type = isset($url_data['type']) ? sanitize_key($url_data['type']) : 'http_check';
         $latest = $this->get_latest_history_entry($history);
@@ -1063,7 +1408,7 @@ class AvailabilityHeartbeatMonitor
                 $last_seen_epoch = $this->get_heartbeat_last_seen_epoch($url_data);
                 if ($last_seen_epoch !== null) {
                     /* translators: %s: Human-readable time since the last heartbeat ping. */
-                    $incident_duration_display = sprintf(__('Missing for %s', 'qndrs-availability-heartbeat-monitor'), human_time_diff($last_seen_epoch, time()));
+                    $incident_duration_display = sprintf(__('Missing for %s', 'qndrs-availability-heartbeat-monitor'), human_time_diff($last_seen_epoch, $this->get_request_timestamp()));
                 } else {
                     $incident_duration_display = __('No ping received', 'qndrs-availability-heartbeat-monitor');
                 }
@@ -1081,7 +1426,7 @@ class AvailabilityHeartbeatMonitor
             }
         }
 
-        $average_response_time_ms = $this->get_average_response_time_ms($history);
+        $average_response_time_ms = $history_metrics['average_response_time_ms'];
         $average_response_display = '';
         if ($average_response_time_ms !== null) {
             /* translators: %d: Average response time in milliseconds. */
@@ -1094,6 +1439,7 @@ class AvailabilityHeartbeatMonitor
             'latest' => $latest,
             'average_response_time_ms' => $average_response_time_ms,
             'average_response_time_display' => $average_response_display,
+            'response_time_trend' => $history_metrics['response_time_trend'],
             'incident_open' => $incident_open,
             'incident_label' => $incident_label,
             'incident_duration_display' => $incident_duration_display,
@@ -1114,7 +1460,7 @@ class AvailabilityHeartbeatMonitor
         }
 
         /* translators: %s: Human-readable incident duration. */
-        return sprintf(__('Down for %s', 'qndrs-availability-heartbeat-monitor'), human_time_diff($down_since_epoch, time()));
+        return sprintf(__('Down for %s', 'qndrs-availability-heartbeat-monitor'), human_time_diff($down_since_epoch, $this->get_request_timestamp()));
     }
 
     private function get_notifications_label(array $url_data): string
@@ -1490,51 +1836,6 @@ class AvailabilityHeartbeatMonitor
         ];
     }
 
-    private function get_average_response_time_ms(array $history): ?int
-    {
-        $response_times = [];
-        foreach ($history as $entry) {
-            $entry = $this->normalize_status_history_entry($entry);
-            if ($entry['response_time_ms'] !== null) {
-                $response_times[] = $entry['response_time_ms'];
-            }
-        }
-
-        if (empty($response_times)) {
-            return null;
-        }
-
-        return (int)round(array_sum($response_times) / count($response_times));
-    }
-
-    private function get_response_time_trend(array $history): ?string
-    {
-        $response_times = [];
-        foreach ($history as $entry) {
-            $entry = $this->normalize_status_history_entry($entry);
-            if ($entry['response_time_ms'] !== null) {
-                $response_times[] = $entry['response_time_ms'];
-            }
-        }
-
-        if (count($response_times) < 2) {
-            return null;
-        }
-
-        $latest = array_pop($response_times);
-        $previous_average = array_sum($response_times) / count($response_times);
-        $threshold = max(50, $previous_average * 0.1);
-
-        if ($latest > $previous_average + $threshold) {
-            return 'slower';
-        }
-        if ($latest < $previous_average - $threshold) {
-            return 'faster';
-        }
-
-        return 'stable';
-    }
-
     private function get_response_time_trend_label(string $trend): string
     {
         switch ($trend) {
@@ -1547,7 +1848,7 @@ class AvailabilityHeartbeatMonitor
         }
     }
 
-    private function get_uptime_percentages(array $history): array
+    private function calculate_history_metrics(array $history): array
     {
         $periods = [
             '24h' => [
@@ -1563,42 +1864,91 @@ class AvailabilityHeartbeatMonitor
                 'seconds' => 30 * 24 * 60 * 60,
             ],
         ];
-        $now = time();
-        $uptime = [];
-
+        $now = $this->get_request_timestamp();
+        $period_counts = [];
         foreach ($periods as $period_key => $period) {
-            $period_start = $now - $period['seconds'];
-            $total_checks = 0;
-            $up_checks = 0;
+            $period_counts[$period_key] = [
+                'start' => $now - $period['seconds'],
+                'total' => 0,
+                'up' => 0,
+            ];
+        }
 
-            foreach ($history as $entry) {
-                $entry = $this->normalize_status_history_entry($entry);
-                $timestamp = $this->history_timestamp_to_epoch($entry['timestamp']);
-                if ($timestamp === null || $timestamp < $period_start) {
-                    continue;
-                }
+        $response_time_sum = 0;
+        $response_time_count = 0;
+        $latest_response_time = null;
 
-                $total_checks++;
-                if ($entry['status'] === 'up') {
-                    $up_checks++;
+        foreach ($history as $entry) {
+            $entry = $this->normalize_status_history_entry($entry);
+            $timestamp = $this->history_timestamp_to_epoch($entry['timestamp']);
+            if ($timestamp !== null) {
+                foreach ($period_counts as &$counts) {
+                    if ($timestamp >= $counts['start']) {
+                        $counts['total']++;
+                        if ($entry['status'] === 'up') {
+                            $counts['up']++;
+                        }
+                    }
                 }
+                unset($counts);
             }
 
+            if ($entry['response_time_ms'] !== null) {
+                $response_time_sum += $entry['response_time_ms'];
+                $response_time_count++;
+                $latest_response_time = $entry['response_time_ms'];
+            }
+        }
+
+        return $this->build_history_metrics_from_totals($period_counts, $response_time_sum, $response_time_count, $latest_response_time);
+    }
+
+    private function build_history_metrics_from_totals(array $period_counts, int $response_time_sum, int $response_time_count, ?int $latest_response_time): array
+    {
+        $labels = [
+            '24h' => __('24h', 'qndrs-availability-heartbeat-monitor'),
+            '7d' => __('7d', 'qndrs-availability-heartbeat-monitor'),
+            '30d' => __('30d', 'qndrs-availability-heartbeat-monitor'),
+        ];
+        $uptime = [];
+        foreach ($labels as $period_key => $label) {
+            $counts = isset($period_counts[$period_key]) && is_array($period_counts[$period_key])
+                ? $period_counts[$period_key]
+                : [];
+            $total_checks = isset($counts['total']) ? (int)$counts['total'] : 0;
+            $up_checks = isset($counts['up']) ? (int)$counts['up'] : 0;
             $percentage = $total_checks > 0 ? round(($up_checks / $total_checks) * 100, 1) : null;
             $uptime[$period_key] = [
-                'label' => $period['label'],
+                'label' => $label,
                 'percentage' => $percentage,
                 'percentage_display' => $percentage !== null ? number_format_i18n($percentage, 1) : '',
                 'total_checks' => $total_checks,
             ];
         }
 
-        return $uptime;
+        $average_response_time_ms = $response_time_count > 0 ? (int)round($response_time_sum / $response_time_count) : null;
+        $response_time_trend = null;
+        if ($response_time_count >= 2 && $latest_response_time !== null) {
+            $previous_average = ($response_time_sum - $latest_response_time) / ($response_time_count - 1);
+            $threshold = max(50, $previous_average * 0.1);
+            if ($latest_response_time > $previous_average + $threshold) {
+                $response_time_trend = 'slower';
+            } elseif ($latest_response_time < $previous_average - $threshold) {
+                $response_time_trend = 'faster';
+            } else {
+                $response_time_trend = 'stable';
+            }
+        }
+
+        return [
+            'uptime' => $uptime,
+            'average_response_time_ms' => $average_response_time_ms,
+            'response_time_trend' => $response_time_trend,
+        ];
     }
 
-    private function render_uptime_summary(array $history): void
+    private function render_uptime_summary(array $uptime): void
     {
-        $uptime = $this->get_uptime_percentages($history);
         $has_uptime_data = false;
 
         foreach ($uptime as $period) {
@@ -1626,17 +1976,14 @@ class AvailabilityHeartbeatMonitor
         echo '</div>';
     }
 
-    private function render_status_history_cell(array $history): void
+    private function render_status_history_cell(array $history, array $uptime, ?int $average_response_time_ms, ?string $response_time_trend): void
     {
         if (empty($history)) {
             echo '<span class="uptime-history-empty">' . esc_html__('No checks yet.', 'qndrs-availability-heartbeat-monitor') . '</span>';
             return;
         }
 
-        $this->render_uptime_summary($history);
-
-        $average_response_time_ms = $this->get_average_response_time_ms($history);
-        $response_time_trend = $this->get_response_time_trend($history);
+        $this->render_uptime_summary($uptime);
         if ($average_response_time_ms !== null) {
             echo '<div class="uptime-response-summary">';
             /* translators: %d: Average response time in milliseconds. */
@@ -1649,7 +1996,7 @@ class AvailabilityHeartbeatMonitor
 
         echo '<ol class="uptime-history-list">';
         foreach (array_reverse(array_slice($history, -5)) as $entry) {
-            $entry = $this->normalize_status_history_entry($entry);
+            $entry = $this->prepare_status_history_entry_for_display($entry);
             $status = $entry['status'];
             $status_code = $entry['status_code'] !== null ? absint($entry['status_code']) : 0;
             $response_time_ms = $entry['response_time_ms'] !== null ? absint($entry['response_time_ms']) : null;
@@ -1853,6 +2200,7 @@ class AvailabilityHeartbeatMonitor
     private function render_url_dashboard_row(array $url_data): void
     {
         $history = isset($url_data['history']) && is_array($url_data['history']) ? $url_data['history'] : [];
+        $uptime = isset($url_data['uptime']) && is_array($url_data['uptime']) ? $url_data['uptime'] : [];
         $dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
         $type = isset($url_data['type']) ? sanitize_key($url_data['type']) : 'http_check';
         $status = isset($dashboard['status']) ? sanitize_key($dashboard['status']) : 'unknown';
@@ -1868,6 +2216,12 @@ class AvailabilityHeartbeatMonitor
         $notifications_label = isset($dashboard['notifications_label']) ? $dashboard['notifications_label'] : $this->get_notifications_label($url_data);
         $incident_label = isset($dashboard['incident_label']) ? $dashboard['incident_label'] : __('No incident', 'qndrs-availability-heartbeat-monitor');
         $incident_duration_display = isset($dashboard['incident_duration_display']) ? (string)$dashboard['incident_duration_display'] : '';
+        $average_response_time_ms = isset($dashboard['average_response_time_ms']) && $dashboard['average_response_time_ms'] !== null
+            ? (int)$dashboard['average_response_time_ms']
+            : null;
+        $response_time_trend = isset($dashboard['response_time_trend']) && is_string($dashboard['response_time_trend'])
+            ? $dashboard['response_time_trend']
+            : null;
 
         echo '<article class="uptime-url-row is-' . esc_attr($status) . '" data-id="' . esc_attr($url_data['id']) . '">';
         echo '<div class="uptime-url-status">';
@@ -1910,7 +2264,7 @@ class AvailabilityHeartbeatMonitor
         echo '</div>';
 
         echo '<div class="uptime-url-metrics">';
-        $this->render_uptime_summary($history);
+        $this->render_uptime_summary($uptime);
         if (!empty($dashboard['average_response_time_display'])) {
             echo '<span class="uptime-response-average">' . esc_html($dashboard['average_response_time_display']) . '</span>';
         }
@@ -1931,7 +2285,7 @@ class AvailabilityHeartbeatMonitor
         echo '</div>';
 
         echo '<div class="uptime-url-history" hidden>';
-        $this->render_status_history_cell($history);
+        $this->render_status_history_cell($history, $uptime, $average_response_time_ms, $response_time_trend);
         echo '</div>';
         echo '</article>';
     }
@@ -2092,6 +2446,7 @@ class AvailabilityHeartbeatMonitor
                         if (isset($data['urls'])) {
                             $imported_urls = $this->normalize_urls($data['urls']);
                             update_option('qndrs_ahm_urls', $imported_urls);
+                            $this->prune_monitor_state_to_urls($imported_urls);
                         }
                         // Herplan cronjob
                         $this->reschedule_monitoring();
@@ -2783,9 +3138,270 @@ class AvailabilityHeartbeatMonitor
 		}
 		wp_send_json_error(['message' => __('URL not found.', 'qndrs-availability-heartbeat-monitor')], 404);
 	}
+
+    public function get_history_storage_status(): array
+    {
+        global $wpdb;
+
+        $table_exists = $this->history_table_exists();
+        $table_rows = $table_exists ? (int)$wpdb->get_var('SELECT COUNT(*) FROM ' . $this->get_history_table_name()) : 0;
+        $legacy_option_bytes = (int)$wpdb->get_var($wpdb->prepare(
+            "SELECT COALESCE(LENGTH(option_value), 0) FROM {$wpdb->options} WHERE option_name = %s",
+            'qndrs_ahm_history'
+        ));
+
+        return [
+            'mode' => $this->get_history_storage_mode(),
+            'table' => $this->get_history_table_name(),
+            'table_exists' => $table_exists,
+            'table_rows' => $table_rows,
+            'legacy_option_exists' => $legacy_option_bytes > 0,
+            'legacy_option_bytes' => $legacy_option_bytes,
+        ];
+    }
+
+    public function migrate_history_to_table(int $batch_size = 500): array
+    {
+        global $wpdb;
+
+        $batch_size = min(2000, max(50, $batch_size));
+        $this->create_history_table();
+        $this->initialize_history_storage_mode();
+        update_option('qndrs_ahm_data_schema_version', self::DATA_SCHEMA_VERSION, false);
+        $history = $this->get_status_history();
+        $batch = [];
+        $valid_entries = 0;
+        $skipped_entries = 0;
+        $inserted_rows = 0;
+
+        foreach ($history as $url_id => $entries) {
+            $url_id = sanitize_key((string)$url_id);
+            if ($url_id === '' || !is_array($entries)) {
+                continue;
+            }
+
+            foreach (array_values($entries) as $index => $raw_entry) {
+                $entry = $this->normalize_status_history_entry($raw_entry);
+                if ($entry['timestamp'] === '' || $this->history_timestamp_to_epoch($entry['timestamp']) === null) {
+                    $skipped_entries++;
+                    continue;
+                }
+                if (!in_array($entry['status'], ['up', 'down', 'error'], true)) {
+                    $entry['status'] = 'error';
+                }
+                if ($entry['event_id'] === '') {
+                    $entry['event_id'] = hash('sha256', $url_id . '|' . $index . '|' . wp_json_encode($entry));
+                }
+
+                $batch[] = ['monitor_id' => $url_id, 'entry' => $entry];
+                $valid_entries++;
+                if (count($batch) >= $batch_size) {
+                    $inserted_rows += $this->insert_history_table_batch($batch);
+                    $batch = [];
+                }
+            }
+        }
+
+        if (!empty($batch)) {
+            $inserted_rows += $this->insert_history_table_batch($batch);
+        }
+
+        $table_rows = (int)$wpdb->get_var('SELECT COUNT(*) FROM ' . $this->get_history_table_name());
+        if ($table_rows !== $valid_entries) {
+            return [
+                'success' => false,
+                'message' => 'History counts do not match; legacy storage remains active.',
+                'legacy_valid_entries' => $valid_entries,
+                'skipped_entries' => $skipped_entries,
+                'table_rows' => $table_rows,
+                'inserted_rows' => $inserted_rows,
+            ];
+        }
+
+        update_option('qndrs_ahm_history_storage', self::HISTORY_STORAGE_TABLE_SHADOW, false);
+
+        return [
+            'success' => true,
+            'message' => 'History migrated; table shadow mode is active and legacy history is retained.',
+            'legacy_valid_entries' => $valid_entries,
+            'skipped_entries' => $skipped_entries,
+            'table_rows' => $table_rows,
+            'inserted_rows' => $inserted_rows,
+        ];
+    }
+
+    private function insert_history_table_batch(array $batch): int
+    {
+        global $wpdb;
+
+        if (empty($batch)) {
+            return 0;
+        }
+
+        $value_sql = [];
+        $query_args = [];
+        foreach ($batch as $item) {
+            $entry = $item['entry'];
+            $placeholders = ['%s', '%s', '%s', '%s'];
+            array_push(
+                $query_args,
+                substr((string)$entry['event_id'], 0, 64),
+                sanitize_key((string)$item['monitor_id']),
+                (string)$entry['timestamp'],
+                (string)$entry['status']
+            );
+
+            if ($entry['status_code'] === null) {
+                $placeholders[] = 'NULL';
+            } else {
+                $placeholders[] = '%d';
+                $query_args[] = (int)$entry['status_code'];
+            }
+            if ($entry['response_time_ms'] === null) {
+                $placeholders[] = 'NULL';
+            } else {
+                $placeholders[] = '%d';
+                $query_args[] = (int)$entry['response_time_ms'];
+            }
+            $placeholders[] = '%s';
+            $query_args[] = (string)$entry['message'];
+            $value_sql[] = '(' . implode(', ', $placeholders) . ')';
+        }
+
+        $sql = 'INSERT IGNORE INTO ' . $this->get_history_table_name()
+            . ' (event_id, monitor_id, checked_at, status, status_code, response_time_ms, message) VALUES '
+            . implode(', ', $value_sql);
+        $result = $wpdb->query($wpdb->prepare($sql, $query_args));
+
+        return $result === false ? 0 : (int)$result;
+    }
+
+    public function finalize_history_table(bool $delete_legacy = false): array
+    {
+        global $wpdb;
+
+        if (!$this->history_table_exists()) {
+            return ['success' => false, 'message' => 'History table does not exist.'];
+        }
+        if ($this->get_history_storage_mode() !== self::HISTORY_STORAGE_TABLE_SHADOW) {
+            return ['success' => false, 'message' => 'History storage is not in table shadow mode.'];
+        }
+
+        $history = $this->get_status_history();
+        $legacy_entries = $this->count_valid_legacy_history_entries($history);
+        $table_rows = (int)$wpdb->get_var('SELECT COUNT(*) FROM ' . $this->get_history_table_name());
+        if ($table_rows !== $legacy_entries) {
+            return [
+                'success' => false,
+                'message' => 'History counts do not match; shadow mode remains active.',
+                'legacy_entries' => $legacy_entries,
+                'table_rows' => $table_rows,
+            ];
+        }
+
+        update_option('qndrs_ahm_history_storage', self::HISTORY_STORAGE_TABLE, false);
+        if ($delete_legacy) {
+            delete_option('qndrs_ahm_history');
+            $this->status_history_cache = null;
+        }
+
+        return [
+            'success' => true,
+            'message' => $delete_legacy
+                ? 'Table storage finalized and legacy history deleted.'
+                : 'Table storage finalized; legacy history retained as a non-synchronized backup.',
+            'legacy_entries' => $legacy_entries,
+            'table_rows' => $table_rows,
+            'legacy_deleted' => $delete_legacy,
+        ];
+    }
+
+    private function count_valid_legacy_history_entries(array $history): int
+    {
+        $valid_entries = 0;
+        foreach ($history as $url_id => $entries) {
+            if (sanitize_key((string)$url_id) === '' || !is_array($entries)) {
+                continue;
+            }
+            foreach ($entries as $raw_entry) {
+                $entry = $this->normalize_status_history_entry($raw_entry);
+                if ($entry['timestamp'] !== '' && $this->history_timestamp_to_epoch($entry['timestamp']) !== null) {
+                    $valid_entries++;
+                }
+            }
+        }
+
+        return $valid_entries;
+    }
+
+    public function rollback_history_to_legacy(): array
+    {
+        global $wpdb;
+
+        $legacy_option_exists = (int)$wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s",
+            'qndrs_ahm_history'
+        )) > 0;
+        if (!$legacy_option_exists) {
+            return ['success' => false, 'message' => 'Legacy history is unavailable; rollback is not possible.'];
+        }
+
+        update_option('qndrs_ahm_history_storage', self::HISTORY_STORAGE_LEGACY, false);
+
+        return ['success' => true, 'message' => 'Legacy history storage is active again.'];
+    }
 }
 
-new AvailabilityHeartbeatMonitor();
+$qndrs_ahm_monitor = new AvailabilityHeartbeatMonitor();
+if (defined('WP_CLI') && WP_CLI) {
+    class AvailabilityHeartbeatMonitorHistoryCliCommand
+    {
+        private AvailabilityHeartbeatMonitor $monitor;
+
+        public function __construct(AvailabilityHeartbeatMonitor $monitor)
+        {
+            $this->monitor = $monitor;
+        }
+
+        public function status(array $args, array $assoc_args): void
+        {
+            \WP_CLI::line((string)wp_json_encode($this->monitor->get_history_storage_status(), JSON_PRETTY_PRINT));
+        }
+
+        public function migrate(array $args, array $assoc_args): void
+        {
+            $batch_size = isset($assoc_args['batch-size']) ? absint($assoc_args['batch-size']) : 500;
+            $result = $this->monitor->migrate_history_to_table($batch_size);
+            \WP_CLI::line((string)wp_json_encode($result, JSON_PRETTY_PRINT));
+            if (empty($result['success'])) {
+                \WP_CLI::error((string)$result['message']);
+            }
+            \WP_CLI::success((string)$result['message']);
+        }
+
+        public function finalize(array $args, array $assoc_args): void
+        {
+            $result = $this->monitor->finalize_history_table(isset($assoc_args['delete-legacy']));
+            \WP_CLI::line((string)wp_json_encode($result, JSON_PRETTY_PRINT));
+            if (empty($result['success'])) {
+                \WP_CLI::error((string)$result['message']);
+            }
+            \WP_CLI::success((string)$result['message']);
+        }
+
+        public function rollback(array $args, array $assoc_args): void
+        {
+            $result = $this->monitor->rollback_history_to_legacy();
+            \WP_CLI::line((string)wp_json_encode($result, JSON_PRETTY_PRINT));
+            if (empty($result['success'])) {
+                \WP_CLI::error((string)$result['message']);
+            }
+            \WP_CLI::success((string)$result['message']);
+        }
+    }
+
+    \WP_CLI::add_command('qndrs-ahm history', new AvailabilityHeartbeatMonitorHistoryCliCommand($qndrs_ahm_monitor));
+}
 class UptimeMonitorLogsController extends \WP_REST_Controller {
 	/**
 	 * Registers REST API routes for Qndrs Monitor.

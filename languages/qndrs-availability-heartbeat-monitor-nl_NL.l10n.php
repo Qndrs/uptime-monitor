@@ -1,6 +1,6 @@
 <?php
 return array (
-  'project-id-version' => 'Qndrs Availability and Heartbeat Monitor 3.5.2',
+  'project-id-version' => 'Qndrs Availability and Heartbeat Monitor 3.6.0',
   'report-msgid-bugs-to' => '',
   'pot-creation-date' => '2026-07-11 18:45+0200',
   'po-revision-date' => '2026-07-11 18:45+0200',

@@ -105,13 +105,17 @@ jQuery(document).ready(function ($) {
         return `<span class="uptime-history-response-time">${escapeHtml(qndrsAhmL10n.response_time_ms.replace('%d', parsedResponseTime))}</span>`;
     }
 
-    function renderResponseSummary(history) {
-        const averageResponseTime = getAverageResponseTime(history);
+    function renderResponseSummary(history, dashboard) {
+        const storedAverage = dashboard ? parseInt(dashboard.average_response_time_ms, 10) : NaN;
+        const averageResponseTime = !isNaN(storedAverage) ? storedAverage : getAverageResponseTime(history);
         if (averageResponseTime === null) {
             return '';
         }
 
-        const trend = getResponseTimeTrend(history);
+        const storedTrend = dashboard && ['faster', 'slower', 'stable'].includes(dashboard.response_time_trend)
+            ? dashboard.response_time_trend
+            : null;
+        const trend = storedTrend || getResponseTimeTrend(history);
         const trendMarkup = trend ? `<span class="uptime-response-trend uptime-response-trend-${trend}">${escapeHtml(getResponseTimeTrendLabel(trend))}</span>` : '';
 
         return `
@@ -156,7 +160,7 @@ jQuery(document).ready(function ($) {
         return `<div class="uptime-percentage-summary" aria-label="${escapeHtml(qndrsAhmL10n.uptime)}">${items}</div>`;
     }
 
-    function renderHistory(history, uptime) {
+    function renderHistory(history, uptime, dashboard) {
         if (!Array.isArray(history) || history.length === 0) {
             return `<span class="uptime-history-empty">${escapeHtml(qndrsAhmL10n.no_history)}</span>`;
         }
@@ -178,7 +182,7 @@ jQuery(document).ready(function ($) {
             `;
         }).join('');
 
-        return `${renderUptimeSummary(uptime)}${renderResponseSummary(history)}<ol class="uptime-history-list">${items}</ol>`;
+        return `${renderUptimeSummary(uptime)}${renderResponseSummary(history, dashboard)}<ol class="uptime-history-list">${items}</ol>`;
     }
 
     function getHost(url) {
@@ -259,7 +263,7 @@ jQuery(document).ready(function ($) {
                     <button type="button" class="button delete-url uptime-delete-button" data-id="${escapeHtml(urlData.id)}">${escapeHtml(qndrsAhmL10n.delete)}</button>
                 </div>
                 <div class="uptime-url-history" hidden>
-                    ${renderHistory(urlData.history, urlData.uptime)}
+                    ${renderHistory(urlData.history, urlData.uptime, dashboard)}
                 </div>
             </article>
         `;

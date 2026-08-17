@@ -13,7 +13,7 @@ Qndrs Availability and Heartbeat Monitor is a lightweight WordPress plugin for m
 - Requires at least: WordPress 6.0
 - Tested up to: WordPress 7.0
 - Requires PHP: 8.0+
-- Stable tag: 3.5.2
+- Stable tag: 3.6.0
 - License: GPLv2 or later
 - License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -117,6 +117,10 @@ Example response:
 
 Pagination metadata is returned in the `X-WP-Total`, `X-WP-TotalPages`, `X-Qndrs-Ahm-Page`, and `X-Qndrs-Ahm-Per-Page` headers. Logs are capped to prevent heavy responses from taking down the WordPress request.
 
+## History Storage
+
+Version 3.6.0 stores status history in an indexed custom database table. Fresh installations use the table directly. Existing installations with legacy option-based history can use the controlled WP-CLI migration documented in `docs/history-storage.md`, including shadow-mode verification and rollback before finalization.
+
 ## Release Build
 
 Create a clean plugin zip from the repository root:
@@ -138,6 +142,17 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 The checks validate PHP syntax, JavaScript syntax when Node.js is available, version consistency, and release packaging basics.
 
 ## Changelog
+
+### 3.6.0
+
+- Moved status history to an indexed custom database table to prevent the complete history from being loaded into PHP memory.
+- Added a controlled WP-CLI migration with shadow mode, count verification, finalization and rollback support.
+- Added indexed aggregate queries for uptime and response metrics plus hourly 30-day retention cleanup.
+
+### 3.5.3
+
+- Improved monitor dashboard loading performance for installations with large status histories.
+- Reused history, timezone and aggregate calculations during a request and limited rendered history to the five most recent checks.
 
 ### 3.5.2
 

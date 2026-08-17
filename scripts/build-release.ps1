@@ -29,6 +29,7 @@ $files = @(
 )
 
 $publicDocs = @(
+    "docs\history-storage.md",
     "docs\heartbeat-monitors.md",
     "docs\heartbeat-monitors.nl.md"
 )
