@@ -3,7 +3,7 @@
  * Plugin Name: Qndrs Availability and Heartbeat Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor website availability and receive alerts by email or Pushover. Manage multiple URLs from the WordPress admin with logging, JSON import/export, REST support, dashboard refresh and heartbeat monitors.
- * Version: 3.6.0
+ * Version: 3.6.1
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  */
 class AvailabilityHeartbeatMonitor
 {
-    public const VERSION = '3.6.0';
+    public const VERSION = '3.6.1';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
@@ -193,6 +193,7 @@ class AvailabilityHeartbeatMonitor
         }
 
         $table_name = $this->get_history_table_name();
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The result is cached for the request in history_table_exists_cache.
         $found_table = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name));
         $this->history_table_exists_cache = $found_table === $table_name;
 
@@ -208,6 +209,7 @@ class AvailabilityHeartbeatMonitor
             return;
         }
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Reading only the stored byte length avoids loading the large serialized legacy option.
         $option_length = $wpdb->get_var($wpdb->prepare(
             "SELECT LENGTH(option_value) FROM {$wpdb->options} WHERE option_name = %s",
             'qndrs_ahm_history'
@@ -848,6 +850,7 @@ class AvailabilityHeartbeatMonitor
 
         $entry = $this->normalize_status_history_entry($entry);
         $event_id = $entry['event_id'] !== '' ? $entry['event_id'] : wp_generate_uuid4();
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- History is intentionally stored in the plugin's custom indexed table.
         $inserted = $wpdb->insert(
             $this->get_history_table_name(),
             [
@@ -883,10 +886,12 @@ class AvailabilityHeartbeatMonitor
         }
 
         $cutoff = gmdate('Y-m-d H:i:s', $this->get_request_timestamp() - (self::MAX_STATUS_HISTORY_DAYS * DAY_IN_SECONDS));
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- The table name is derived from $wpdb->prefix; the cutoff value is prepared.
         $wpdb->query($wpdb->prepare(
             'DELETE FROM ' . $this->get_history_table_name() . ' WHERE checked_at < %s',
             $cutoff
         ));
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared
         update_option('qndrs_ahm_history_last_pruned', $this->get_request_timestamp(), false);
     }
 
@@ -895,6 +900,7 @@ class AvailabilityHeartbeatMonitor
         global $wpdb;
 
         $limit = min(100, max(1, $limit));
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- The table name is derived from $wpdb->prefix; monitor ID and limit are prepared.
         $rows = $wpdb->get_results($wpdb->prepare(
             'SELECT event_id, checked_at AS timestamp, status, status_code, response_time_ms, message
              FROM ' . $this->get_history_table_name() . '
@@ -904,6 +910,7 @@ class AvailabilityHeartbeatMonitor
             sanitize_key($url_id),
             $limit
         ), ARRAY_A);
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared
 
         return array_reverse(array_map([$this, 'normalize_status_history_entry'], is_array($rows) ? $rows : []));
     }
@@ -923,6 +930,7 @@ class AvailabilityHeartbeatMonitor
         $cutoff_30d = gmdate('Y-m-d H:i:s', $now - (self::MAX_STATUS_HISTORY_DAYS * DAY_IN_SECONDS));
         $id_placeholders = implode(', ', array_fill(0, count($url_ids), '%s'));
         $table_name = $this->get_history_table_name();
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- The table name and placeholder list are locally constructed; all dynamic values are passed to prepare().
         $aggregate_sql = "SELECT monitor_id,
                 SUM(CASE WHEN checked_at >= %s THEN 1 ELSE 0 END) AS total_24h,
                 SUM(CASE WHEN checked_at >= %s AND status = 'up' THEN 1 ELSE 0 END) AS up_24h,
@@ -940,7 +948,9 @@ class AvailabilityHeartbeatMonitor
             $url_ids
         );
         $aggregate_rows = $wpdb->get_results($wpdb->prepare($aggregate_sql, $aggregate_args), ARRAY_A);
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared
 
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- The table name and placeholder list are locally constructed; all monitor IDs are passed to prepare().
         $latest_sql = "SELECT history.monitor_id, history.response_time_ms
             FROM {$table_name} history
             INNER JOIN (
@@ -954,6 +964,7 @@ class AvailabilityHeartbeatMonitor
             $latest_sql,
             $url_ids
         ), ARRAY_A);
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared
         $latest_response_times = [];
         foreach ((array)$latest_rows as $row) {
             $latest_response_times[(string)$row['monitor_id']] = isset($row['response_time_ms']) ? (int)$row['response_time_ms'] : null;
@@ -1118,6 +1129,7 @@ class AvailabilityHeartbeatMonitor
 
         $url_id = sanitize_key($url_id);
         if ($this->history_table_exists()) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- History is intentionally deleted from the plugin's custom table and no reusable result is returned.
             $wpdb->delete($this->get_history_table_name(), ['monitor_id' => $url_id], ['%s']);
         }
 
@@ -1158,6 +1170,7 @@ class AvailabilityHeartbeatMonitor
         }
 
         if ($this->history_table_exists()) {
+            // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- The table name and placeholder list are locally constructed; monitor IDs are passed to prepare().
             if (empty($valid_ids)) {
                 $wpdb->query('DELETE FROM ' . $this->get_history_table_name());
             } else {
@@ -1167,6 +1180,7 @@ class AvailabilityHeartbeatMonitor
                     array_keys($valid_ids)
                 ));
             }
+            // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
         }
 
         if ($this->get_history_storage_mode() !== self::HISTORY_STORAGE_TABLE) {
@@ -2400,10 +2414,10 @@ class AvailabilityHeartbeatMonitor
 
             if (isset($_POST['generate_read_api_token'])) {
                 $generated_read_api_token = $this->create_read_api_token();
-                echo '<div class="updated"><p>' . esc_html__('Alleen-lezen API-token gegenereerd. Kopieer het nu; het wordt niet opnieuw getoond.', 'qndrs-availability-heartbeat-monitor') . '</p></div>';
+                echo '<div class="updated"><p>' . esc_html__('Read-only API token generated. Copy it now; it will not be shown again.', 'qndrs-availability-heartbeat-monitor') . '</p></div>';
             } elseif (isset($_POST['clear_read_api_token'])) {
                 $this->clear_read_api_token();
-                echo '<div class="updated"><p>' . esc_html__('Alleen-lezen API-token ingetrokken.', 'qndrs-availability-heartbeat-monitor') . '</p></div>';
+                echo '<div class="updated"><p>' . esc_html__('Read-only API token revoked.', 'qndrs-availability-heartbeat-monitor') . '</p></div>';
             } elseif (isset($_POST['add_heartbeat_monitor'])) {
                 $result = $this->add_heartbeat_monitor_from_post();
                 $generated_heartbeat_token = $result['token'];
@@ -3144,7 +3158,9 @@ class AvailabilityHeartbeatMonitor
         global $wpdb;
 
         $table_exists = $this->history_table_exists();
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- The table name is derived from $wpdb->prefix; this is an explicit CLI/status count.
         $table_rows = $table_exists ? (int)$wpdb->get_var('SELECT COUNT(*) FROM ' . $this->get_history_table_name()) : 0;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Reading only the byte length avoids loading the serialized legacy option.
         $legacy_option_bytes = (int)$wpdb->get_var($wpdb->prepare(
             "SELECT COALESCE(LENGTH(option_value), 0) FROM {$wpdb->options} WHERE option_name = %s",
             'qndrs_ahm_history'
@@ -3206,6 +3222,7 @@ class AvailabilityHeartbeatMonitor
             $inserted_rows += $this->insert_history_table_batch($batch);
         }
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- The table name is derived from $wpdb->prefix; this count verifies the migration.
         $table_rows = (int)$wpdb->get_var('SELECT COUNT(*) FROM ' . $this->get_history_table_name());
         if ($table_rows !== $valid_entries) {
             return [
@@ -3268,10 +3285,12 @@ class AvailabilityHeartbeatMonitor
             $value_sql[] = '(' . implode(', ', $placeholders) . ')';
         }
 
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- The table name and value placeholder tuples are locally constructed; all row values are passed to prepare().
         $sql = 'INSERT IGNORE INTO ' . $this->get_history_table_name()
             . ' (event_id, monitor_id, checked_at, status, status_code, response_time_ms, message) VALUES '
             . implode(', ', $value_sql);
         $result = $wpdb->query($wpdb->prepare($sql, $query_args));
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared
 
         return $result === false ? 0 : (int)$result;
     }
@@ -3289,6 +3308,7 @@ class AvailabilityHeartbeatMonitor
 
         $history = $this->get_status_history();
         $legacy_entries = $this->count_valid_legacy_history_entries($history);
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- The table name is derived from $wpdb->prefix; this count verifies finalization safety.
         $table_rows = (int)$wpdb->get_var('SELECT COUNT(*) FROM ' . $this->get_history_table_name());
         if ($table_rows !== $legacy_entries) {
             return [
@@ -3338,6 +3358,7 @@ class AvailabilityHeartbeatMonitor
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- This existence check is required before allowing a rollback.
         $legacy_option_exists = (int)$wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s",
             'qndrs_ahm_history'

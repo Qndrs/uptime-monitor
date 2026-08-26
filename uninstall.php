@@ -23,6 +23,7 @@ delete_option('qndrs_ahm_history_storage');
 delete_option('qndrs_ahm_history_last_pruned');
 
 global $wpdb;
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Removing the plugin explicitly removes its custom history table.
 $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}qndrs_ahm_history");
 
 delete_option('uptime_monitor_urls');

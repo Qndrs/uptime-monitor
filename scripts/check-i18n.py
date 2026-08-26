@@ -1,3 +1,6 @@
+from collections import Counter
+import gettext
+import json
 from pathlib import Path
 import re
 import sys
@@ -6,8 +9,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_FILE = ROOT / "qndrs-availability-heartbeat-monitor.php"
 PO_FILE = ROOT / "languages" / "qndrs-availability-heartbeat-monitor-nl_NL.po"
+MO_FILE = ROOT / "languages" / "qndrs-availability-heartbeat-monitor-nl_NL.mo"
 
 FORBIDDEN_SOURCE_PHRASES = [
+    "Alleen-lezen API-token gegenereerd",
+    "Alleen-lezen API-token ingetrokken",
     "Net bijgewerkt",
     "Verwijderen",
     "Qndrs Monitor-instellingen",
@@ -21,10 +27,21 @@ FORBIDDEN_SOURCE_PHRASES = [
 ]
 
 REQUIRED_DUTCH_TRANSLATIONS = {
-    "Updated just now.": "Net bijgewerkt.",
+    "Authorization: Bearer your-token": "Authorization: Bearer jouw-token",
+    "Read-only API token generated. Copy it now; it will not be shown again.": "Alleen-lezen API-token gegenereerd. Kopieer het nu; het wordt niet opnieuw getoond.",
+    "Read-only API token revoked.": "Alleen-lezen API-token ingetrokken.",
+    "Updated just now.": "Zojuist geüpdatet.",
     "Delete": "Verwijderen",
-    "Qndrs Monitor Settings": "Qndrs Monitor-instellingen",
+    "Qndrs Monitor Settings": "Qndrs Monitor instellingen",
     "Save Settings": "Instellingen opslaan",
+}
+
+PLUGIN_HEADER_FIELDS = {
+    "Plugin Name": r"^\s*\*\s+Plugin Name:\s*(.+?)\s*$",
+    "Plugin URI": r"^\s*\*\s+Plugin URI:\s*(.+?)\s*$",
+    "Description": r"^\s*\*\s+Description:\s*(.+?)\s*$",
+    "Author": r"^\s*\*\s+Author:\s*(.+?)\s*$",
+    "Author URI": r"^\s*\*\s+Author URI:\s*(.+?)\s*$",
 }
 
 
@@ -40,7 +57,7 @@ def parse_po(path: Path) -> dict[str, str]:
     state: str | None = None
 
     def decode_po_string(value: str) -> str:
-        return bytes(value, "utf-8").decode("unicode_escape")
+        return json.loads(f'"{value}"')
 
     for line in path.read_text(encoding="utf-8").splitlines() + [""]:
         if line.startswith("msgid "):
@@ -82,12 +99,52 @@ def main() -> None:
         fail("plugin header description is Dutch")
 
     translations = parse_po(PO_FILE)
+
+    source_msgids = set(gettext_calls)
+    for field, pattern in PLUGIN_HEADER_FIELDS.items():
+        match = re.search(pattern, plugin_source, re.MULTILINE)
+        if not match:
+            fail(f"plugin header field is missing: {field}")
+        source_msgids.add(match.group(1))
+
+    missing = sorted(source_msgids - translations.keys())
+    obsolete = sorted(translations.keys() - source_msgids)
+    untranslated = sorted(msgid for msgid in source_msgids if not translations.get(msgid))
+    if missing:
+        fail(f"PO is missing {len(missing)} source strings: {missing}")
+    if obsolete:
+        fail(f"PO contains {len(obsolete)} obsolete strings: {obsolete}")
+    if untranslated:
+        fail(f"PO contains {len(untranslated)} untranslated strings: {untranslated}")
+
+    placeholder_pattern = re.compile(r"%(?:\d+\$)?[a-zA-Z]")
+    for msgid in sorted(source_msgids):
+        source_placeholders = Counter(placeholder_pattern.findall(msgid))
+        translation_placeholders = Counter(placeholder_pattern.findall(translations[msgid]))
+        if source_placeholders != translation_placeholders:
+            fail(
+                f"placeholder mismatch for {msgid!r}: "
+                f"source={dict(source_placeholders)}, translation={dict(translation_placeholders)}"
+            )
+
     for msgid, expected in REQUIRED_DUTCH_TRANSLATIONS.items():
         actual = translations.get(msgid)
         if actual != expected:
             fail(f"missing Dutch translation for {msgid!r}: expected {expected!r}, got {actual!r}")
 
-    print("i18n checks passed.")
+    try:
+        with MO_FILE.open("rb") as mo_handle:
+            mo_translations = gettext.GNUTranslations(mo_handle)
+    except (OSError, EOFError) as error:
+        fail(f"could not load compiled MO catalog: {error}")
+    for msgid, expected in translations.items():
+        actual = mo_translations.gettext(msgid)
+        if actual != expected:
+            fail(f"compiled MO mismatch for {msgid!r}: expected {expected!r}, got {actual!r}")
+
+    print(
+        f"i18n checks passed: {len(source_msgids)} source strings have complete Dutch PO and MO translations."
+    )
 
 
 if __name__ == "__main__":

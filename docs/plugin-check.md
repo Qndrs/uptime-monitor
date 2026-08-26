@@ -2,6 +2,19 @@
 
 Run WordPress Plugin Check before tagging a public release.
 
+## Release 3.6.1 verification
+
+The Plugin Check report from 2026-08-26 identified an outdated `Tested up to` value and static-analysis findings around the custom history table. The 3.6.1 candidate updates the metadata to WordPress 7.1 and adds narrowly scoped PHPCS explanations for intentional direct custom-table access. Dynamic values remain prepared; table names and placeholder lists are constructed only from trusted plugin code and `$wpdb->prefix`.
+
+The release candidate was installed on the WordPress 7.1 testsite on 2026-08-26. Local release checks passed and the official `wp plugin check qndrs-availability-heartbeat-monitor --mode=update --format=strict-json` completed without errors or warnings. The plugin remained active, table-based history storage was healthy, the monitoring cron event remained scheduled, the homepage returned HTTP 200, and unauthenticated status and heartbeat requests returned HTTP 401 as intended.
+
+Dutch runtime translation status checked on 2026-08-26:
+
+- Development: 216/216 current (100%), no waiting, fuzzy or warnings.
+- Stable: 216/216 current (100%), no waiting, fuzzy or warnings.
+- Official `nl_NL` language pack: available for 3.6.0, generated 2026-08-21.
+- Development Readme and Stable Readme: 0/67 translated (0%).
+
 Current testsite context:
 
 - URL: `https://qndrs.training/simpleuptimemonitor/`

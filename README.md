@@ -1,6 +1,6 @@
 # Qndrs Availability and Heartbeat Monitor
 
-![WordPress version](https://img.shields.io/badge/WordPress-7.0-blue)
+![WordPress version](https://img.shields.io/badge/WordPress-7.1-blue)
 ![PHP version](https://img.shields.io/badge/PHP-8.0+-blue)
 ![License](https://img.shields.io/badge/license-GPLv2%2B-green)
 
@@ -11,9 +11,9 @@ Qndrs Availability and Heartbeat Monitor is a lightweight WordPress plugin for m
 - Contributors: Robert E. Kuunders
 - Tags: uptime, monitoring, notifications, pushover, cron
 - Requires at least: WordPress 6.0
-- Tested up to: WordPress 7.0
+- Tested up to: WordPress 7.1
 - Requires PHP: 8.0+
-- Stable tag: 3.6.0
+- Stable tag: 3.6.1
 - License: GPLv2 or later
 - License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -141,7 +141,23 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 
 The checks validate PHP syntax, JavaScript syntax when Node.js is available, version consistency, and release packaging basics.
 
+### Dutch translation maintenance
+
+Regenerate the local Dutch PO, MO and PHP catalogs from the approved and waiting Development translations on Translate.WordPress.org:
+
+```powershell
+py scripts/update-translations.py
+```
+
+The script only updates local files and does not publish translations. It also creates a versioned Stable import PO in `dist/`, which is excluded from Git and release packages. Review the generated Dutch text before importing it into Translate.WordPress.org. The release checks verify that the release catalog exactly matches the plugin source, contains no empty translations and preserves placeholders.
+
 ## Changelog
+
+### 3.6.1
+
+- Updated compatibility metadata for WordPress 7.1.
+- Documented intentional custom-table queries for WordPress Plugin Check.
+- Corrected English source strings and refreshed the complete Dutch runtime translation.
 
 ### 3.6.0
 

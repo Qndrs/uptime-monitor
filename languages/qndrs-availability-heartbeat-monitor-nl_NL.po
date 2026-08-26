@@ -1,9 +1,8 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Qndrs Availability and Heartbeat Monitor 3.6.0\n"
+"Project-Id-Version: Qndrs Availability and Heartbeat Monitor 3.6.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-11 18:45+0200\n"
-"PO-Revision-Date: 2026-07-11 18:45+0200\n"
+"PO-Revision-Date: 2026-08-26 12:00+0200\n"
 "Last-Translator: Robert Kuunders\n"
 "Language-Team: Nederlands\n"
 "Language: nl_NL\n"
@@ -11,593 +10,977 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Codex\n"
+"X-Generator: scripts/update-translations.py\n"
 "X-Domain: qndrs-availability-heartbeat-monitor\n"
 
-msgid "%d ms"
-msgstr "%d ms"
-
-msgid "24h"
-msgstr "24u"
-
-msgid "24h uptime"
-msgstr "24u uptime"
-
-msgid "30d"
-msgstr "30d"
-
-msgid "7d"
-msgstr "7d"
-
-msgid "A general error occurred. Please try again."
-msgstr "Er is een algemene fout opgetreden. Probeer het opnieuw."
-
-msgid "Across URLs with history"
-msgstr "Over URLs met geschiedenis"
-
-msgid "Active incidents: %1$d; active URLs: %2$d"
-msgstr "Actieve incidenten: %1$d; actieve URLs: %2$d"
-
+#: qndrs-availability-heartbeat-monitor.php:2381
 msgid "Add URL"
 msgstr "URL toevoegen"
 
+#: qndrs-availability-heartbeat-monitor.php:2640
+#: qndrs-availability-heartbeat-monitor.php:2656
 msgid "Add heartbeat monitor"
 msgstr "Heartbeat monitor toevoegen"
 
-msgid "Admin authentication required"
-msgstr "Admin-authenticatie vereist"
-
-msgid "An error occurred: "
-msgstr "Er is een fout opgetreden: "
-
-msgid "Authorization: Bearer your-token"
-msgstr "Authorization: Bearer jouw-token"
-
-msgid "Average over recent checks"
-msgstr "Gemiddelde over recente checks"
-
-msgid "Average response"
-msgstr "Gemiddelde responstijd"
-
-msgid "Avg %d ms"
-msgstr "Gem. %d ms"
-
+#: qndrs-availability-heartbeat-monitor.php:2551
 msgid "Before status is final"
 msgstr "Voordat de status definitief is"
 
-msgid "Cannot send alert due to missing credentials."
-msgstr "Melding kan niet worden verzonden vanwege ontbrekende credentials."
-
+#: qndrs-availability-heartbeat-monitor.php:2752
 msgid "Clear stored API token"
 msgstr "Opgeslagen API-token wissen"
 
-msgid "Clear stored user key"
-msgstr "Opgeslagen user key wissen"
-
-msgid "Clients send a POST request to this endpoint with their own heartbeat token."
-msgstr "Clients sturen een POST naar dit endpoint met hun eigen heartbeat-token."
-
-msgid "Complete monitor status response."
-msgstr "Volledige monitorstatusresponse."
-
+#: qndrs-availability-heartbeat-monitor.php:2762
 msgid "Configuration Import / Export"
 msgstr "Configuratie importeren / exporteren"
 
-msgid "Configuration imported successfully!"
-msgstr "Configuratie succesvol geïmporteerd!"
-
+#: qndrs-availability-heartbeat-monitor.php:2453
 msgid "Configuration imported successfully."
-msgstr "Configuratie succesvol geimporteerd."
+msgstr "Configuratie succesvol geïmporteerd."
 
+#: qndrs-availability-heartbeat-monitor.php:2540
 msgid "Configuration panel"
 msgstr "Configuratiepaneel"
 
+#: qndrs-availability-heartbeat-monitor.php:2499
+#: qndrs-availability-heartbeat-monitor.php:2500
 msgid "Configured"
 msgstr "Geconfigureerd"
 
+#: qndrs-availability-heartbeat-monitor.php:2659
 msgid "Configured heartbeat monitors"
 msgstr "Ingestelde heartbeat monitors"
 
+#: qndrs-availability-heartbeat-monitor.php:2525
 msgid "Configured in database"
 msgstr "In database ingesteld"
 
-msgid "Copied to clipboard."
-msgstr "Gekopieerd naar het klembord."
-
-msgid "Copy"
-msgstr "Kopieren"
-
-msgid "Copy curl example"
-msgstr "curl-voorbeeld kopieren"
-
-msgid "Copy this heartbeat token now. It will not be shown again."
-msgstr "Kopieer dit heartbeat-token nu. Het wordt niet opnieuw getoond."
-
+#: qndrs-availability-heartbeat-monitor.php:2591
 msgid "Copy this token now. It will not be shown again."
 msgstr "Kopieer dit token nu. Het wordt niet opnieuw getoond."
 
+#: qndrs-availability-heartbeat-monitor.php:2632
 msgid "Copy token"
-msgstr "Token kopieren"
+msgstr "Token kopiëren"
 
-msgid "Could not copy to clipboard."
-msgstr "Kopieren naar het klembord is mislukt."
-
+#. translators: %s: Token creation date.
+#: qndrs-availability-heartbeat-monitor.php:2587
 msgid "Created: %s"
 msgstr "Aangemaakt: %s"
 
-msgid "Credential source"
-msgstr "Bron van toegangsgegevens"
-
+#: qndrs-availability-heartbeat-monitor.php:2703
 msgid "Cron and HTTP checks"
 msgstr "Cron en HTTP-checks"
 
-msgid "Current health"
-msgstr "Huidige gezondheid"
-
+#: qndrs-availability-heartbeat-monitor.php:2549
 msgid "Current settings"
 msgstr "Huidige instellingen"
 
+#. translators: %s: Last four characters of the read-only API token.
+#: qndrs-availability-heartbeat-monitor.php:2583
 msgid "Current token ends with %s."
 msgstr "Huidig token eindigt op %s."
 
-msgid "Degraded"
-msgstr "Verminderd"
-
-msgid "Delete"
-msgstr "Verwijderen"
-
-msgid "Details"
-msgstr "Details"
-
-msgid "Disabled"
-msgstr "Uitgeschakeld"
-
-msgid "Dismiss this notice."
-msgstr "Deze melding sluiten."
-
-msgid "Down"
-msgstr "Down"
-
-msgid "Down Status Codes"
-msgstr "Down-statuscodes"
-
-msgid "Down codes"
-msgstr "Down-codes"
-
-msgid "Down for %s"
-msgstr "Down sinds %s"
-
+#: qndrs-availability-heartbeat-monitor.php:2553
+#: qndrs-availability-heartbeat-monitor.php:2722
 msgid "Down status codes"
 msgstr "Down-statuscodes"
 
-msgid "Email"
-msgstr "E-mail"
-
-msgid "Email / Pushover enabled"
-msgstr "E-mail / Pushover ingeschakeld"
-
-msgid "Email Alert"
-msgstr "E-mailalarm"
-
-msgid "Email alert"
-msgstr "E-mailalarm"
-
-msgid "Enabled"
-msgstr "Ingeschakeld"
-
-msgid "Error"
-msgstr "Fout"
-
+#. translators: %d: Monitoring interval in seconds.
+#: qndrs-availability-heartbeat-monitor.php:3600
 msgid "Every %d seconds"
 msgstr "Elke %d seconden"
 
-msgid "Existing admin-only log endpoint."
-msgstr "Bestaand logendpoint, alleen voor admins."
-
-msgid "Expected every %d seconds"
-msgstr "Elke %d seconden verwacht"
-
+#: qndrs-availability-heartbeat-monitor.php:2647
 msgid "Expected interval (seconds)"
 msgstr "Verwacht interval (seconden)"
 
+#: qndrs-availability-heartbeat-monitor.php:2673
 msgid "Expected interval:"
 msgstr "Verwacht interval:"
 
+#: qndrs-availability-heartbeat-monitor.php:2767
 msgid "Export Configuration"
 msgstr "Configuratie exporteren"
 
+#: qndrs-availability-heartbeat-monitor.php:2714
 msgid "Extra attempts before a URL is considered down."
 msgstr "Extra pogingen voordat een URL als down wordt gezien."
 
-msgid "Faster"
-msgstr "Sneller"
-
+#: qndrs-availability-heartbeat-monitor.php:2599
 msgid "Generate token"
 msgstr "Token genereren"
 
-msgid "HTTP %d"
-msgstr "HTTP %d"
-
+#: qndrs-availability-heartbeat-monitor.php:2553
 msgid "HTTP status ranges"
 msgstr "HTTP-statusbereiken"
 
+#: qndrs-availability-heartbeat-monitor.php:2619
 msgid "Heartbeat endpoint"
 msgstr "Heartbeat-endpoint"
 
-msgid "Heartbeat monitor created. Copy the token now; it will not be shown again."
-msgstr "Heartbeat monitor aangemaakt. Kopieer het token nu; het wordt niet opnieuw getoond."
-
-msgid "Heartbeat monitor deleted."
-msgstr "Heartbeat monitor verwijderd."
-
-msgid "Heartbeat monitor name is required."
-msgstr "Naam voor heartbeat monitor is verplicht."
-
-msgid "Heartbeat monitor not found."
-msgstr "Heartbeat monitor niet gevonden."
-
-msgid "Heartbeat monitor updated."
-msgstr "Heartbeat monitor bijgewerkt."
-
-msgid "Heartbeat token rotated. Copy the token now; it will not be shown again."
-msgstr "Heartbeat-token vernieuwd. Kopieer het token nu; het wordt niet opnieuw getoond."
-
-msgid "Hide details"
-msgstr "Details verbergen"
-
+#: qndrs-availability-heartbeat-monitor.php:2709
 msgid "How often WordPress cron should schedule monitoring checks."
 msgstr "Hoe vaak WordPress cron monitoringchecks moet plannen."
 
+#: qndrs-availability-heartbeat-monitor.php:2771
 msgid "Import Configuration"
 msgstr "Configuratie importeren"
 
-msgid "Incident active"
-msgstr "Incident actief"
-
-msgid "Incident open"
-msgstr "Incident open"
-
+#: qndrs-availability-heartbeat-monitor.php:2543
 msgid "Interval:"
 msgstr "Interval:"
 
-msgid "Invalid JSON format."
-msgstr "Ongeldig JSON-formaat."
-
-msgid "Invalid URL."
-msgstr "Ongeldige URL."
-
-msgid "Invalid URL:"
-msgstr "Ongeldige URL:"
-
+#. translators: %s: Invalid monitored URL.
+#: qndrs-availability-heartbeat-monitor.php:3050
 msgid "Invalid URL: %s"
 msgstr "Ongeldige URL: %s"
 
-msgid "Invalid form request."
-msgstr "Ongeldig formulierverzoek."
-
-msgid "Last check:"
-msgstr "Laatste check:"
-
+#: qndrs-availability-heartbeat-monitor.php:2672
 msgid "Last ping:"
 msgstr "Laatste ping:"
 
-msgid "Logs"
-msgstr "Logboek"
-
-msgid "Maximum wait time per HTTP request attempt."
-msgstr "Maximale wachttijd per HTTP-poging."
-
+#: qndrs-availability-heartbeat-monitor.php:2550
 msgid "Minimum 60 seconds"
 msgstr "Minimaal 60 seconden"
 
+#: qndrs-availability-heartbeat-monitor.php:2707
 msgid "Monitor Interval (seconds)"
 msgstr "Monitorinterval (seconden)"
 
+#: qndrs-availability-heartbeat-monitor.php:2550
 msgid "Monitor interval"
 msgstr "Monitorinterval"
 
+#: qndrs-availability-heartbeat-monitor.php:2567
 msgid "Monitor status by ID."
 msgstr "Status van een monitor op basis van ID."
 
-msgid "Monitored URLs"
-msgstr "Gemonitorde URLs"
-
-msgid "Monitoring"
-msgstr "Monitoring"
-
+#: qndrs-availability-heartbeat-monitor.php:2702
 msgid "Monitoring Settings"
 msgstr "Monitoringinstellingen"
 
-msgid "Monitoring metrics"
-msgstr "Monitoringstatistieken"
-
-msgid "Monitoring summary"
-msgstr "Monitoringsamenvatting"
-
+#: qndrs-availability-heartbeat-monitor.php:2643
 msgid "Name"
 msgstr "Naam"
 
-msgid "Next check"
-msgstr "Volgende check"
-
-msgid "No URLs available. Add one!"
-msgstr "Geen URLs beschikbaar. Voeg er een toe."
-
-msgid "No alerts"
-msgstr "Geen alarmen"
-
-msgid "No checks yet."
-msgstr "Nog geen controles."
-
-msgid "No data"
-msgstr "Geen data"
-
-msgid "No further alerts will be sent for this incident until the website is reachable again."
-msgstr "Voor dit incident worden geen verdere meldingen verzonden totdat de website weer bereikbaar is."
-
+#: qndrs-availability-heartbeat-monitor.php:2661
 msgid "No heartbeat monitors configured yet."
 msgstr "Er zijn nog geen heartbeat monitors ingesteld."
 
-msgid "No incident"
-msgstr "Geen incident"
-
+#: qndrs-availability-heartbeat-monitor.php:3480
 msgid "No logs found."
 msgstr "Geen logs gevonden."
 
-msgid "No ping received"
-msgstr "Geen ping ontvangen"
-
+#: qndrs-availability-heartbeat-monitor.php:2529
 msgid "No token configured"
 msgstr "Geen token ingesteld"
 
+#: qndrs-availability-heartbeat-monitor.php:2525
+#: qndrs-availability-heartbeat-monitor.php:2667
 msgid "Not configured"
 msgstr "Niet ingesteld"
 
-msgid "Not scheduled"
-msgstr "Niet gepland"
-
-msgid "Notifications"
-msgstr "Meldingen"
-
-msgid "Operational"
-msgstr "Operationeel"
-
-msgid "Outbound client pings"
-msgstr "Uitgaande clientpings"
-
+#: qndrs-availability-heartbeat-monitor.php:2566
 msgid "Overall status"
 msgstr "Algemene status"
 
+#: qndrs-availability-heartbeat-monitor.php:2772
 msgid "Paste a previously exported JSON configuration here."
-msgstr "Plak hier een eerder geexporteerde JSON-configuratie."
+msgstr "Plak hier een eerder geëxporteerde JSON-configuratie."
 
+#: qndrs-availability-heartbeat-monitor.php:2677
 msgid "Pause"
 msgstr "Pauzeren"
 
-msgid "Paused"
-msgstr "Gepauzeerd"
-
+#: qndrs-availability-heartbeat-monitor.php:2552
 msgid "Per HTTP attempt"
 msgstr "Per HTTP-poging"
 
-msgid "Pushover"
-msgstr "Pushover"
-
+#: qndrs-availability-heartbeat-monitor.php:2749
 msgid "Pushover API Token"
 msgstr "Pushover API-token"
 
-msgid "Pushover Alert"
-msgstr "Pushover-alarm"
-
+#: qndrs-availability-heartbeat-monitor.php:2731
 msgid "Pushover Configuration"
 msgstr "Pushover-configuratie"
 
-msgid "Pushover User Key"
-msgstr "Pushover-gebruikerssleutel"
-
-msgid "Pushover alert"
-msgstr "Pushover-alarm"
-
+#: qndrs-availability-heartbeat-monitor.php:2735
 msgid "Pushover constants are defined in wp-config.php and take precedence over stored settings."
 msgstr "Pushover-constanten zijn ingesteld in wp-config.php en krijgen voorrang op opgeslagen instellingen."
 
+#: qndrs-availability-heartbeat-monitor.php:2546
 msgid "Pushover:"
 msgstr "Pushover:"
 
+#: qndrs-availability-heartbeat-monitor.php:2562
 msgid "REST API"
 msgstr "REST API"
 
-msgid "REST API viewer"
-msgstr "REST API-viewer"
-
+#: qndrs-availability-heartbeat-monitor.php:2577
 msgid "Read-only API token"
 msgstr "Alleen-lezen API-token"
 
-msgid "Read-only API token generated. Copy it now; it will not be shown again."
-msgstr "Read-only API-token gegenereerd. Kopieer het nu; het wordt niet opnieuw getoond."
-
-msgid "Read-only API token revoked."
-msgstr "Read-only API-token ingetrokken."
-
-msgid "Refresh now"
-msgstr "Nu verversen"
-
-msgid "Refreshing..."
-msgstr "Verversen..."
-
-msgid "Request Timeout (seconds)"
-msgstr "Verzoek-timeout (seconden)"
-
-msgid "Request timeout"
-msgstr "Verzoek-timeout"
-
+#: qndrs-availability-heartbeat-monitor.php:2677
 msgid "Resume"
 msgstr "Hervatten"
 
+#: qndrs-availability-heartbeat-monitor.php:2544
 msgid "Retries:"
 msgstr "Pogingen:"
 
+#: qndrs-availability-heartbeat-monitor.php:2551
+#: qndrs-availability-heartbeat-monitor.php:2712
 msgid "Retry attempts"
 msgstr "Herhaalpogingen"
 
+#: qndrs-availability-heartbeat-monitor.php:2601
 msgid "Revoke token"
 msgstr "Token intrekken"
 
-msgid "Rotate token"
-msgstr "Token vernieuwen"
-
+#: qndrs-availability-heartbeat-monitor.php:2778
 msgid "Save Settings"
 msgstr "Instellingen opslaan"
 
-msgid "Scheduled WordPress cron"
-msgstr "Geplande WordPress-cron"
-
+#: qndrs-availability-heartbeat-monitor.php:2763
 msgid "Secrets excluded"
 msgstr "Geheimen uitgesloten"
 
+#: qndrs-availability-heartbeat-monitor.php:2756
 msgid "Send Pushover Test"
 msgstr "Pushover-test verzenden"
 
-msgid "Settings"
-msgstr "Instellingen"
-
-msgid "Settings saved and Pushover test notification sent."
-msgstr "Instellingen opgeslagen en Pushover-testmelding verzonden."
-
-msgid "Settings saved!"
-msgstr "Instellingen opgeslagen!"
-
-msgid "Settings saved, but the Pushover test notification failed. Check credentials and logs."
-msgstr "Instellingen opgeslagen, maar de Pushover-testmelding is mislukt. Controleer toegangsgegevens en logs."
-
-msgid "Settings saved, but the Pushover test notification failed. Check your credentials and logs."
-msgstr "Instellingen opgeslagen, maar de Pushover-testmelding is mislukt. Controleer de credentials en logs."
-
+#: qndrs-availability-heartbeat-monitor.php:2485
 msgid "Settings saved."
 msgstr "Instellingen opgeslagen."
 
+#: qndrs-availability-heartbeat-monitor.php:2537
 msgid "Settings summary"
 msgstr "Instellingenoverzicht"
 
-msgid "Qndrs Availability and Heartbeat Monitor"
-msgstr "Qndrs Availability and Heartbeat Monitor"
-
-msgid "Single monitored URL status by ID."
-msgstr "Status van één gemonitorde URL op basis van ID."
-
-msgid "Slower"
-msgstr "Langzamer"
-
-msgid "Stable"
-msgstr "Stabiel"
-
-msgid "Status History"
-msgstr "Statusgeschiedenis"
-
+#: qndrs-availability-heartbeat-monitor.php:2649
 msgid "Status becomes stale/down after roughly twice this interval without a ping."
 msgstr "De status wordt stale/down na ongeveer twee keer dit interval zonder ping."
 
+#: qndrs-availability-heartbeat-monitor.php:2737
 msgid "Store Pushover credentials here when file access to wp-config.php is not available."
 msgstr "Sla Pushover-toegangsgegevens hier op wanneer bestandstoegang tot wp-config.php niet beschikbaar is."
 
-msgid "The website %1$s is down. Error: %2$s."
-msgstr "De website %1$s is down. Fout: %2$s."
-
-msgid "The website %1$s is down. HTTP Status Code: %2$d."
-msgstr "De website %1$s is down. HTTP-statuscode: %2$d."
-
-msgid "The website %1$s is reachable again. HTTP Status Code: %2$d."
-msgstr "De website %1$s is weer bereikbaar. HTTP-statuscode: %2$d."
-
-msgid "The website %s is reachable again."
-msgstr "De website %s is weer bereikbaar."
-
+#: qndrs-availability-heartbeat-monitor.php:2476
 msgid "This is a test notification from Qndrs Availability and Heartbeat Monitor."
 msgstr "Dit is een testmelding van Qndrs Availability and Heartbeat Monitor."
 
+#: qndrs-availability-heartbeat-monitor.php:2545
 msgid "Timeout:"
 msgstr "Timeout:"
 
+#: qndrs-availability-heartbeat-monitor.php:2529
 msgid "Token configured"
 msgstr "Token ingesteld"
 
+#: qndrs-availability-heartbeat-monitor.php:2377
 msgid "URL"
 msgstr "URL"
 
-msgid "URL added successfully!"
-msgstr "URL succesvol toegevoegd."
-
-msgid "URL deleted successfully!"
-msgstr "URL succesvol verwijderd."
-
+#: qndrs-availability-heartbeat-monitor.php:2861
 msgid "URL is down."
 msgstr "URL is down."
 
-msgid "URL is not reachable (status code:"
-msgstr "URL is niet bereikbaar (statuscode:"
-
+#. translators: %d: HTTP status code.
+#: qndrs-availability-heartbeat-monitor.php:3056
 msgid "URL is not reachable. Status code: %d"
 msgstr "URL is niet bereikbaar. Statuscode: %d"
 
+#: qndrs-availability-heartbeat-monitor.php:2856
 msgid "URL is up."
 msgstr "URL is up."
 
-msgid "URL not found."
-msgstr "URL niet gevonden."
-
+#: qndrs-availability-heartbeat-monitor.php:2567
 msgid "URL status"
 msgstr "URL-status"
 
-msgid "Unknown"
-msgstr "Onbekend"
-
-msgid "Up"
-msgstr "Online"
-
-msgid "Updated just now."
-msgstr "Net bijgewerkt."
-
-msgid "Uptime"
-msgstr "Uptime"
-
-msgid "Qndrs Monitor"
-msgstr "Qndrs Monitor"
-
-msgid "Qndrs Monitor Settings"
-msgstr "Qndrs Monitor-instellingen"
-
-msgid "Qndrs Monitor Test"
-msgstr "Qndrs Monitor-test"
-
+#: qndrs-availability-heartbeat-monitor.php:2724
 msgid "Use comma-separated HTTP status codes or ranges. Default: 100-199,300-599."
 msgstr "Gebruik komma-gescheiden HTTP-statuscodes of bereiken. Standaard: 100-199,300-599."
 
+#: qndrs-availability-heartbeat-monitor.php:2616
 msgid "Use heartbeat monitors for computers, jobs, Home Assistant, NAS devices or internal apps that can reach this monitor through outbound HTTPS, but cannot be reached inbound."
 msgstr "Gebruik heartbeat monitors voor computers, jobs, Home Assistant, NAS-apparaten of interne apps die deze monitor via uitgaande HTTPS kunnen bereiken, maar zelf niet van buitenaf bereikbaar zijn."
 
+#: qndrs-availability-heartbeat-monitor.php:2579
 msgid "Use this token for external dashboards that only need the status endpoints."
 msgstr "Gebruik dit token voor externe dashboards die alleen de status-endpoints nodig hebben."
 
-msgid "Website Down Alert"
-msgstr "Website down-alarm"
+#: qndrs-availability-heartbeat-monitor.php:2614
+msgid "Outbound client pings"
+msgstr "Uitgaande client pings"
 
-msgid "Website Down Alert: %s"
-msgstr "Website down-alarm: %s"
+#: qndrs-availability-heartbeat-monitor.php:2742
+msgid "Pushover User Key"
+msgstr "Pushover gebruikerssleutel"
 
-msgid "Website Recovered"
-msgstr "Website hersteld"
+#: qndrs-availability-heartbeat-monitor.php:2534
+msgid "Qndrs Monitor Settings"
+msgstr "Qndrs Monitor instellingen"
 
-msgid "Website Recovered: %s"
-msgstr "Website hersteld: %s"
+#: qndrs-availability-heartbeat-monitor.php:2475
+msgid "Qndrs Monitor Test"
+msgstr "Qndrs Monitor test"
 
+#: qndrs-availability-heartbeat-monitor.php:2560
+msgid "REST API viewer"
+msgstr "REST API viewer"
+
+#: qndrs-availability-heartbeat-monitor.php:2480
+msgid "Settings saved and Pushover test notification sent."
+msgstr "Instellingen opgeslagen en Pushover testmelding verzonden."
+
+#: qndrs-availability-heartbeat-monitor.php:2482
+msgid "Settings saved, but the Pushover test notification failed. Check credentials and logs."
+msgstr "Instellingen opgeslagen, maar de Pushover testmelding is mislukt. Controleer referenties en logs."
+
+#: qndrs-availability-heartbeat-monitor.php:2524
+msgid "wp-config.php constants"
+msgstr "wp-config.php constanten"
+
+#: qndrs-availability-heartbeat-monitor.php:3034
+#: qndrs-availability-heartbeat-monitor.php:3084
+#: qndrs-availability-heartbeat-monitor.php:3125
 msgid "You are not allowed to manage uptime URLs."
-msgstr "Je hebt geen toestemming om uptime-URLs te beheren."
+msgstr "Je hebt geen toestemming om uptime URL's te beheren."
 
+#: qndrs-availability-heartbeat-monitor.php:2563
+msgid "Admin authentication required"
+msgstr "Beheerder-authenticatie vereist"
+
+#: qndrs-availability-heartbeat-monitor.php:2954
+msgid "Cannot send alert due to missing credentials."
+msgstr "Kan waarschuwing niet verzenden vanwege ontbrekende referenties."
+
+#: qndrs-availability-heartbeat-monitor.php:2620
+msgid "Clients send a POST request to this endpoint with their own heartbeat token."
+msgstr "Clients sturen een POST naar dit endpoint met hun eigen heartbeat token."
+
+#: qndrs-availability-heartbeat-monitor.php:2634
+msgid "Copy curl example"
+msgstr "Kopieer curl voorbeeld"
+
+#: qndrs-availability-heartbeat-monitor.php:2630
+msgid "Copy this heartbeat token now. It will not be shown again."
+msgstr "Kopieer dit heartbeat token nu. Het wordt niet opnieuw getoond."
+
+#: qndrs-availability-heartbeat-monitor.php:2554
+msgid "Credential source"
+msgstr "Referentiebron"
+
+#: qndrs-availability-heartbeat-monitor.php:2570
+msgid "Existing admin-only log endpoint."
+msgstr "Bestaand log endpoint, alleen voor beheerder."
+
+#: qndrs-availability-heartbeat-monitor.php:2429
+#: qndrs-availability-heartbeat-monitor.php:2432
+msgid "Invalid JSON format."
+msgstr "Ongeldige JSON format."
+
+#. translators: %s: Invalid log date query parameter name.
+#: qndrs-availability-heartbeat-monitor.php:3572
+msgid "Invalid log date parameter: %s."
+msgstr "Ongeldige datum parameter %s in log."
+
+#: qndrs-availability-heartbeat-monitor.php:2644
+msgid "Home Assistant"
+msgstr "Home Assistant"
+
+#: qndrs-availability-heartbeat-monitor.php:2542
+msgid "monitors"
+msgstr "monitors"
+
+#: qndrs-availability-heartbeat-monitor.php:2673
+msgid "Token:"
+msgstr "Token:"
+
+#: qndrs-availability-heartbeat-monitor.php:3108
+msgid "You are not allowed to view uptime data."
+msgstr "Je hebt geen toestemming om de uptime-gegevens te bekijken."
+
+#: qndrs-availability-heartbeat-monitor.php:2745
+msgid "Clear stored user key"
+msgstr "Opgeslagen gebruikerssleutel wissen"
+
+#: qndrs-availability-heartbeat-monitor.php:2566
+msgid "Complete monitor status response."
+msgstr "Reactie met de volledige monitorstatus."
+
+#: qndrs-availability-heartbeat-monitor.php:2379
+msgid "Email Alert"
+msgstr "E-mailwaarschuwing"
+
+#: qndrs-availability-heartbeat-monitor.php:2652
+msgid "Email alert"
+msgstr "E-mailwaarschuwing"
+
+#: qndrs-availability-heartbeat-monitor.php:2569
+msgid "Logs"
+msgstr "Logs"
+
+#: qndrs-availability-heartbeat-monitor.php:2719
+msgid "Maximum wait time per HTTP request attempt."
+msgstr "Maximale wachttijd per poging tot een HTTP-aanvraag."
+
+#: qndrs-availability-heartbeat-monitor.php:2888
+#: qndrs-availability-heartbeat-monitor.php:2927
+msgid "No further alerts will be sent for this incident until the website is reachable again."
+msgstr "Er worden geen verdere waarschuwingen voor dit incident verzonden totdat de site weer bereikbaar is."
+
+#: qndrs-availability-heartbeat-monitor.php:2380
+msgid "Pushover Alert"
+msgstr "Pushover-waarschuwing"
+
+#: qndrs-availability-heartbeat-monitor.php:2653
+msgid "Pushover alert"
+msgstr "Pushover-waarschuwing"
+
+#: qndrs-availability-heartbeat-monitor.php:2717
+msgid "Request Timeout (seconds)"
+msgstr "Aanvraagtime-out (seconden)"
+
+#: qndrs-availability-heartbeat-monitor.php:2552
+msgid "Request timeout"
+msgstr "Aanvraagtime-out"
+
+#: qndrs-availability-heartbeat-monitor.php:2599
+#: qndrs-availability-heartbeat-monitor.php:2678
+msgid "Rotate token"
+msgstr "Token roteren"
+
+#. translators: 1: Monitored URL, 2: Network error message.
+#: qndrs-availability-heartbeat-monitor.php:2885
+#: qndrs-availability-heartbeat-monitor.php:2924
+msgid "The website %1$s is down. Error: %2$s."
+msgstr "De site %1$s is down. Fout: %2$s."
+
+#. translators: 1: Monitored URL, 2: HTTP status code.
+#: qndrs-availability-heartbeat-monitor.php:2882
+#: qndrs-availability-heartbeat-monitor.php:2921
+msgid "The website %1$s is down. HTTP Status Code: %2$d."
+msgstr "De site %1$s is down. HTTP-statuscode: %2$d."
+
+#. translators: 1: Monitored URL, 2: HTTP status code.
+#: qndrs-availability-heartbeat-monitor.php:2900
+#: qndrs-availability-heartbeat-monitor.php:2937
+msgid "The website %1$s is reachable again. HTTP Status Code: %2$d."
+msgstr "De site %1$s is weer bereikbaar. HTTP-statuscode: %2$d."
+
+#. translators: %s: Monitored URL.
+#: qndrs-availability-heartbeat-monitor.php:2903
+#: qndrs-availability-heartbeat-monitor.php:2940
+msgid "The website %s is reachable again."
+msgstr "De site %s is weer bereikbaar."
+
+#: qndrs-availability-heartbeat-monitor.php:2930
+msgid "Website Down Alert"
+msgstr "Waarschuwing: site niet beschikbaar"
+
+#. translators: %s: Monitored URL.
+#: qndrs-availability-heartbeat-monitor.php:2879
+msgid "Website Down Alert: %s"
+msgstr "Waarschuwing: site niet beschikbaar: %s"
+
+#: qndrs-availability-heartbeat-monitor.php:2943
+msgid "Website Recovered"
+msgstr "Site hersteld"
+
+#. translators: %s: Monitored URL.
+#: qndrs-availability-heartbeat-monitor.php:2897
+msgid "Website Recovered: %s"
+msgstr "Site hersteld: %s"
+
+#: qndrs-availability-heartbeat-monitor.php:2611
+#: qndrs-availability-heartbeat-monitor.php:2613
+msgid "Heartbeat monitors"
+msgstr "Heartbeat monitors"
+
+#: qndrs-availability-heartbeat-monitor.php:2804
+msgid "Heartbeat is stale."
+msgstr "Heartbeat is verlopen."
+
+#: qndrs-availability-heartbeat-monitor.php:2406
+msgid "Read-only API token revoked."
+msgstr "Alleen-lezen API-token ingetrokken."
+
+#: qndrs-availability-heartbeat-monitor.php:2403
+msgid "Read-only API token generated. Copy it now; it will not be shown again."
+msgstr "Alleen-lezen API-token gegenereerd. Kopieer het nu; het wordt niet opnieuw getoond."
+
+#: qndrs-availability-heartbeat-monitor.php:2580
+msgid "Authorization: Bearer your-token"
+msgstr "Authorization: Bearer jouw-token"
+
+#. translators: %d: Response time in milliseconds.
+#: qndrs-availability-heartbeat-monitor.php:794
+#: qndrs-availability-heartbeat-monitor.php:2015
+#: qndrs-availability-heartbeat-monitor.php:2256
+msgid "%d ms"
+msgstr "%d ms"
+
+#: qndrs-availability-heartbeat-monitor.php:1855
+#: qndrs-availability-heartbeat-monitor.php:1909
+msgid "24h"
+msgstr "24u"
+
+#: qndrs-availability-heartbeat-monitor.php:2050
+msgid "24h uptime"
+msgstr "24u uptime"
+
+#: qndrs-availability-heartbeat-monitor.php:1863
+#: qndrs-availability-heartbeat-monitor.php:1911
+msgid "30d"
+msgstr "30d"
+
+#: qndrs-availability-heartbeat-monitor.php:1859
+#: qndrs-availability-heartbeat-monitor.php:1910
+msgid "7d"
+msgstr "7d"
+
+#: qndrs-availability-heartbeat-monitor.php:781
+msgid "A general error occurred. Please try again."
+msgstr "Er is een algemene fout opgetreden. Probeer het opnieuw."
+
+#. translators: 1: Active incidents, 2: Active URLs.
+#: qndrs-availability-heartbeat-monitor.php:2047
+msgid "Active incidents: %1$d; active URLs: %2$d"
+msgstr "Actieve incidenten: %1$d; actieve URLs: %2$d"
+
+#: qndrs-availability-heartbeat-monitor.php:780
+msgid "An error occurred: "
+msgstr "Er is een fout opgetreden: "
+
+#: qndrs-availability-heartbeat-monitor.php:2050
+msgid "Average over recent checks"
+msgstr "Gemiddelde over recente checks"
+
+#. translators: %d: Average response time in milliseconds.
+#: qndrs-availability-heartbeat-monitor.php:796
+#: qndrs-availability-heartbeat-monitor.php:1433
+#: qndrs-availability-heartbeat-monitor.php:1541
+#: qndrs-availability-heartbeat-monitor.php:1990
+msgid "Avg %d ms"
+msgstr "Gem. %d ms"
+
+#: qndrs-availability-heartbeat-monitor.php:813
+msgid "Copied to clipboard."
+msgstr "Gekopieerd naar het klembord."
+
+#: qndrs-availability-heartbeat-monitor.php:2182
+#: qndrs-availability-heartbeat-monitor.php:2593
+#: qndrs-availability-heartbeat-monitor.php:2624
+msgid "Copy"
+msgstr "Kopiëren"
+
+#: qndrs-availability-heartbeat-monitor.php:814
+msgid "Could not copy to clipboard."
+msgstr "Kopiëren naar het klembord is mislukt."
+
+#: qndrs-availability-heartbeat-monitor.php:2048
+msgid "Current health"
+msgstr "Huidige gezondheid"
+
+#: qndrs-availability-heartbeat-monitor.php:803
+#: qndrs-availability-heartbeat-monitor.php:1359
+#: qndrs-availability-heartbeat-monitor.php:1566
+msgid "Degraded"
+msgstr "Verminderd"
+
+#: qndrs-availability-heartbeat-monitor.php:783
+#: qndrs-availability-heartbeat-monitor.php:2284
+#: qndrs-availability-heartbeat-monitor.php:2679
+msgid "Delete"
+msgstr "Verwijderen"
+
+#: qndrs-availability-heartbeat-monitor.php:809
+#: qndrs-availability-heartbeat-monitor.php:2283
+msgid "Details"
+msgstr "Details"
+
+#: qndrs-availability-heartbeat-monitor.php:785
+msgid "Disabled"
+msgstr "Uitgeschakeld"
+
+#: qndrs-availability-heartbeat-monitor.php:789
+#: qndrs-availability-heartbeat-monitor.php:1343
+#: qndrs-availability-heartbeat-monitor.php:1355
+msgid "Down"
+msgstr "Down"
+
+#. translators: %s: Human-readable incident duration.
+#: qndrs-availability-heartbeat-monitor.php:1463
+msgid "Down for %s"
+msgstr "Down sinds %s"
+
+#: qndrs-availability-heartbeat-monitor.php:1470
+msgid "Email"
+msgstr "E-mail"
+
+#: qndrs-availability-heartbeat-monitor.php:2051
+msgid "Email / Pushover enabled"
+msgstr "E-mail / Pushover ingeschakeld"
+
+#: qndrs-availability-heartbeat-monitor.php:784
+msgid "Enabled"
+msgstr "Ingeschakeld"
+
+#: qndrs-availability-heartbeat-monitor.php:790
+#: qndrs-availability-heartbeat-monitor.php:1345
+msgid "Error"
+msgstr "Fout"
+
+#. translators: %d: Expected heartbeat interval in seconds.
+#: qndrs-availability-heartbeat-monitor.php:822
+#: qndrs-availability-heartbeat-monitor.php:2239
+msgid "Expected every %d seconds"
+msgstr "Elke %d seconden verwacht"
+
+#: qndrs-availability-heartbeat-monitor.php:797
+#: qndrs-availability-heartbeat-monitor.php:1843
+msgid "Faster"
+msgstr "Sneller"
+
+#. translators: %d: HTTP status code.
+#: qndrs-availability-heartbeat-monitor.php:792
+#: qndrs-availability-heartbeat-monitor.php:2011
+#: qndrs-availability-heartbeat-monitor.php:2140
+#: qndrs-availability-heartbeat-monitor.php:2252
+msgid "HTTP %d"
+msgstr "HTTP %d"
+
+#: qndrs-availability-heartbeat-monitor.php:446
+msgid "Heartbeat monitor created. Copy the token now; it will not be shown again."
+msgstr "Heartbeat monitor aangemaakt. Kopieer het token nu; het wordt niet opnieuw getoond."
+
+#: qndrs-availability-heartbeat-monitor.php:473
+msgid "Heartbeat monitor deleted."
+msgstr "Heartbeat monitor verwijderd."
+
+#: qndrs-availability-heartbeat-monitor.php:420
+msgid "Heartbeat monitor name is required."
+msgstr "Naam voor heartbeat monitor is verplicht."
+
+#: qndrs-availability-heartbeat-monitor.php:458
+#: qndrs-availability-heartbeat-monitor.php:494
+msgid "Heartbeat monitor not found."
+msgstr "Heartbeat monitor niet gevonden."
+
+#: qndrs-availability-heartbeat-monitor.php:810
+msgid "Hide details"
+msgstr "Details verbergen"
+
+#: qndrs-availability-heartbeat-monitor.php:805
+#: qndrs-availability-heartbeat-monitor.php:1565
+msgid "Incident active"
+msgstr "Incident actief"
+
+#: qndrs-availability-heartbeat-monitor.php:807
+#: qndrs-availability-heartbeat-monitor.php:1383
+msgid "Incident open"
+msgstr "Incident open"
+
+#: qndrs-availability-heartbeat-monitor.php:2314
+#: qndrs-availability-heartbeat-monitor.php:3044
+msgid "Invalid URL."
+msgstr "Ongeldige URL."
+
+#: qndrs-availability-heartbeat-monitor.php:2318
+msgid "Invalid URL:"
+msgstr "Ongeldige URL:"
+
+#: qndrs-availability-heartbeat-monitor.php:2042
+#: qndrs-availability-heartbeat-monitor.php:2096
+msgid "Last check:"
+msgstr "Laatste check:"
+
+#: qndrs-availability-heartbeat-monitor.php:2189
+#: qndrs-availability-heartbeat-monitor.php:2384
+msgid "Monitored URLs"
+msgstr "Gemonitorde URLs"
+
+#: qndrs-availability-heartbeat-monitor.php:811
+#: qndrs-availability-heartbeat-monitor.php:2282
+msgid "Monitoring"
+msgstr "Monitoring"
+
+#: qndrs-availability-heartbeat-monitor.php:2045
+msgid "Monitoring metrics"
+msgstr "Monitoringstatistieken"
+
+#: qndrs-availability-heartbeat-monitor.php:2033
+msgid "Monitoring summary"
+msgstr "Monitoringsamenvatting"
+
+#: qndrs-availability-heartbeat-monitor.php:2052
+msgid "Next check"
+msgstr "Volgende check"
+
+#: qndrs-availability-heartbeat-monitor.php:787
+#: qndrs-availability-heartbeat-monitor.php:1561
+#: qndrs-availability-heartbeat-monitor.php:1982
+#: qndrs-availability-heartbeat-monitor.php:2262
+msgid "No checks yet."
+msgstr "Nog geen controles."
+
+#: qndrs-availability-heartbeat-monitor.php:1538
+#: qndrs-availability-heartbeat-monitor.php:1556
+#: qndrs-availability-heartbeat-monitor.php:1560
+msgid "No data"
+msgstr "Geen data"
+
+#: qndrs-availability-heartbeat-monitor.php:806
+#: qndrs-availability-heartbeat-monitor.php:1383
+#: qndrs-availability-heartbeat-monitor.php:1833
+#: qndrs-availability-heartbeat-monitor.php:2217
+msgid "No incident"
+msgstr "Geen incident"
+
+#: qndrs-availability-heartbeat-monitor.php:1413
+#: qndrs-availability-heartbeat-monitor.php:2666
+msgid "No ping received"
+msgstr "Geen ping ontvangen"
+
+#: qndrs-availability-heartbeat-monitor.php:1562
+msgid "Not scheduled"
+msgstr "Niet gepland"
+
+#: qndrs-availability-heartbeat-monitor.php:2051
+msgid "Notifications"
+msgstr "Meldingen"
+
+#: qndrs-availability-heartbeat-monitor.php:804
+#: qndrs-availability-heartbeat-monitor.php:1566
+msgid "Operational"
+msgstr "Operationeel"
+
+#: qndrs-availability-heartbeat-monitor.php:801
+#: qndrs-availability-heartbeat-monitor.php:1357
+msgid "Paused"
+msgstr "Gepauzeerd"
+
+#: qndrs-availability-heartbeat-monitor.php:1473
+#: qndrs-availability-heartbeat-monitor.php:2554
+msgid "Pushover"
+msgstr "Pushover"
+
+#: qndrs-availability-heartbeat-monitor.php:815
+#: qndrs-availability-heartbeat-monitor.php:2366
+msgid "Refresh now"
+msgstr "Nu verversen"
+
+#: qndrs-availability-heartbeat-monitor.php:816
+msgid "Refreshing..."
+msgstr "Verversen..."
+
+#: qndrs-availability-heartbeat-monitor.php:2052
+msgid "Scheduled WordPress cron"
+msgstr "Geplande WordPress-cron"
+
+#: qndrs-availability-heartbeat-monitor.php:724
+#: qndrs-availability-heartbeat-monitor.php:725
+msgid "Settings"
+msgstr "Instellingen"
+
+#. Plugin Name of the plugin
+#: qndrs-availability-heartbeat-monitor.php
+msgid "Qndrs Availability and Heartbeat Monitor"
+msgstr "Qndrs Availability and Heartbeat Monitor"
+
+#: qndrs-availability-heartbeat-monitor.php:798
+#: qndrs-availability-heartbeat-monitor.php:1845
+msgid "Slower"
+msgstr "Langzamer"
+
+#: qndrs-availability-heartbeat-monitor.php:799
+#: qndrs-availability-heartbeat-monitor.php:1847
+msgid "Stable"
+msgstr "Stabiel"
+
+#: qndrs-availability-heartbeat-monitor.php:786
+msgid "Status History"
+msgstr "Statusgeschiedenis"
+
+#: qndrs-availability-heartbeat-monitor.php:2322
+msgid "URL is not reachable (status code:"
+msgstr "URL is niet bereikbaar (statuscode:"
+
+#: qndrs-availability-heartbeat-monitor.php:1705
+#: qndrs-availability-heartbeat-monitor.php:3100
+#: qndrs-availability-heartbeat-monitor.php:3139
+msgid "URL not found."
+msgstr "URL niet gevonden."
+
+#: qndrs-availability-heartbeat-monitor.php:802
+#: qndrs-availability-heartbeat-monitor.php:1361
+#: qndrs-availability-heartbeat-monitor.php:1825
+msgid "Unknown"
+msgstr "Onbekend"
+
+#: qndrs-availability-heartbeat-monitor.php:788
+#: qndrs-availability-heartbeat-monitor.php:1341
+#: qndrs-availability-heartbeat-monitor.php:1353
+msgid "Up"
+msgstr "Online"
+
+#: qndrs-availability-heartbeat-monitor.php:800
+#: qndrs-availability-heartbeat-monitor.php:1965
+msgid "Uptime"
+msgstr "Uptime"
+
+#: qndrs-availability-heartbeat-monitor.php:715
+#: qndrs-availability-heartbeat-monitor.php:716
+#: qndrs-availability-heartbeat-monitor.php:740
+#: qndrs-availability-heartbeat-monitor.php:2364
+msgid "Qndrs Monitor"
+msgstr "Qndrs Monitor"
+
+#: qndrs-availability-heartbeat-monitor.php:2038
 msgid "monitored"
 msgstr "gemonitord"
 
+#: qndrs-availability-heartbeat-monitor.php:2039
 msgid "up"
 msgstr "up"
 
-msgid "wp-config.php constants"
-msgstr "wp-config.php-constanten"
+#: qndrs-availability-heartbeat-monitor.php:782
+#: qndrs-availability-heartbeat-monitor.php:2191
+msgid "No URLs available. Add one!"
+msgstr "Geen URLs beschikbaar. Voeg er een toe!"
+
+#: qndrs-availability-heartbeat-monitor.php:778
+#: qndrs-availability-heartbeat-monitor.php:2333
+msgid "URL added successfully!"
+msgstr "URL succesvol toegevoegd!"
+
+#: qndrs-availability-heartbeat-monitor.php:779
+#: qndrs-availability-heartbeat-monitor.php:2355
+msgid "URL deleted successfully!"
+msgstr "URL succesvol verwijderd!"
+
+#: qndrs-availability-heartbeat-monitor.php:2049
+msgid "Across URLs with history"
+msgstr "Over URL's met geschiedenis"
+
+#: qndrs-availability-heartbeat-monitor.php:490
+msgid "Heartbeat token rotated. Copy the token now; it will not be shown again."
+msgstr "Heartbeat token vernieuwd. Kopieer het token nu; het wordt niet opnieuw getoond."
+
+#: qndrs-availability-heartbeat-monitor.php:2117
+msgid "Open Uptime Monitor"
+msgstr "Open Uptime Monitor"
+
+#. translators: %d: Number of additional attention URLs not shown in the
+#. dashboard widget.
+#: qndrs-availability-heartbeat-monitor.php:2111
+msgid "%d more URLs need attention."
+msgstr "%d URL's vragen om aandacht."
+
+#: qndrs-availability-heartbeat-monitor.php:2101
+msgid "All monitored URLs are reachable."
+msgstr "Alle gemonitorde URL's zijn bereikbaar."
+
+#: qndrs-availability-heartbeat-monitor.php:2041
+msgid "paused"
+msgstr "gepauseerd"
+
+#: qndrs-availability-heartbeat-monitor.php:2040
+msgid "down"
+msgstr "onbereikbaar"
+
+#. translators: %s: Human-readable time since the last heartbeat ping.
+#: qndrs-availability-heartbeat-monitor.php:1411
+msgid "Missing for %s"
+msgstr "Ontbrekend sinds %s"
+
+#: qndrs-availability-heartbeat-monitor.php:820
+#: qndrs-availability-heartbeat-monitor.php:2234
+msgid "HTTP check"
+msgstr "HTTP controle"
+
+#: qndrs-availability-heartbeat-monitor.php:818
+#: qndrs-availability-heartbeat-monitor.php:2367
+msgid "Auto-refresh"
+msgstr "Automatisch verversen"
+
+#. Author URI of the plugin
+#: qndrs-availability-heartbeat-monitor.php
+msgid "https://qndrs.nl"
+msgstr "https://qndrs.nl"
+
+#. Author of the plugin
+#: qndrs-availability-heartbeat-monitor.php
+msgid "Robert E. Kuunders, GPT"
+msgstr "Robert E. Kuunders, GPT"
+
+#. Plugin URI of the plugin
+#: qndrs-availability-heartbeat-monitor.php
+msgid "https://github.com/qndrs/uptime-monitor"
+msgstr "https://github.com/qndrs/uptime-monitor"
+
+#: qndrs-availability-heartbeat-monitor.php:2049
+msgid "Average response"
+msgstr "Gemiddelde reactietijd"
+
+#: qndrs-availability-heartbeat-monitor.php:812
+msgid "Dismiss this notice."
+msgstr "Dit bericht negeren."
+
+#: qndrs-availability-heartbeat-monitor.php:480
+msgid "Heartbeat monitor updated."
+msgstr "Heartbeat monitor geüpdatet."
+
+#: qndrs-availability-heartbeat-monitor.php:415
+#: qndrs-availability-heartbeat-monitor.php:453
+msgid "Invalid form request."
+msgstr "Ongeldige formulieraanvraag."
+
+#: qndrs-availability-heartbeat-monitor.php:808
+#: qndrs-availability-heartbeat-monitor.php:1476
+#: qndrs-availability-heartbeat-monitor.php:2274
+msgid "No alerts"
+msgstr "Geen waarschuwingen"
+
+#: qndrs-availability-heartbeat-monitor.php:817
+msgid "Updated just now."
+msgstr "Zojuist geüpdatet."
+
+#. Description of the plugin
+#: qndrs-availability-heartbeat-monitor.php
+msgid "Monitor website availability and receive alerts by email or Pushover. Manage multiple URLs from the WordPress admin with logging, JSON import/export, REST support, dashboard refresh and heartbeat monitors."
+msgstr "Monitor de beschikbaarheid van sites en ontvang waarschuwingen via e-mail of Pushover. Beheer meerdere URL's vanuit WordPress-beheer met logging, JSON-import/-export, REST-ondersteuning, het verversen van het dashboard en heartbeat monitors."
+
+#: qndrs-availability-heartbeat-monitor.php:1740
+msgid "Heartbeat received."
+msgstr "Heartbeat ontvangen."
+
+#: qndrs-availability-heartbeat-monitor.php:1724
+msgid "Heartbeat monitor is disabled."
+msgstr "Heartbeat monitor is uitgeschakeld."
+
+#: qndrs-availability-heartbeat-monitor.php:1681
+#: qndrs-availability-heartbeat-monitor.php:1719
+msgid "Heartbeat token is invalid."
+msgstr "Heartbeat token is ongeldig."
+
+#: qndrs-availability-heartbeat-monitor.php:1677
+#: qndrs-availability-heartbeat-monitor.php:1712
+msgid "Heartbeat token is missing."
+msgstr "Heartbeat token ontbreekt."
+
+#: qndrs-availability-heartbeat-monitor.php:1407
+msgid "Heartbeat stale"
+msgstr "Heartbeat verlopen"
+
+#: qndrs-availability-heartbeat-monitor.php:819
+#: qndrs-availability-heartbeat-monitor.php:2234
+msgid "Heartbeat"
+msgstr "Heartbeat"
+
+#: qndrs-availability-heartbeat-monitor.php:666
+msgid "Heartbeat monitor"
+msgstr "Heartbeat monitor"

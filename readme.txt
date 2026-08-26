@@ -2,9 +2,9 @@
 Contributors: qndrs
 Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 3.6.0
+Stable tag: 3.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -68,6 +68,12 @@ Version 3.6.0 stores status history in an indexed custom database table. Fresh i
 2. Settings page with REST endpoints, heartbeat monitor setup, notifications and import/export.
 
 == Changelog ==
+
+= 3.6.1 =
+
+* Updated compatibility metadata for WordPress 7.1.
+* Documented intentional custom-table queries for WordPress Plugin Check.
+* Corrected English source strings and refreshed the complete Dutch runtime translation.
 
 = 3.6.0 =
 
