@@ -1085,7 +1085,10 @@ class AvailabilityHeartbeatMonitor
             $history = $this->get_status_history();
             $url_history = isset($history[$url_id]) && is_array($history[$url_id]) ? $history[$url_id] : [];
             $url_history[] = $entry;
-            $history[$url_id] = $this->prune_status_history($url_history);
+            // Keep the verification snapshot intact until table storage is finalized.
+            $history[$url_id] = $storage_mode === self::HISTORY_STORAGE_TABLE_SHADOW
+                ? $url_history
+                : $this->prune_status_history($url_history);
             $this->update_status_history($history);
         }
 
@@ -1499,6 +1502,7 @@ class AvailabilityHeartbeatMonitor
         $down = 0;
         $paused = 0;
         $degraded = 0;
+        $unknown = 0;
         $incident_count = 0;
         $email_count = 0;
         $pushover_count = 0;
@@ -1518,6 +1522,8 @@ class AvailabilityHeartbeatMonitor
                 $paused++;
             } elseif ($status === 'degraded') {
                 $degraded++;
+            } else {
+                $unknown++;
             }
 
             if (!empty($dashboard['incident_open'])) {
@@ -1547,7 +1553,7 @@ class AvailabilityHeartbeatMonitor
         $health_percentage = $active > 0 ? round((($up + $degraded) / $active) * 100, 1) : null;
         $average_response = !empty($response_times) ? (int)round(array_sum($response_times) / count($response_times)) : null;
         $average_uptime_24h = !empty($uptime_24h) ? round(array_sum($uptime_24h) / count($uptime_24h), 1) : null;
-        $overall_status = $down > 0 ? 'incident' : ($degraded > 0 ? 'degraded' : 'operational');
+        $overall_status = $down > 0 ? 'incident' : ($degraded > 0 ? 'degraded' : ($unknown > 0 || $active === 0 ? 'unknown' : 'operational'));
         $next_check = wp_next_scheduled(self::CRON_HOOK);
         $average_response_display = __('No data', 'qndrs-availability-heartbeat-monitor');
         if ($average_response !== null) {
@@ -1563,6 +1569,7 @@ class AvailabilityHeartbeatMonitor
             'down' => $down,
             'paused' => $paused,
             'degraded' => $degraded,
+            'unknown' => $unknown,
             'incidents' => $incident_count,
             'email_count' => $email_count,
             'pushover_count' => $pushover_count,
@@ -1577,7 +1584,7 @@ class AvailabilityHeartbeatMonitor
             'overall_status' => $overall_status,
             'overall_label' => $overall_status === 'incident'
                 ? __('Incident active', 'qndrs-availability-heartbeat-monitor')
-                : ($overall_status === 'degraded' ? __('Degraded', 'qndrs-availability-heartbeat-monitor') : __('Operational', 'qndrs-availability-heartbeat-monitor')),
+                : ($overall_status === 'degraded' ? __('Degraded', 'qndrs-availability-heartbeat-monitor') : ($overall_status === 'unknown' ? __('Unknown', 'qndrs-availability-heartbeat-monitor') : __('Operational', 'qndrs-availability-heartbeat-monitor'))),
         ];
     }
 
@@ -1726,18 +1733,6 @@ class AvailabilityHeartbeatMonitor
             return new \WP_Error('qndrs_ahm_heartbeat_token_missing', __('Heartbeat token is missing.', 'qndrs-availability-heartbeat-monitor'), ['status' => 401]);
         }
 
-        $urls = $this->normalize_stored_urls();
-        $matched_index = $this->find_heartbeat_monitor_index_by_token($urls, $token);
-
-        if ($matched_index === null) {
-            return new \WP_Error('qndrs_ahm_heartbeat_token_invalid', __('Heartbeat token is invalid.', 'qndrs-availability-heartbeat-monitor'), ['status' => 403]);
-        }
-
-        $url_data = $urls[$matched_index];
-        if (isset($url_data['enabled']) && $url_data['enabled'] === false) {
-            return new \WP_Error('qndrs_ahm_heartbeat_disabled', __('Heartbeat monitor is disabled.', 'qndrs-availability-heartbeat-monitor'), ['status' => 403]);
-        }
-
         $status = sanitize_key((string)$request->get_param('status'));
         if (!in_array($status, ['up', 'down', 'error'], true)) {
             $status = 'up';
@@ -1745,11 +1740,10 @@ class AvailabilityHeartbeatMonitor
 
         $message = sanitize_text_field((string)$request->get_param('message'));
         $timestamp = gmdate('Y-m-d H:i:s');
-        $url_data['last_seen'] = $timestamp;
-        $url_data['last_status'] = $status;
-        $url_data['last_message'] = $message;
-        $urls[$matched_index] = $url_data;
-        update_option('qndrs_ahm_urls', $urls);
+        $url_data = $this->persist_heartbeat($token, $status, $message, $timestamp);
+        if (is_wp_error($url_data)) {
+            return $url_data;
+        }
 
         $history_message = $message !== '' ? $message : __('Heartbeat received.', 'qndrs-availability-heartbeat-monitor');
         $this->record_status_history($url_data, $status, null, null, $history_message);
@@ -1775,6 +1769,50 @@ class AvailabilityHeartbeatMonitor
         ], 200);
     }
 
+    private function persist_heartbeat(string $token, string $status, string $message, string $timestamp)
+    {
+        global $wpdb;
+
+        // Bypass the option cache: each retry must merge with the latest committed list.
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- A compare-and-swap requires the exact current serialized option value.
+            $stored_value = $wpdb->get_var($wpdb->prepare(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+                'qndrs_ahm_urls'
+            ));
+            $urls = $this->normalize_urls(maybe_unserialize($stored_value));
+            $index = $this->find_heartbeat_monitor_index_by_token($urls, $token);
+            if ($index === null) {
+                return new \WP_Error('qndrs_ahm_heartbeat_token_invalid', __('Heartbeat token is invalid.', 'qndrs-availability-heartbeat-monitor'), ['status' => 403]);
+            }
+            if (!$urls[$index]['enabled']) {
+                return new \WP_Error('qndrs_ahm_heartbeat_disabled', __('Heartbeat monitor is disabled.', 'qndrs-availability-heartbeat-monitor'), ['status' => 403]);
+            }
+
+            $urls[$index]['last_seen'] = $timestamp;
+            $urls[$index]['last_status'] = $status;
+            $urls[$index]['last_message'] = $message;
+            $new_value = maybe_serialize($urls);
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Atomic comparison prevents concurrent heartbeat updates from overwriting each other; invalidate option caches after success.
+            $updated = $wpdb->query($wpdb->prepare(
+                "UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = %s",
+                $new_value,
+                'qndrs_ahm_urls',
+                $stored_value
+            ));
+            if ($updated === false) {
+                break;
+            }
+            if ($updated === 1 || $new_value === $stored_value) {
+                wp_cache_delete('qndrs_ahm_urls', 'options');
+                wp_cache_delete('alloptions', 'options');
+                return $urls[$index];
+            }
+        }
+
+        return new \WP_Error('qndrs_ahm_heartbeat_write_failed', 'Heartbeat could not be saved. Please retry.', ['status' => 503]);
+    }
+
     private function get_rest_status_payload(array $dashboard): array
     {
         return [
@@ -1792,6 +1830,7 @@ class AvailabilityHeartbeatMonitor
                 'down' => $dashboard['down'],
                 'paused' => $dashboard['paused'],
                 'degraded' => $dashboard['degraded'],
+                'unknown' => $dashboard['unknown'],
                 'incidents' => $dashboard['incidents'],
             ],
             'metrics' => [
@@ -2041,8 +2080,8 @@ class AvailabilityHeartbeatMonitor
 
     private function render_dashboard_overview(array $dashboard): void
     {
-        $overall_status = isset($dashboard['overall_status']) ? sanitize_key($dashboard['overall_status']) : 'operational';
-        $status_class = $overall_status === 'incident' ? 'down' : ($overall_status === 'degraded' ? 'degraded' : 'up');
+        $overall_status = isset($dashboard['overall_status']) ? sanitize_key($dashboard['overall_status']) : 'unknown';
+        $status_class = $overall_status === 'incident' ? 'down' : ($overall_status === 'operational' ? 'up' : $overall_status);
 
         echo '<section class="uptime-statusbar is-' . esc_attr($status_class) . '" aria-label="' . esc_attr__('Monitoring summary', 'qndrs-availability-heartbeat-monitor') . '">';
         echo '<div class="uptime-statusbar__state">';
@@ -2088,8 +2127,8 @@ class AvailabilityHeartbeatMonitor
 
     private function render_dashboard_widget_content(array $dashboard): void
     {
-        $overall_status = isset($dashboard['overall_status']) ? sanitize_key($dashboard['overall_status']) : 'operational';
-        $status_class = $overall_status === 'incident' ? 'down' : ($overall_status === 'degraded' ? 'degraded' : 'up');
+        $overall_status = isset($dashboard['overall_status']) ? sanitize_key($dashboard['overall_status']) : 'unknown';
+        $status_class = $overall_status === 'incident' ? 'down' : ($overall_status === 'operational' ? 'up' : $overall_status);
         $attention_urls = array_values(array_filter($dashboard['urls'], function (array $url_data): bool {
             $url_dashboard = isset($url_data['dashboard']) && is_array($url_data['dashboard']) ? $url_data['dashboard'] : [];
             $status = isset($url_dashboard['status']) ? sanitize_key($url_dashboard['status']) : 'unknown';
@@ -2111,7 +2150,7 @@ class AvailabilityHeartbeatMonitor
         echo '</div>';
         echo '</div>';
 
-        if (empty($attention_urls)) {
+        if (empty($attention_urls) && $overall_status === 'operational') {
             echo '<p class="uptime-widget-ok">' . esc_html__('All monitored URLs are reachable.', 'qndrs-availability-heartbeat-monitor') . '</p>';
         } else {
             echo '<ul class="uptime-widget-list">';
@@ -3180,11 +3219,22 @@ class AvailabilityHeartbeatMonitor
     {
         global $wpdb;
 
+        if ($this->get_history_storage_mode() === self::HISTORY_STORAGE_TABLE) {
+            return ['success' => false, 'message' => 'History storage is already finalized; refusing to replace table history.'];
+        }
+
         $batch_size = min(2000, max(50, $batch_size));
         $this->create_history_table();
         $this->initialize_history_storage_mode();
         update_option('qndrs_ahm_data_schema_version', self::DATA_SCHEMA_VERSION, false);
         $history = $this->get_status_history();
+        // Legacy is authoritative until verification completes. Rebuild the shadow
+        // copy so retention, rollback and interrupted imports cannot leave extra rows.
+        update_option('qndrs_ahm_history_storage', self::HISTORY_STORAGE_LEGACY, false);
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- Only the unfinalized shadow copy is cleared; legacy history is retained for recovery.
+        if ($wpdb->query('DELETE FROM ' . $this->get_history_table_name()) === false) {
+            return ['success' => false, 'message' => 'Could not reset shadow history; legacy storage remains active.'];
+        }
         $batch = [];
         $valid_entries = 0;
         $skipped_entries = 0;

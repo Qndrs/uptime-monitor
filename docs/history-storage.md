@@ -35,7 +35,9 @@ wp qndrs-ahm history migrate --batch-size=500
 wp qndrs-ahm history status
 ```
 
-The migration uses idempotent batched inserts and switches to `table_shadow` only when the valid legacy count exactly matches the table count. The legacy option is retained at this stage.
+Pause scheduled checks and heartbeat senders and let in-flight writes finish before running migration, rollback or finalization. These maintenance commands compare snapshots and must not overlap history writes.
+
+Migration rebuilds the unfinalized table copy from legacy history using batched inserts and switches to `table_shadow` only when the valid legacy count exactly matches the table count. Rerunning migration repairs extra rows left by earlier retention or interrupted migrations. Failed imports leave legacy reads active. Migration refuses to rebuild finalized table storage. The legacy option is retained at this stage.
 
 Compare the dashboard metrics and recent history before finalizing. Roll back while shadow mode is active with:
 
@@ -55,4 +57,4 @@ Finalization repeats the count comparison before enabling table-only writes and 
 
 The dashboard loads only the five newest rows per monitor. Uptime totals and response-time statistics are calculated with indexed aggregate queries rather than by loading all history into PHP memory.
 
-Rows older than 30 days are removed at most once per hour when a new history event is stored.
+In table-only mode, rows older than 30 days are removed at most once per hour when a new history event is stored. During shadow verification, neither copy is pruned, including the legacy per-monitor entry cap, so the two counts remain comparable. Finalize after verification to resume retention cleanup; leaving shadow mode active indefinitely allows history to grow.

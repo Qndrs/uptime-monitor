@@ -141,6 +141,10 @@ powershell -ExecutionPolicy Bypass -File scripts/check-release.ps1
 
 The checks validate PHP syntax, JavaScript syntax when Node.js is available, version consistency, and release packaging basics.
 
+Run the standalone reliability regression checks with `php scripts/check-reliability.php`. These use WordPress and database doubles to cover migration recovery, aggregate status and concurrent heartbeat writes; they do not replace WordPress/MySQL integration testing.
+
+Overall status is `unknown` while any active monitor has no result, or when there are no active monitors. Incidents and degraded results take precedence. Concurrent heartbeat updates merge with the latest stored monitor list; database failures or exhausted retries return HTTP 503 for the sender to retry.
+
 ### Dutch translation maintenance
 
 Regenerate the local Dutch PO, MO and PHP catalogs from the approved and waiting Development translations on Translate.WordPress.org:
