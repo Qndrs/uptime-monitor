@@ -10,7 +10,9 @@ The existing WordPress 7.1.3 testsite was upgraded from 3.6.1 to 3.7.1 using the
 
 The official `wp plugin check qndrs-availability-heartbeat-monitor --user=1 --mode=update --format=strict-json` completed successfully with no reported errors. Local release, translation, reliability and overview-renderer checks pass. Desktop/mobile display preferences and AJAX retention were checked using the production renderer and assets with WordPress/database doubles; a separate fresh WordPress installation was not tested.
 
-Public WordPress.org processing and the downloadable 3.7.1 ZIP are pending verification. SVN and Git publication succeeded; do not repeat these commits or recreate the tags while waiting for the directory to process them.
+Release confirmation was completed through WordPress.org Release Management with two-factor authentication. The public plugin information API now reports 3.7.1, and the official download at `https://downloads.wordpress.org/plugin/qndrs-availability-heartbeat-monitor.3.7.1.zip` was retrieved and verified: all 16 files match the tested release ZIP byte-for-byte. SVN and Git publication and public download verification are complete.
+
+For the next release, commit trunk and the new SVN tag, then open `https://wordpress.org/plugins/developers/releases/`, confirm the release and complete the per-release two-factor prompt. Wait for processing before verifying the public API and ZIP; do not recreate tags or repeat successful commits while processing is pending.
 
 ## Release 3.6.1 verification
 
