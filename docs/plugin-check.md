@@ -2,11 +2,15 @@
 
 Run WordPress Plugin Check before tagging a public release.
 
-## Local test package 3.7.1
+## Release 3.7.1 verification
 
-Version 3.7.1 adds the explicit Overview submenu to the display preferences introduced in the local 3.7.0 test package. The distributable is `dist/qndrs-availability-heartbeat-monitor-3.7.1.zip`, with the existing plugin folder and main file for replacement uploads or fresh installation.
+Release source: Git commit `4851e39068d079461957a558b7d1d0442e783566`, tagged and pushed as `v3.7.1`. SVN trunk was committed as `3763178`; tag `3.7.1` was copied from that exact revision and committed as `3763179` on 2026-10-24. The 16 release files match the tested ZIP byte-for-byte. Prototypes, browser fixtures, scripts and local project state are excluded.
 
-Local release, translation, reliability and overview-renderer checks pass, including the menu labels and existing overview target. The display controls were also checked in the browser using the production renderer and assets with WordPress/database doubles. Full WordPress installation/upgrade and the official Plugin Check for this version remain unverified; the 3.6.1 report below does not cover 3.7.1. This package has not been published to WordPress.org.
+The existing WordPress 7.1.3 testsite was upgraded from 3.6.1 to 3.7.1 using the verified ZIP. A backup of the prior plugin files was retained outside the webroot. The plugin remains active with 15 configured monitors, table-based history and the monitoring cron event scheduled. The menu exposes Overview and Settings at their existing targets. The homepage returned HTTP 200; unauthenticated status and heartbeat requests returned HTTP 401.
+
+The official `wp plugin check qndrs-availability-heartbeat-monitor --user=1 --mode=update --format=strict-json` completed successfully with no reported errors. Local release, translation, reliability and overview-renderer checks pass. Desktop/mobile display preferences and AJAX retention were checked using the production renderer and assets with WordPress/database doubles; a separate fresh WordPress installation was not tested.
+
+Public WordPress.org processing and the downloadable 3.7.1 ZIP are pending verification. SVN and Git publication succeeded; do not repeat these commits or recreate the tags while waiting for the directory to process them.
 
 ## Release 3.6.1 verification
 
