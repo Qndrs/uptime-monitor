@@ -13,7 +13,7 @@ Qndrs Availability and Heartbeat Monitor is a lightweight WordPress plugin for m
 - Requires at least: WordPress 6.0
 - Tested up to: WordPress 7.1
 - Requires PHP: 8.0+
-- Stable tag: 3.6.1
+- Stable tag: 3.7.1
 - License: GPLv2 or later
 - License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -31,12 +31,20 @@ Qndrs Availability and Heartbeat Monitor is a lightweight WordPress plugin for m
 - Read logs through an authenticated REST endpoint.
 - Monitor firewalled machines or internal apps with outbound heartbeat pings.
 - Dutch translation files are included.
+- Choose a light, dark or system theme for the monitor overview.
+- Show or hide overview columns, with a compact preset and a reset to the full view.
+
+## Overview Display
+
+Use **Light / Dark / System** and **Columns** above the overview to choose your display. Last check, response time, uptime, notifications and incidents can be switched independently. Monitor type and URL/heartbeat interval can also be hidden. Status, monitor name and management actions remain available.
+
+The initial view is light with all columns visible. Display preferences are saved in this browser for the current site and WordPress user, and survive automatic refresh. If browser storage is unavailable, the controls still work for the current page. System mode follows the operating system's color preference. The dark theme applies to the monitor overview; the settings page, WordPress menu and dashboard widget keep their existing appearance.
 
 ## Installation
 
 1. Upload the plugin folder to `/wp-content/plugins/qndrs-availability-heartbeat-monitor`.
 2. Activate **Qndrs Availability and Heartbeat Monitor** from the WordPress plugins page.
-3. Open **Qndrs Monitor** in the WordPress admin menu.
+3. Open **Qndrs Monitor > Overview** in the WordPress admin menu. Use **Qndrs Monitor > Settings** for configuration.
 4. Add one or more URLs and choose the notification channels.
 5. Optional: use a real server cron for more reliable checks:
 
@@ -143,6 +151,8 @@ The checks validate PHP syntax, JavaScript syntax when Node.js is available, ver
 
 Run the standalone reliability regression checks with `php scripts/check-reliability.php`. These use WordPress and database doubles to cover migration recovery, aggregate status and concurrent heartbeat writes; they do not replace WordPress/MySQL integration testing.
 
+Run `php scripts/check-overview.php` to also check the production overview renderer. For browser checks with the actual PHP output, JavaScript, CSS and an AJAX fixture, see `docs/dashboard-design.md`.
+
 Overall status is `unknown` while any active monitor has no result, or when there are no active monitors. Incidents and degraded results take precedence. Concurrent heartbeat updates merge with the latest stored monitor list; database failures or exhausted retries return HTTP 503 for the sender to retry.
 
 ### Dutch translation maintenance
@@ -156,6 +166,17 @@ py scripts/update-translations.py
 The script only updates local files and does not publish translations. It also creates a versioned Stable import PO in `dist/`, which is excluded from Git and release packages. Review the generated Dutch text before importing it into Translate.WordPress.org. The release checks verify that the release catalog exactly matches the plugin source, contains no empty translations and preserves placeholders.
 
 ## Changelog
+
+### 3.7.1
+
+- Renamed the first submenu to Overview to distinguish it from the Qndrs Monitor parent menu; Settings remains the configuration page.
+
+### 3.7.0
+
+- Added light, dark and system themes with configurable overview columns and a compact view.
+- Preserved display preferences and expanded history during automatic refresh.
+- Fixed shadow-history migration recovery, unknown aggregate status and concurrent heartbeat persistence.
+- Added Dutch translations for the new display controls.
 
 ### 3.6.1
 

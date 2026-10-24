@@ -4,7 +4,7 @@ Tags: uptime, monitoring, notifications, pushover, cron
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 3.6.1
+Stable tag: 3.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,11 +14,13 @@ Monitor websites and heartbeat clients from WordPress with email or Pushover dow
 
 Qndrs Availability and Heartbeat Monitor checks external URLs from the WordPress dashboard and can also monitor firewalled clients through outbound heartbeat pings. It supports multiple monitored URLs, per-URL monitoring toggles, email alerts, configurable Pushover alerts, status history, response times, uptime percentages, JSON import/export, structured logging, heartbeat monitors, and authenticated REST endpoints.
 
+The monitor overview supports light, dark and system themes, configurable columns and a compact view. Display preferences are remembered in this browser for each site and WordPress user, including during automatic refresh. Status, monitor names and management actions remain available.
+
 == Installation ==
 
 1. Upload the plugin folder to `/wp-content/plugins/qndrs-availability-heartbeat-monitor`.
 2. Activate Qndrs Availability and Heartbeat Monitor from the WordPress plugins page.
-3. Open Qndrs Monitor in the WordPress admin menu.
+3. Open Qndrs Monitor > Overview in the WordPress admin menu. Use Qndrs Monitor > Settings for configuration.
 4. Add one or more URLs and choose notification channels.
 
 For more reliable checks, configure a real server cron to call `wp-cron.php`.
@@ -68,6 +70,17 @@ Version 3.6.0 stores status history in an indexed custom database table. Fresh i
 2. Settings page with REST endpoints, heartbeat monitor setup, notifications and import/export.
 
 == Changelog ==
+
+= 3.7.1 =
+
+* Renamed the first submenu to Overview to distinguish it from the Qndrs Monitor parent menu; Settings remains the configuration page.
+
+= 3.7.0 =
+
+* Added light, dark and system themes with configurable overview columns and a compact view.
+* Preserved display preferences and expanded history during automatic refresh.
+* Fixed shadow-history migration recovery, unknown aggregate status and concurrent heartbeat persistence.
+* Added Dutch translations for the new display controls.
 
 = 3.6.1 =
 

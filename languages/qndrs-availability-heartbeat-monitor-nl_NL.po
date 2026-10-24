@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Qndrs Availability and Heartbeat Monitor 3.6.1\n"
+"Project-Id-Version: Qndrs Availability and Heartbeat Monitor 3.7.1\n"
 "Report-Msgid-Bugs-To: \n"
 "PO-Revision-Date: 2026-08-26 12:00+0200\n"
 "Last-Translator: Robert Kuunders\n"
@@ -984,3 +984,102 @@ msgstr "Heartbeat"
 #: qndrs-availability-heartbeat-monitor.php:666
 msgid "Heartbeat monitor"
 msgstr "Heartbeat monitor"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2253
+msgid "Actions"
+msgstr "Acties"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2372
+msgid "Color theme"
+msgstr "Kleurthema"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2376
+msgid "Columns"
+msgstr "Kolommen"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2392
+msgid "Compact overview"
+msgstr "Compact overzicht"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2374
+msgid "Dark"
+msgstr "Donker"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2252
+msgid "Incidents"
+msgstr "Incidenten"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2248
+msgid "Last check"
+msgstr "Laatste check"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2380
+msgid "Last check & HTTP status"
+msgstr "Laatste check & HTTP-status"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2373
+msgid "Light"
+msgstr "Licht"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2247
+msgid "Monitor"
+msgstr "Monitor"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2385
+msgid "Monitor type"
+msgstr "Type monitor"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2249
+msgid "Response time"
+msgstr "Responstijd"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2381
+msgid "Response time & average"
+msgstr "Responstijd & gemiddelde"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2393
+msgid "Restore defaults"
+msgstr "Herstel standaard"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2246
+msgid "Status"
+msgstr "Status"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2377
+msgid "Status and monitor name always remain visible."
+msgstr "Status en monitornaam blijven altijd zichtbaar."
+
+
+#: qndrs-availability-heartbeat-monitor.php:2375
+msgid "System"
+msgstr "Systeem"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2386
+msgid "URL / heartbeat interval"
+msgstr "URL / heartbeatinterval"
+
+
+#: qndrs-availability-heartbeat-monitor.php:2382
+msgid "Uptime (24h, 7d, 30d)"
+msgstr "Uptime (24u, 7d, 30d)"
+
+#: qndrs-availability-heartbeat-monitor.php
+msgid "Overview"
+msgstr "Overzicht"

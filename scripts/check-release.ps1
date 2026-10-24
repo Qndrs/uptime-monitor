@@ -68,7 +68,7 @@ if ($python) {
     Assert-True ($po -match 'msgid "Updated just now\."\s+msgstr "Net bijgewerkt\."') "Dutch translation for Updated just now is missing"
     Assert-True ($po -match 'msgid "Delete"\s+msgstr "Verwijderen"') "Dutch translation for Delete is missing"
     Assert-True ($po -match 'msgid "Read-only API token revoked\."\s+msgstr "Alleen-lezen API-token ingetrokken\."') "Dutch translation for token revocation is missing"
-    Assert-True (([regex]::Matches($po, '(?m)^msgid ')).Count - 1 -eq 216) "Dutch PO catalog must contain 216 source strings"
+    Assert-True (([regex]::Matches($po, '(?m)^msgid ')).Count - 1 -eq 236) "Dutch PO catalog must contain 236 source strings"
     Assert-True (([regex]::Matches($po, '(?m)^msgstr ""$')).Count -eq 1) "Dutch PO catalog contains untranslated strings"
 }
 
@@ -76,11 +76,11 @@ $plugin = Get-Content -LiteralPath $pluginFile -Raw
 $readme = Get-Content -LiteralPath $readmeFile -Raw
 $wpReadme = Get-Content -LiteralPath $wpReadmeFile -Raw
 
-Assert-True ($plugin -match "\*\s+Version:\s+3\.6\.1") "Plugin header version must be 3.6.1"
-Assert-True ($readme -match "Stable tag:\s+3\.6\.1") "README stable tag must be 3.6.1"
-Assert-True ($readme -match "### 3\.6\.1") "README changelog must include 3.6.1"
+Assert-True ($plugin -match "\*\s+Version:\s+3\.7\.1") "Plugin header version must be 3.7.1"
+Assert-True ($readme -match "Stable tag:\s+3\.7\.1") "README stable tag must be 3.7.1"
+Assert-True ($readme -match "### 3\.7\.1") "README changelog must include 3.7.1"
 Assert-True ($readme -notmatch "ð|â|Ÿ|Œ|§") "README still contains mojibake characters"
-Assert-True ($wpReadme -match "Stable tag:\s+3\.6\.1") "readme.txt stable tag must be 3.6.1"
+Assert-True ($wpReadme -match "Stable tag:\s+3\.7\.1") "readme.txt stable tag must be 3.7.1"
 Assert-True ($wpReadme -match "Tested up to:\s+7\.1") "readme.txt tested-up-to header is missing"
 Assert-True ($wpReadme -match "License:\s+GPLv2 or later") "readme.txt license header is missing"
 

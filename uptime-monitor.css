@@ -17,6 +17,105 @@
     max-width: none;
 }
 
+/* Overview preferences are deliberately scoped away from settings and the widget. */
+.uptime-monitor-overview {
+    --ump-columns: 90px minmax(190px, 1.4fr) minmax(150px, .85fr) minmax(90px, .5fr) minmax(190px, 1fr) minmax(100px, .6fr) minmax(100px, .6fr) 340px;
+    --ump-list-min-width: 1386px;
+    --ump-soft: #f6f7f7;
+    --ump-link: #2271b1;
+    --ump-shadow: 0 12px 34px rgba(0, 0, 0, .16);
+}
+
+.uptime-monitor-overview [hidden] { display: none !important; }
+.uptime-view-controls { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin: 12px 0; }
+.uptime-theme-switch { background: var(--ump-panel); border: 1px solid var(--ump-border); border-radius: 6px; display: flex; padding: 3px; }
+.uptime-theme-switch button { background: transparent; border: 0; border-radius: 3px; color: var(--ump-muted); cursor: pointer; font: inherit; padding: 6px 12px; }
+.uptime-theme-switch button[aria-pressed="true"] { background: var(--ump-soft); color: var(--ump-text); box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
+.uptime-monitor-overview :is(button, summary, input, a):focus-visible { outline: 2px solid var(--ump-link); outline-offset: 2px; }
+.uptime-column-settings { position: relative; }
+.uptime-column-settings > summary { cursor: pointer; list-style: none; }
+.uptime-column-settings > summary::-webkit-details-marker { display: none; }
+.uptime-column-settings[open] > summary { border-color: var(--ump-link); }
+.uptime-column-count { border-left: 1px solid var(--ump-border); color: var(--ump-muted); font-size: 11px; margin-left: 6px; padding-left: 8px; }
+.uptime-column-panel { background: var(--ump-panel); border: 1px solid var(--ump-border); border-radius: 6px; box-shadow: var(--ump-shadow); box-sizing: border-box; max-height: 65vh; overflow-y: auto; padding: 16px; position: absolute; right: 0; top: calc(100% + 8px); width: 310px; z-index: 20; }
+.uptime-column-panel p { color: var(--ump-muted); font-size: 12px; margin: 0 0 10px; }
+.uptime-column-panel fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
+.uptime-column-panel label { align-items: center; cursor: pointer; display: flex; gap: 9px; padding: 7px 0; }
+.uptime-column-panel input[type="checkbox"] { flex: 0 0 auto; margin: 0; }
+.uptime-column-panel-actions { border-top: 1px solid var(--ump-border); display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 12px; }
+.uptime-column-panel-actions .button { flex: 1 1 auto; }
+.uptime-url-list-scroll { overflow-x: auto; padding: 2px 2px 8px; scrollbar-color: var(--ump-border) transparent; }
+.uptime-url-column-head { align-items: center; box-sizing: border-box; color: var(--ump-muted); display: grid; font-size: 11px; font-weight: 600; gap: 12px 14px; grid-template-columns: var(--ump-columns); min-width: var(--ump-list-min-width); padding: 8px 17px 8px 21px; }
+.uptime-monitor-overview .uptime-url-list { min-width: var(--ump-list-min-width); }
+.uptime-url-list-scroll.is-empty .uptime-url-column-head { display: none; }
+.uptime-monitor-overview .uptime-url-list-scroll.is-empty .uptime-url-list { min-width: 0; }
+.uptime-monitor-overview .uptime-url-row { gap: 12px 14px; grid-template-columns: var(--ump-columns); }
+.uptime-monitor-overview .uptime-url-actions { justify-content: flex-end; }
+.uptime-url-response, .uptime-url-incident { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.uptime-hide-check [data-view-column="check"],
+.uptime-hide-response [data-view-column="response"],
+.uptime-hide-uptime [data-view-column="uptime"],
+.uptime-hide-alerts [data-view-column="alerts"],
+.uptime-hide-incident [data-view-column="incident"],
+.uptime-hide-type [data-view-column="type"],
+.uptime-hide-address [data-view-column="address"] { display: none !important; }
+
+.uptime-monitor-overview[data-theme="dark"] {
+    --ump-bg: #10161f;
+    --ump-panel: #19222e;
+    --ump-soft: #202c3a;
+    --ump-border: #344152;
+    --ump-text: #e7edf5;
+    --ump-muted: #a9b6c7;
+    --ump-up: #6ad79a;
+    --ump-down: #ff9d9d;
+    --ump-paused: #a9b6c7;
+    --ump-warning: #f0c36d;
+    --ump-info: #9bbcff;
+    --ump-link: #9bbcff;
+    --ump-shadow: 0 12px 34px rgba(0, 0, 0, .4);
+    background: var(--ump-bg);
+    color-scheme: dark;
+}
+body.qndrs-ahm-dark-overview #wpcontent,
+body.qndrs-ahm-dark-overview #wpfooter { background: #10161f; }
+body.qndrs-ahm-dark-overview #wpfooter { color: #a9b6c7; }
+body.qndrs-ahm-dark-overview #wpfooter a { color: #9bbcff; }
+.uptime-monitor-overview[data-theme="dark"] :is(h1, h2, h3, label) { color: var(--ump-text); }
+.uptime-monitor-overview[data-theme="dark"] a { color: var(--ump-link); }
+.uptime-monitor-overview[data-theme="dark"] .button { background: var(--ump-panel); border-color: var(--ump-border); color: var(--ump-link); }
+.uptime-monitor-overview[data-theme="dark"] .button:hover { background: var(--ump-soft); border-color: var(--ump-link); }
+.uptime-monitor-overview[data-theme="dark"] .button-primary { background: #5269ee; border-color: #5269ee; color: #fff; }
+.uptime-monitor-overview[data-theme="dark"] .button-primary:hover { background: #4359d1; border-color: #4359d1; }
+.uptime-monitor-overview[data-theme="dark"] .button:disabled { background: var(--ump-soft) !important; border-color: var(--ump-border) !important; color: var(--ump-muted) !important; }
+.uptime-monitor-overview[data-theme="dark"] :is(input[type="url"], input[type="text"], input[type="checkbox"]) { background: var(--ump-bg); border-color: var(--ump-muted); color: var(--ump-text); }
+.uptime-monitor-overview[data-theme="dark"] input::placeholder { color: var(--ump-muted); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-chip { background: var(--ump-soft); border-color: var(--ump-border); color: var(--ump-text); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-chip-muted { color: var(--ump-muted); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-chip.is-warning { background: #382e1d; border-color: #706044; color: var(--ump-warning); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-chip.is-danger { background: #382329; border-color: #70404b; color: var(--ump-down); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-percentage { background: var(--ump-soft); border-color: var(--ump-border); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-percentage-label { background: #2b3747; color: var(--ump-muted); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-percentage-value { color: var(--ump-up); }
+.uptime-monitor-overview[data-theme="dark"] :is(.uptime-response-average, .uptime-history-response-time) { background: #20364a; color: #acdcff; }
+.uptime-monitor-overview[data-theme="dark"] :is(.uptime-history-empty, .uptime-history-time, .uptime-history-message) { color: var(--ump-muted); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-history-code { color: var(--ump-text); }
+.uptime-monitor-overview[data-theme="dark"] :is(.uptime-status-up, .uptime-response-trend-faster) { background: #213b30; color: var(--ump-up); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-status-down { background: #44282f; color: var(--ump-down); }
+.uptime-monitor-overview[data-theme="dark"] :is(.uptime-status-error, .uptime-status-degraded, .uptime-response-trend-slower) { background: #382e1d; color: var(--ump-warning); }
+.uptime-monitor-overview[data-theme="dark"] :is(.uptime-status-paused, .uptime-status-unknown, .uptime-response-trend-stable) { background: var(--ump-soft); color: var(--ump-muted); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-delete-button { border-color: #70404b; color: var(--ump-down); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-delete-button:hover { background: #44282f; border-color: var(--ump-down); }
+.uptime-monitor-overview[data-theme="dark"] .uptime-monitor-notice { background: var(--ump-panel); color: var(--ump-text); }
+.uptime-monitor-overview[data-theme="dark"] .notice-dismiss::before { color: var(--ump-muted); }
+
+@media (max-width: 782px) {
+    .uptime-monitor-overview .uptime-dashboard-header { align-items: flex-start; flex-direction: column; }
+    .uptime-view-controls { justify-content: space-between; }
+    .uptime-column-settings { margin-left: auto; }
+    .uptime-column-panel { max-width: calc(100vw - 40px); }
+}
+
 .uptime-widget-refresh-meter {
     background: rgba(34, 113, 177, 0.12);
     border-radius: 999px;
@@ -61,6 +160,10 @@
 .uptime-dashboard-widget.is-degraded .uptime-widget-status {
     border-left-color: var(--ump-warning);
     background: rgba(183, 121, 31, 0.07);
+}
+
+.uptime-dashboard-widget.is-unknown .uptime-widget-status {
+    border-left-color: var(--ump-paused);
 }
 
 .uptime-widget-status strong,
@@ -218,6 +321,10 @@
 
 .uptime-statusbar.is-degraded {
     border-left-color: var(--ump-warning);
+}
+
+.uptime-statusbar.is-unknown {
+    border-left-color: var(--ump-paused);
 }
 
 .uptime-statusbar span {

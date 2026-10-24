@@ -5,6 +5,103 @@ jQuery(document).ready(function ($) {
     let dashboardRefreshRequest = null;
     let widgetRefreshTimer = null;
     let widgetRefreshRequest = null;
+    const overview = $('.uptime-monitor-overview');
+    const viewPreferences = { theme: 'light', hidden: [] };
+    const viewColumns = {
+        check: { track: 'minmax(150px, .85fr)', width: 164 },
+        response: { track: 'minmax(90px, .5fr)', width: 104 },
+        uptime: { track: 'minmax(190px, 1fr)', width: 204 },
+        alerts: { track: 'minmax(100px, .6fr)', width: 114 },
+        incident: { track: 'minmax(100px, .6fr)', width: 114 }
+    };
+    const optionalViewFields = [...Object.keys(viewColumns), 'type', 'address'];
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function applyViewTheme() {
+        if (!overview.length) {
+            return;
+        }
+        const theme = viewPreferences.theme === 'system' ? (systemTheme.matches ? 'dark' : 'light') : viewPreferences.theme;
+        overview.attr('data-theme', theme);
+        $('body').toggleClass('qndrs-ahm-dark-overview', theme === 'dark');
+        overview.find('[data-theme-choice]').each(function () {
+            $(this).attr('aria-pressed', String(this.dataset.themeChoice === viewPreferences.theme));
+        });
+    }
+
+    function applyViewColumns() {
+        if (!overview.length) {
+            return;
+        }
+        const visible = Object.keys(viewColumns).filter(key => !viewPreferences.hidden.includes(key));
+        overview[0].style.setProperty('--ump-columns', [
+            '90px', 'minmax(190px, 1.4fr)', ...visible.map(key => viewColumns[key].track), '340px'
+        ].join(' '));
+        overview[0].style.setProperty('--ump-list-min-width', (686 + visible.reduce((width, key) => width + viewColumns[key].width, 0)) + 'px');
+        optionalViewFields.forEach(function (key) {
+            const hidden = viewPreferences.hidden.includes(key);
+            overview.toggleClass('uptime-hide-' + key, hidden);
+            overview.find('[data-view-toggle="' + key + '"]').prop('checked', !hidden);
+        });
+        overview.find('.uptime-column-count').text((optionalViewFields.length - viewPreferences.hidden.length) + '/' + optionalViewFields.length);
+    }
+
+    function saveViewPreferences() {
+        try {
+            window.localStorage.setItem(qndrsAhmAjax.view_storage_key, JSON.stringify(viewPreferences));
+        } catch (error) {
+            // Preferences still work for this page when browser storage is unavailable.
+        }
+    }
+
+    function initializeViewPreferences() {
+        if (!overview.length) {
+            return;
+        }
+        try {
+            const saved = JSON.parse(window.localStorage.getItem(qndrsAhmAjax.view_storage_key));
+            if (saved && ['light', 'dark', 'system'].includes(saved.theme)) {
+                viewPreferences.theme = saved.theme;
+            }
+            if (saved && Array.isArray(saved.hidden)) {
+                viewPreferences.hidden = optionalViewFields.filter(key => saved.hidden.includes(key));
+            }
+        } catch (error) {
+            // Corrupt or blocked storage must not prevent monitoring controls from working.
+        }
+        applyViewTheme();
+        applyViewColumns();
+        overview.find('.uptime-view-controls').prop('hidden', false);
+        overview.on('click', '[data-theme-choice]', function () {
+            viewPreferences.theme = this.dataset.themeChoice;
+            applyViewTheme();
+            saveViewPreferences();
+        });
+        overview.on('change', '[data-view-toggle]', function () {
+            viewPreferences.hidden = optionalViewFields.filter(key => !overview.find('[data-view-toggle="' + key + '"]').prop('checked'));
+            applyViewColumns();
+            saveViewPreferences();
+        });
+        overview.on('click', '.uptime-view-compact, .uptime-view-reset', function () {
+            viewPreferences.hidden = $(this).hasClass('uptime-view-compact') ? ['check', 'alerts', 'incident', 'type', 'address'] : [];
+            applyViewColumns();
+            saveViewPreferences();
+        });
+        $(document).on('click.qndrsAhmView', function (event) {
+            const settings = overview.find('.uptime-column-settings');
+            if (!settings[0].contains(event.target)) {
+                settings.prop('open', false);
+            }
+        }).on('keydown.qndrsAhmView', function (event) {
+            const settings = overview.find('.uptime-column-settings');
+            if (event.key === 'Escape' && settings.prop('open')) {
+                settings.prop('open', false).find('summary').trigger('focus');
+            }
+        });
+        systemTheme.addEventListener('change', applyViewTheme);
+    }
+
+    initializeViewPreferences();
 
     function escapeHtml(value) {
         return $('<div>').text(value || '').html();
@@ -204,13 +301,11 @@ jQuery(document).ready(function ($) {
         }
 
         const statusCode = parseInt(latest.status_code, 10);
-        const responseTime = parseInt(latest.response_time_ms, 10);
         const timestamp = latest.timestamp || '';
         const displayTimestamp = latest.display_timestamp || timestamp;
 
         return `
             ${statusCode ? `<span class="uptime-chip">${escapeHtml(qndrsAhmL10n.http_status.replace('%d', statusCode))}</span>` : ''}
-            ${!isNaN(responseTime) ? `<span class="uptime-chip">${escapeHtml(qndrsAhmL10n.response_time_ms.replace('%d', responseTime))}</span>` : ''}
             ${timestamp ? `<time class="uptime-chip uptime-chip-muted" datetime="${escapeHtml(timestamp)}">${escapeHtml(displayTimestamp)}</time>` : ''}
         `;
     }
@@ -228,11 +323,16 @@ jQuery(document).ready(function ($) {
         const url = urlData.url || '';
         const title = type === 'heartbeat' ? (urlData.name || qndrsAhmL10n.heartbeat) : getHost(url);
         const identityMeta = type === 'heartbeat'
-            ? `<span>${escapeHtml((qndrsAhmL10n.expected_every_seconds || 'Expected every %d seconds').replace('%d', parseInt(urlData.heartbeat && urlData.heartbeat.expected_interval ? urlData.heartbeat.expected_interval : urlData.expected_interval, 10) || 300))}</span>`
-            : `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`;
+            ? `<span data-view-column="address">${escapeHtml((qndrsAhmL10n.expected_every_seconds || 'Expected every %d seconds').replace('%d', parseInt(urlData.heartbeat && urlData.heartbeat.expected_interval ? urlData.heartbeat.expected_interval : urlData.expected_interval, 10) || 300))}</span>`
+            : `<a data-view-column="address" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`;
         const averageResponse = dashboard.average_response_time_display
             ? `<span class="uptime-response-average">${escapeHtml(dashboard.average_response_time_display)}</span>`
             : '';
+        const latest = dashboard.latest || {};
+        const responseTime = parseInt(latest.response_time_ms, 10);
+        const currentResponse = !isNaN(responseTime)
+            ? `<span class="uptime-chip">${escapeHtml(qndrsAhmL10n.response_time_ms.replace('%d', responseTime))}</span>`
+            : (averageResponse ? '' : `<span class="uptime-chip uptime-chip-muted">${escapeHtml(qndrsAhmL10n.no_data)}</span>`);
 
         return `
             <article class="uptime-url-row is-${status}" data-id="${escapeHtml(urlData.id)}">
@@ -242,18 +342,23 @@ jQuery(document).ready(function ($) {
                 </div>
                 <div class="uptime-url-identity">
                     <strong>${escapeHtml(title)}</strong>
-                    <span class="uptime-chip uptime-chip-muted">${escapeHtml(type === 'heartbeat' ? qndrsAhmL10n.heartbeat : qndrsAhmL10n.http_check)}</span>
+                    <span class="uptime-chip uptime-chip-muted" data-view-column="type">${escapeHtml(type === 'heartbeat' ? qndrsAhmL10n.heartbeat : qndrsAhmL10n.http_check)}</span>
                     ${identityMeta}
                 </div>
-                <div class="uptime-url-current">
+                <div class="uptime-url-current" data-view-column="check">
                     ${renderCurrentCheck(dashboard)}
                 </div>
-                <div class="uptime-url-metrics">
-                    ${renderUptimeSummary(urlData.uptime)}
+                <div class="uptime-url-response" data-view-column="response">
+                    ${currentResponse}
                     ${averageResponse}
                 </div>
-                <div class="uptime-url-alerts">
+                <div class="uptime-url-metrics" data-view-column="uptime">
+                    ${renderUptimeSummary(urlData.uptime)}
+                </div>
+                <div class="uptime-url-alerts" data-view-column="alerts">
                     <span class="uptime-chip${notificationsLabel === qndrsAhmL10n.no_alerts ? ' is-warning' : ''}">${escapeHtml(notificationsLabel)}</span>
+                </div>
+                <div class="uptime-url-incident" data-view-column="incident">
                     <span class="uptime-chip${incidentOpen ? ' is-danger' : ' uptime-chip-muted'}">${escapeHtml(incidentLabel)}</span>
                     ${incidentDuration ? `<span class="uptime-chip is-danger">${escapeHtml(incidentDuration)}</span>` : ''}
                 </div>
@@ -271,6 +376,7 @@ jQuery(document).ready(function ($) {
 
     function updateUrlList(urls) {
         const list = $('.uptime-url-list');
+        list.closest('.uptime-url-list-scroll').toggleClass('is-empty', !Array.isArray(urls) || urls.length === 0);
         const expandedIds = [];
 
         list.find('.uptime-url-row').each(function () {
@@ -465,7 +571,11 @@ jQuery(document).ready(function ($) {
         const isEnabled = !!enabled;
 
         $('.uptime-auto-refresh-input').prop('checked', isEnabled);
-        window.localStorage.setItem(autoRefreshStorageKey, isEnabled ? '1' : '0');
+        try {
+            window.localStorage.setItem(autoRefreshStorageKey, isEnabled ? '1' : '0');
+        } catch (error) {
+            // Auto-refresh remains usable without persistent browser storage.
+        }
 
         if (isEnabled) {
             startAutoRefresh();
@@ -510,8 +620,12 @@ jQuery(document).ready(function ($) {
         setAutoRefresh($(this).is(':checked'));
     });
 
-    if ($('.uptime-auto-refresh-input').length && window.localStorage.getItem(autoRefreshStorageKey) === '1') {
-        setAutoRefresh(true);
+    try {
+        if ($('.uptime-auto-refresh-input').length && window.localStorage.getItem(autoRefreshStorageKey) === '1') {
+            setAutoRefresh(true);
+        }
+    } catch (error) {
+        // Keep manual refresh and all other controls available.
     }
 
     startDashboardWidgetRefresh();

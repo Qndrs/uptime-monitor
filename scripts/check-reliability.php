@@ -21,7 +21,7 @@ function add_filter(...$args) {}
 function register_activation_hook(...$args) {}
 function register_deactivation_hook(...$args) {}
 function dbDelta($sql) {}
-function __($text, $domain) { return $text; }
+function __($text, $domain) { return $GLOBALS['test_translations'][$text] ?? $text; }
 function sanitize_key($text) { return preg_replace('/[^a-z0-9_\-]/', '', strtolower($text)); }
 function sanitize_text_field($text) { return strip_tags($text); }
 function absint($value) { return abs((int)$value); }

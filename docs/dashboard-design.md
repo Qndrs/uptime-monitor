@@ -2,6 +2,38 @@
 
 Werknotitie voor de dashboardfase van Qndrs Availability and Heartbeat Monitor.
 
+## Proof of concept: optioneel donker thema en kolomkeuze
+
+Op verzoek van Robert is op 24 oktober 2026 een [interactieve ontwerpstudie](prototypes/monitor-overview.html) toegevoegd, gebaseerd op twee screenshots van het huidige overzicht. De proef voegt een optioneel donker thema en afzonderlijk schakelbare kolommen toe; de bestaande lichte basis blijft beschikbaar. De onderstaande oorspronkelijke MVP-keuzes blijven de achtergrond van de huidige productie-interface.
+
+Zie [de uitleg bij de proef](prototypes/README.md) voor openen, bediening en grenzen. Het prototype blijft een zelfstandig referentieontwerp. De themawissel en kolomkeuze zijn daarna op verzoek van Robert geïntegreerd in de plugin, inclusief de PHP- en AJAX-rendering.
+
+### Geïntegreerde weergavevoorkeuren
+
+- De standaard blijft licht, met alle kolommen zichtbaar. `Light`, `Dark` en `System` zijn onafhankelijk van de kolomkeuze instelbaar.
+- `Columns` biedt laatste check/HTTP-status, responstijd/gemiddelde, uptime, meldingen, incidenten, type en URL/heartbeatinterval. Status, naam en beheeracties blijven zichtbaar. `Compact overview` laat status, naam, responstijd, uptime en beheeracties staan; `Restore defaults` herstelt de kolommen zonder het thema te wijzigen.
+- Voorkeuren staan in `localStorage` onder `qndrsAhmView:v1:<blog-id>:<user-id>`. De browser-origin scheidt verschillende domeinen. Er wordt geen monitoringconfiguratie aangepast en er zijn geen extra servermutaties of dependencies nodig.
+- Beschadigde of geblokkeerde opslag blokkeert de bediening niet. Zonder opslag gelden nieuwe keuzes alleen voor de huidige pagina. Systeemthema volgt wijzigingen in de OS-voorkeur zolang de pagina openstaat.
+- Kolommen worden uit de gridindeling verwijderd. Alleen de lijst scrolt horizontaal bij weinig ruimte. Geopende details en de gekozen kolommen blijven behouden bij AJAX-verversing.
+- Donkere stijlen zijn begrensd tot het overzicht en de bijbehorende WordPress-contentachtergrond. Instellingen, het menu en de dashboardwidget behouden hun bestaande vormgeving. De fallbackbestanden in de repositoryroot blijven gelijk aan de canonieke JS/CSS-assets.
+
+### Verificatie van de integratie
+
+`php scripts/check-overview.php` draait de bestaande betrouwbaarheidschecks plus controles op de menustructuur, de echte PHP-renderer, de afzonderlijke kolommen, escaping en de gebruikers-/sitesleutel. De scriptbootstrap gebruikt WordPress- en database-doubles; dit is geen volledige WordPress/MySQL-integratietest.
+
+Voor handmatige browsercontrole genereert `php scripts/check-overview.php --fixture` onder de genegeerde map `dist/` een Nederlandse overzichtspagina met echte pluginassets, een AJAX-response en varianten voor lege monitors, beschadigde opslag, geblokkeerde opslag en de dashboardwidget. Lever voor deze ontwikkelfixture de bestaande WordPress-assets aan:
+
+```powershell
+$wordpressRoot = 'D:\pad\naar\wordpress'
+Copy-Item "$wordpressRoot\wp-includes\js\jquery\jquery.min.js" dist/jquery.min.js
+Copy-Item "$wordpressRoot\wp-admin\css\common.css" dist/wp-common.css
+Copy-Item "$wordpressRoot\wp-admin\css\forms.css" dist/wp-forms.css
+Copy-Item "$wordpressRoot\wp-includes\css\buttons.css" dist/wp-buttons.css
+php -S 127.0.0.1:8766 -t .
+```
+
+Open `http://127.0.0.1:8766/dist/overview-check.html`. Controleer themawissel, kolomkeuze, compacte weergave, reset, opslag na herladen, geopende historie na verversen en de mobiele scrollcontainer. De ontwikkelfixture verandert geen live data en wordt niet verpakt in de releasezip. De lokale browsercontrole is uitgevoerd; de volledige WordPress-adminomgeving met echte database en authenticatie moet nog worden getest.
+
 ## Doel
 
 Het dashboard moet voelen als een professioneel controlepaneel voor webservices, maar zich gedragen als een goede WordPress-adminpagina. De visuele verrassing zit in statuslampjes, compacte meters, badges en uptimebalken. De functionele kern blijft: snel zien welke URL problemen heeft, hoe ernstig het is, wanneer de laatste check was en welke actie nodig is.

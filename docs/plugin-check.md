@@ -2,6 +2,12 @@
 
 Run WordPress Plugin Check before tagging a public release.
 
+## Local test package 3.7.1
+
+Version 3.7.1 adds the explicit Overview submenu to the display preferences introduced in the local 3.7.0 test package. The distributable is `dist/qndrs-availability-heartbeat-monitor-3.7.1.zip`, with the existing plugin folder and main file for replacement uploads or fresh installation.
+
+Local release, translation, reliability and overview-renderer checks pass, including the menu labels and existing overview target. The display controls were also checked in the browser using the production renderer and assets with WordPress/database doubles. Full WordPress installation/upgrade and the official Plugin Check for this version remain unverified; the 3.6.1 report below does not cover 3.7.1. This package has not been published to WordPress.org.
+
 ## Release 3.6.1 verification
 
 The Plugin Check report from 2026-08-26 identified an outdated `Tested up to` value and static-analysis findings around the custom history table. The 3.6.1 candidate updates the metadata to WordPress 7.1 and adds narrowly scoped PHPCS explanations for intentional direct custom-table access. Dynamic values remain prepared; table names and placeholder lists are constructed only from trusted plugin code and `$wpdb->prefix`.

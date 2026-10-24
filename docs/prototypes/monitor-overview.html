@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Qndrs Monitor — dark mode & kolommen</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font: 13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background: #1d2327; }
+button,input,summary { font: inherit; }
+button,summary,label { -webkit-tap-highlight-color: transparent; }
+button,summary { cursor: pointer; }
+button:focus-visible,summary:focus-visible,a:focus-visible,input:focus-visible { outline: 3px solid var(--link,#91b8ff); outline-offset: 3px; }
+[hidden] { display: none !important; }
+.adminbar { height: 32px; padding: 0 18px; color: #d7dce0; display: flex; align-items: center; gap: 20px; font-size: 12px; background: #1d2327; }
+.wp-mark { border: 1px solid #a7aaad; border-radius: 50%; width: 21px; height: 21px; text-align: center; font: 17px/20px Georgia,serif; }
+.adminbar .user { margin-left: auto; }
+.sidebar { width: 160px; position: absolute; top: 48px; left: 0; color: #d7dce0; }
+.nav-item { padding: 9px 14px; display: flex; gap: 10px; align-items: center; }
+.nav-icon { width: 17px; color: #a7aaad; text-align: center; }
+.nav-active { margin-top: 15px; background: #3858e9; color: white; font-weight: 600; }
+.nav-sub { padding: 8px 16px; background: #171b1f; font-size: 12px; }
+.nav-sub span { display: block; padding: 4px 0; }
+.nav-sub span:last-child { color: #a7aaad; }
+.dashboard { --bg:#10161f; --panel:#19222e; --soft:#202c3a; --border:#344152; --text:#e7edf5; --muted:#a9b6c7; --link:#9bbcff; --green:#6ad79a; --amber:#f0c36d; --red:#ff9d9d; --primary:#5269ee; --shadow:0 12px 34px #0005; color-scheme: dark; color:var(--text); background:var(--bg); margin-left:160px; min-height:calc(100vh - 32px); padding:26px 28px 32px; }
+.dashboard[data-theme="light"] { --bg:#f0f0f1; --panel:#fff; --soft:#f6f7f7; --border:#d5d9df; --text:#1d2327; --muted:#596575; --link:#275fbb; --green:#146c36; --amber:#8a5b0a; --red:#b42318; --primary:#3858e9; --shadow:0 12px 34px #17212f26; color-scheme:light; }
+.page-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:20px; }
+.title-line { display:flex; align-items:center; gap:12px; }
+h1 { font-size:25px; font-weight:500; line-height:1.3; margin:0; letter-spacing:-.5px; }
+.poc { color:var(--muted); border:1px solid var(--border); border-radius:4px; font-size:10px; padding:3px 7px; text-transform:uppercase; letter-spacing:.7px; white-space:nowrap; }
+.subtitle { color:var(--muted); font-size:12px; margin:5px 0 0; }
+.view-controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.theme-switch { display:flex; padding:3px; border:1px solid var(--border); border-radius:6px; background:var(--panel); }
+.theme-switch button { display:flex; align-items:center; gap:6px; border:0; border-radius:3px; padding:6px 10px; color:var(--muted); background:transparent; }
+.theme-switch button[aria-pressed="true"] { color:var(--text); background:var(--soft); box-shadow:0 1px 3px #0002; }
+.theme-switch svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.6; }
+.button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:34px; border:1px solid var(--border); border-radius:4px; background:var(--panel); color:var(--text); padding:6px 12px; text-decoration:none; white-space:nowrap; }
+.button:hover { border-color:var(--link); }
+.button svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.5; }
+.columns { position:relative; }
+.columns > summary { list-style:none; }
+.columns > summary::-webkit-details-marker { display:none; }
+.columns[open] > summary { border-color:var(--link); }
+.count { font-size:11px; color:var(--muted); border-left:1px solid var(--border); padding-left:8px; }
+.column-panel { position:absolute; top:calc(100% + 9px); right:0; width:306px; background:var(--panel); border:1px solid var(--border); border-radius:7px; padding:16px; box-shadow:var(--shadow); z-index:10; }
+.column-panel h2 { margin:0 0 4px; font-size:14px; }
+.column-panel p { margin:0 0 13px; color:var(--muted); font-size:12px; }
+.column-panel fieldset { margin:0; padding:0; border:0; }
+.column-panel legend { font-size:10px; letter-spacing:.8px; text-transform:uppercase; font-weight:700; color:var(--muted); margin:6px 0; }
+.column-panel label { display:flex; align-items:center; gap:9px; padding:7px 4px; cursor:pointer; }
+input[type="checkbox"] { accent-color:var(--primary); width:15px; height:15px; margin:0; flex-shrink:0; }
+.column-panel .panel-actions { display:flex; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.panel-actions .button { flex:1; font-size:12px; }
+.statusbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:12px 16px; background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--amber); border-radius:5px; }
+.status { display:inline-flex; align-items:center; gap:8px; font-size:11px; font-weight:650; white-space:nowrap; text-transform:uppercase; }
+.dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--state,var(--green)); box-shadow:0 0 0 3px color-mix(in srgb,var(--state,var(--green)) 12%,transparent); flex-shrink:0; }
+.statusbar .status { text-transform:none; font-size:13px; }
+.summary-counts { display:flex; align-items:center; flex-wrap:wrap; gap:18px; color:var(--muted); font-size:12px; }
+.summary-counts b { color:var(--text); font-weight:600; }
+.metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin:12px 0 20px; }
+.metric { background:var(--panel); border:1px solid var(--border); border-radius:5px; padding:16px; }
+.metric h2 { margin:0 0 6px; font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); }
+.metric strong { font-size:23px; font-weight:500; line-height:1.4; letter-spacing:-.5px; }
+.metric p { margin:4px 0 0; color:var(--muted); font-size:11px; }
+.metric .next-time { font-size:21px; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 10px; }
+.section-heading h2 { font-size:15px; font-weight:600; margin:0; }
+.section-heading h2 span { color:var(--muted); font-size:12px; margin-left:5px; font-weight:400; }
+.section-heading p { color:var(--muted); font-size:11px; margin:0; }
+.monitor-grid { --columns:110px minmax(190px,1.5fr) minmax(130px,.9fr) minmax(95px,.6fr) minmax(175px,1.2fr) minmax(90px,.65fr) minmax(90px,.65fr) 66px; --min-width:1100px; }
+.list-scroll { overflow-x:auto; padding:0 2px 8px; margin:0 -2px; scrollbar-color:var(--border) var(--bg); }
+.column-head,.monitor-row { display:grid; grid-template-columns:var(--columns); gap:14px; align-items:center; min-width:var(--min-width); }
+.column-head { padding:9px 15px 9px 19px; color:var(--muted); font-size:10px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; }
+.monitor-list { display:grid; gap:8px; }
+.monitor { --state:var(--green); background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--state); border-radius:5px; min-width:var(--min-width); }
+.monitor[data-status="degraded"] { --state:var(--amber); }
+.monitor[data-status="paused"] { --state:var(--muted); }
+.monitor-row { min-height:84px; padding:13px 14px; }
+.monitor-row > div { min-width:0; }
+.monitor .status { color:var(--state); }
+.identity { display:grid; gap:4px; }
+.identity strong { font-size:13px; font-weight:600; overflow-wrap:anywhere; }
+.identity .meta { color:var(--muted); font-size:11px; }
+.identity .url { color:var(--link); font-size:11px; overflow-wrap:anywhere; }
+.chip { display:inline-flex; align-items:center; gap:5px; width:fit-content; background:var(--soft); color:var(--text); border:1px solid var(--border); border-radius:4px; padding:3px 6px; font-size:10px; font-weight:500; }
+.subline { display:block; font-size:11px; color:var(--muted); margin-top:5px; }
+.latency { font-size:14px; font-weight:550; font-variant-numeric:tabular-nums; }
+.latency.slow { color:var(--amber); }
+.uptime { display:flex; flex-wrap:wrap; gap:4px; }
+.uptime .chip { color:var(--green); gap:5px; font-size:10px; font-variant-numeric:tabular-nums; }
+.uptime .chip span { font-weight:400; color:var(--muted); }
+.alerts { color:var(--text); font-size:11px; }
+.muted { color:var(--muted); }
+.no-alerts { color:var(--amber); }
+.incident { color:var(--muted); font-size:11px; }
+.detail-button { padding:5px 8px; min-height:30px; font-size:11px; color:var(--link); background:transparent; }
+.history { padding:14px 18px; border-top:1px solid var(--border); font-size:12px; }
+.history h3 { font-size:12px; margin:0 0 8px; }
+.history p { color:var(--muted); margin:0; }
+.history dl { display:flex; gap:12px 30px; flex-wrap:wrap; margin:0; }
+.history dt { color:var(--muted); font-size:11px; }
+.history dd { margin:3px 0 0; }
+.history a { color:var(--link); }
+.history-list { display:grid; gap:12px; list-style:none; margin:14px 0 0; padding:0; }
+.history-list li { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.history-list .result { background:color-mix(in srgb,var(--green) 12%,var(--panel)); color:var(--green); border-color:color-mix(in srgb,var(--green) 35%,var(--border)); font-weight:650; }
+.history-list .duration { color:var(--link); background:color-mix(in srgb,var(--link) 8%,var(--panel)); }
+.history-list time { color:var(--muted); font-size:11px; }
+.history-list p { flex-basis:100%; margin-top:-4px; font-size:11px; }
+.page-footer { display:flex; justify-content:space-between; gap:20px; color:var(--muted); font-size:11px; margin-top:20px; }
+.visually-hidden { position:absolute; top:0; left:0; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+@media(min-width:1800px) { .dashboard { padding-left:40px; padding-right:40px; } }
+@media(max-width:1200px) { .sidebar { width:48px; } .sidebar .nav-text,.nav-sub { display:none; } .nav-item { padding:11px 15px; } .dashboard { margin-left:48px; padding:20px; } .metrics { gap:8px; } .metric { padding:12px; } }
+@media(max-width:760px) { .sidebar { display:none; } .dashboard { margin-left:0; padding:18px 14px; } .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .metric:last-child { grid-column:1/-1; } .page-heading { gap:14px; } .view-controls { width:100%; justify-content:space-between; gap:8px; } .theme-switch button { padding:6px 8px; } .summary-counts { gap:8px 14px; } .statusbar { align-items:flex-start; } .section-heading { align-items:flex-start; } .section-heading p { max-width:145px; text-align:right; } .adminbar { padding:0 12px; gap:12px; } .adminbar .optional { display:none; } .page-footer { flex-direction:column; gap:4px; } .column-panel { width:min(306px,calc(100vw - 28px)); } }
+@media(max-width:760px) { .columns { margin-left:auto; } .column-panel { max-height:65dvh; overflow-y:auto; } }
+</style>
+</head>
+<body>
+<div class="adminbar" aria-label="WordPress-omgeving, ter illustratie"><span class="wp-mark" aria-hidden="true">W</span><span>plugin development site</span><span class="optional">+ Nieuw</span><span class="user">Hallo admin</span></div>
+<aside class="sidebar" aria-label="WordPress-menu, ter illustratie">
+ <div class="nav-item"><span class="nav-icon">◉</span><span class="nav-text">Dashboard</span></div>
+ <div class="nav-item"><span class="nav-icon">▤</span><span class="nav-text">Berichten</span></div>
+ <div class="nav-item"><span class="nav-icon">▧</span><span class="nav-text">Media</span></div>
+ <div class="nav-item"><span class="nav-icon">▱</span><span class="nav-text">Pagina’s</span></div>
+ <div class="nav-item"><span class="nav-icon">◌</span><span class="nav-text">Reacties</span></div>
+ <div class="nav-item"><span class="nav-icon">◈</span><span class="nav-text">Weergave</span></div>
+ <div class="nav-item"><span class="nav-icon">▦</span><span class="nav-text">Plugins</span></div>
+ <div class="nav-item"><span class="nav-icon">♙</span><span class="nav-text">Gebruikers</span></div>
+ <div class="nav-item"><span class="nav-icon">⌕</span><span class="nav-text">Gereedschap</span></div>
+ <div class="nav-item"><span class="nav-icon">⚙</span><span class="nav-text">Instellingen</span></div>
+ <div class="nav-item nav-active"><span aria-hidden="true">◉</span><span class="nav-text">Qndrs Monitor</span></div>
+ <div class="nav-sub"><span>Qndrs Monitor</span><span>Instellingen</span></div>
+</aside>
+<main class="dashboard" id="dashboard" data-theme="dark">
+ <header class="page-heading">
+  <div><div class="title-line"><h1>Qndrs Monitor</h1><span class="poc">Proof of concept</span></div><p class="subtitle">Voorbeeldgegevens uit je overzicht · 24 oktober 2026, 08:55</p></div>
+  <div class="view-controls">
+   <div class="theme-switch" role="group" aria-label="Kleurthema">
+    <button type="button" data-theme-choice="light" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg>Licht</button>
+    <button type="button" data-theme-choice="dark" aria-pressed="true"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 15A8 8 0 0 1 9 4a8.5 8.5 0 1 0 11 11Z"/></svg>Donker</button>
+    <button type="button" data-theme-choice="system" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>Systeem</button>
+   </div>
+   <details class="columns" id="column-settings">
+    <summary class="button"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M10 4v16m5-16v16"/></svg>Kolommen<span class="count" id="column-count">7/7</span></summary>
+    <section class="column-panel" aria-label="Weergave instellen">
+     <h2>Maak je eigen overzicht</h2><p>Status en monitornaam blijven altijd zichtbaar.</p>
+     <fieldset><legend>Kolommen</legend>
+      <label><input type="checkbox" data-column="check" checked>Laatste check & HTTP-status</label>
+      <label><input type="checkbox" data-column="response" checked>Responstijd & gemiddelde</label>
+      <label><input type="checkbox" data-column="uptime" checked>Uptime · 24 uur, 7 en 30 dagen</label>
+      <label><input type="checkbox" data-column="alerts" checked>Meldingen</label>
+      <label><input type="checkbox" data-column="incident" checked>Incidenten</label>
+     </fieldset>
+     <fieldset><legend>Onder de monitornaam</legend>
+      <label><input type="checkbox" data-column="type" checked>Type monitor</label>
+      <label><input type="checkbox" data-column="address" checked>URL / heartbeatinterval</label>
+     </fieldset>
+     <div class="panel-actions"><button class="button" id="compact" type="button">Compact overzicht</button><button class="button" id="reset" type="button">Herstel standaard</button></div>
+    </section>
+   </details>
+  </div>
+ </header>
+ <section class="statusbar" aria-label="Algemene status">
+  <span class="status" style="--state:var(--amber)"><span class="dot" aria-hidden="true"></span>Verminderd</span>
+  <div class="summary-counts"><span><b>15</b> gemonitord</span><span><b>9</b> online</span><span><b>3</b> verminderd</span><span><b>0</b> onbereikbaar</span><span><b>3</b> gepauzeerd</span></div>
+ </section>
+ <section class="metrics" aria-label="Monitoring in cijfers">
+  <article class="metric"><h2>Huidige gezondheid</h2><strong>100,0%</strong><p>0 actieve incidenten · 12 actieve monitors</p></article>
+  <article class="metric"><h2>Gemiddelde reactietijd</h2><strong>688 <span style="font-size:14px">ms</span></strong><p>Over monitors met HTTP-geschiedenis</p></article>
+  <article class="metric"><h2>24u uptime</h2><strong>99,8%</strong><p>Gemiddelde over recente checks</p></article>
+  <article class="metric"><h2>Meldingen</h2><strong>3 / 13</strong><p>E-mail / Pushover ingeschakeld</p></article>
+  <article class="metric"><h2>Volgende check</h2><strong class="next-time">24 okt · 08:55</strong><p>Gepland via WordPress-cron</p></article>
+ </section>
+ <section aria-labelledby="monitors-heading">
+  <div class="section-heading"><h2 id="monitors-heading">Gemonitorde monitors <span>15</span></h2><p id="preference-status" role="status">Weergave wordt lokaal onthouden</p></div>
+  <div class="list-scroll" tabindex="0" role="region" aria-label="Monitoroverzicht, horizontaal scrollbaar indien nodig">
+   <div class="monitor-grid" id="monitor-grid">
+    <div class="column-head" aria-hidden="true"><span>Status</span><span>Monitor</span><span data-cell="check">Laatste check</span><span data-cell="response">Responstijd</span><span data-cell="uptime">Uptime</span><span data-cell="alerts">Meldingen</span><span data-cell="incident">Incident</span><span>Details</span></div>
+    <div class="monitor-list" id="monitor-list"></div>
+   </div>
+  </div>
+ </section>
+ <footer class="page-footer"><span>Interactieve ontwerpstudie · geen verbinding met live monitoring</span><span>Thema en kolommen zijn onafhankelijk instelbaar</span></footer>
+ <div class="visually-hidden" role="status" id="announcement"></div>
+ <noscript><p>Schakel JavaScript in om de voorbeeldmonitors, themawissel en kolomkeuze te bekijken.</p></noscript>
+</main>
+<script>
+'use strict';
+(() => {
+ const monitors = [
+  ['e-canvasser.com','degraded',2369,2011,['99,6','99,7','99,7'],'Pushover'],
+  ['gaytoys.nl','degraded',2296,642,['100,0','100,0','100,0'],'Pushover'],
+  ['frankvandalen.nl','degraded',4489,3010,['99,7','64,4','64,4'],'Pushover'],
+  ['qndrs.training','up',77,249,['99,9','99,9','99,9'],'Geen waarschuwingen'],
+  ['terminalbeach.com','up',303,466,['100,0','100,0','100,0'],'E-mail, Pushover'],
+  ['portal.e-canvasser.com','up',170,140,['100,0','100,0','100,0'],'Pushover'],
+  ['futurelearning.nl','up',30,58,['100,0','100,0','100,0'],'Pushover'],
+  ['files.qndrs.nl','up',217,380,['99,6','99,7','99,7'],'Pushover'],
+  ['home.qndrs.nl','up',120,121,['99,7','99,8','99,8'],'Pushover'],
+  ['politiekeacademie.nl','up',171,262,['99,6','99,6','99,6'],'Pushover'],
+  ['Home Assistant QHome','up',null,null,['100,0','100,0','100,0'],'Pushover','heartbeat'],
+  ['ecan.qndrs.nl','up',278,231,['99,9','99,8','99,8'],'Pushover'],
+  ['qndrs.training','paused',null,null,null,'E-mail, Pushover','http','https://qndrs.training/simpleuptimemonitor/sample-page/'],
+  ['opatel.nl','paused',null,null,null,'Pushover'],
+  ['QStation','paused',null,null,null,'Geen waarschuwingen','heartbeat']
+ ].map(([name,status,response,average,uptime,alerts,type='http',url]) => ({name,status,response,average,uptime,alerts,type,url:url || (type === 'http' ? `https://${name}/` : '')}));
+ const columns = {check:'minmax(130px,.9fr)',response:'minmax(95px,.6fr)',uptime:'minmax(175px,1.2fr)',alerts:'minmax(90px,.65fr)',incident:'minmax(90px,.65fr)'};
+ const minimumWidths = {check:144,response:109,uptime:189,alerts:104,incident:104};
+ const optional = [...Object.keys(columns),'type','address'];
+ const storageKey = 'qndrs-monitor-overview-poc-v1';
+ const preferences = {theme:'dark',hidden:[]};
+ const dashboard = document.getElementById('dashboard');
+ const grid = document.getElementById('monitor-grid');
+ const settings = document.getElementById('column-settings');
+ const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+ const escape = value => String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+ try {
+  const saved = JSON.parse(localStorage.getItem(storageKey));
+  if (saved && ['light','dark','system'].includes(saved.theme)) preferences.theme = saved.theme;
+  if (saved && Array.isArray(saved.hidden)) preferences.hidden = saved.hidden.filter(key => optional.includes(key));
+ } catch (_) { /* Defaults remain usable if storage is blocked or malformed. */ }
+ document.getElementById('monitor-list').innerHTML = monitors.map((monitor,index) => {
+  const {name,status,response,average,uptime,alerts,type,url} = monitor;
+  const paused = status === 'paused';
+  const heartbeat = type === 'heartbeat';
+  const minute = status === 'degraded' ? '54' : (heartbeat ? '50' : '52');
+  const statusLabel = {up:'Online',degraded:'Verminderd',paused:'Gepauzeerd'}[status];
+  const label = key => `<span class="visually-hidden">${key}: </span>`;
+  return `<article class="monitor" data-status="${status}" aria-label="${escape(name)}: ${statusLabel}">
+   <div class="monitor-row">
+    <div class="status"><span class="dot" aria-hidden="true"></span>${statusLabel}</div>
+    <div class="identity"><strong>${escape(name)}</strong><span class="meta" data-cell="type">${heartbeat ? 'Heartbeat' : 'HTTP-controle'}</span><span class="url" data-cell="address">${heartbeat ? 'Elke 300 seconden verwacht' : escape(url)}</span></div>
+    <div data-cell="check">${label('Laatste check')}${paused ? '<span class="muted">Nog geen controles</span>' : `${heartbeat ? '<span class="chip">Heartbeat</span>' : '<span class="chip">HTTP 200</span>'}<time class="subline" datetime="2026-10-24T08:${minute}:00+02:00">24 okt · 08:${minute}</time>`}</div>
+    <div data-cell="response">${label('Responstijd')}${response === null ? '<span class="muted">—</span>' : `<span class="latency${status === 'degraded' ? ' slow' : ''}">${response} <small>ms</small></span><span class="subline">Gem. ${average} ms</span>`}</div>
+    <div data-cell="uptime">${label('Uptime')}${uptime ? `<div class="uptime">${uptime.map((value,i) => `<span class="chip"><span>${['24u','7d','30d'][i]}</span> ${value}%</span>`).join('')}</div>` : '<span class="muted">—</span>'}</div>
+    <div class="alerts${alerts === 'Geen waarschuwingen' ? ' no-alerts' : ''}" data-cell="alerts">${label('Meldingen')}${escape(alerts)}</div>
+    <div class="incident" data-cell="incident">${label('Incident')}Geen incident</div>
+    <div><button type="button" class="button detail-button" aria-expanded="false" aria-controls="details-${index}" aria-label="Details van ${escape(name)}">Details</button></div>
+   </div>
+   <section class="history" id="details-${index}" aria-label="Details van ${escape(name)}" hidden><h3>${escape(name)} · recente controles</h3>${paused ? '<p>Deze monitor is gepauzeerd. Er zijn nog geen controles in dit voorbeeld.</p>' : `<dl><div><dt>Laatste resultaat</dt><dd>${heartbeat ? 'Heartbeat ontvangen' : 'HTTP 200 · bereikbaar'}</dd></div><div><dt>Laatste check</dt><dd>24 oktober 2026, 08:${minute}</dd></div><div><dt>Meldingen</dt><dd>${escape(alerts)}</dd></div>${average !== null ? `<div><dt>Gemiddelde responstijd</dt><dd>${average} ms</dd></div>` : ''}</dl>${name === 'gaytoys.nl' ? `<ol class="history-list">${[[2296,'54'],[421,'52'],[416,'50'],[540,'48'],[417,'46']].map(([ms,time]) => `<li><span class="chip result">ONLINE</span><span class="chip">HTTP 200</span><span class="chip duration">${ms} ms</span><time datetime="2026-10-24T08:${time}:00+02:00">24 oktober 2026, 08:${time}</time><p>URL is bereikbaar.</p></li>`).join('')}</ol>` : ''}`}</section>
+  </article>`;
+ }).join('');
+ function save() {
+  try {
+   localStorage.setItem(storageKey,JSON.stringify(preferences));
+   document.getElementById('preference-status').textContent = 'Weergave opgeslagen in deze browser';
+  } catch (_) {
+   document.getElementById('preference-status').textContent = 'Weergave geldt voor deze sessie';
+  }
+ }
+ function applyTheme() {
+  dashboard.dataset.theme = preferences.theme === 'system' ? (systemTheme.matches ? 'dark' : 'light') : preferences.theme;
+  document.querySelectorAll('[data-theme-choice]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.themeChoice === preferences.theme)));
+ }
+ function applyColumns() {
+  document.querySelectorAll('[data-cell]').forEach(cell => { cell.hidden = preferences.hidden.includes(cell.dataset.cell); });
+  document.querySelectorAll('[data-column]').forEach(input => { input.checked = !preferences.hidden.includes(input.dataset.column); });
+  const visible = Object.keys(columns).filter(key => !preferences.hidden.includes(key));
+  grid.style.setProperty('--columns',['110px','minmax(190px,1.5fr)',...visible.map(key => columns[key]),'66px'].join(' '));
+  grid.style.setProperty('--min-width',`${408 + visible.reduce((width,key) => width + minimumWidths[key],0)}px`);
+  document.getElementById('column-count').textContent = `${optional.filter(key => !preferences.hidden.includes(key)).length}/${optional.length}`;
+ }
+ document.querySelectorAll('[data-theme-choice]').forEach(button => button.addEventListener('click',() => {
+  preferences.theme = button.dataset.themeChoice;
+  applyTheme(); save();
+  document.getElementById('announcement').textContent = `Kleurthema: ${button.textContent.trim()}`;
+ }));
+ document.querySelectorAll('[data-column]').forEach(input => input.addEventListener('change',() => {
+  preferences.hidden = optional.filter(key => {
+   const checkbox = document.querySelector(`[data-column="${key}"]`);
+   return !checkbox.checked;
+  });
+  applyColumns(); save();
+  document.getElementById('announcement').textContent = `${input.parentElement.textContent.trim()} ${input.checked ? 'zichtbaar' : 'verborgen'}`;
+ }));
+ document.getElementById('compact').addEventListener('click',() => {
+  preferences.hidden = ['check','alerts','incident','type','address'];
+  applyColumns(); save();
+  document.getElementById('announcement').textContent = 'Compact overzicht ingesteld';
+ });
+ document.getElementById('reset').addEventListener('click',() => {
+  preferences.hidden = []; applyColumns(); save();
+  document.getElementById('announcement').textContent = 'Alle kolommen hersteld';
+ });
+ document.addEventListener('click',event => { if (!settings.contains(event.target)) settings.open = false; });
+ document.addEventListener('keydown',event => {
+  if (event.key === 'Escape' && settings.open) { settings.open = false; settings.querySelector('summary').focus(); }
+ });
+ document.getElementById('monitor-list').addEventListener('click',event => {
+  const button = event.target.closest('.detail-button');
+  if (!button) return;
+  const expanded = button.getAttribute('aria-expanded') !== 'true';
+  button.setAttribute('aria-expanded',String(expanded));
+  document.getElementById(button.getAttribute('aria-controls')).hidden = !expanded;
+  button.textContent = expanded ? 'Sluiten' : 'Details';
+ });
+ systemTheme.addEventListener('change',applyTheme);
+ applyTheme(); applyColumns();
+})();
+</script>
+</body>
+</html>

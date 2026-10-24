@@ -3,7 +3,7 @@
  * Plugin Name: Qndrs Availability and Heartbeat Monitor
  * Plugin URI: https://github.com/qndrs/uptime-monitor
  * Description: Monitor website availability and receive alerts by email or Pushover. Manage multiple URLs from the WordPress admin with logging, JSON import/export, REST support, dashboard refresh and heartbeat monitors.
- * Version: 3.6.1
+ * Version: 3.7.1
  * Author: Robert E. Kuunders, GPT
  * Author URI: https://qndrs.nl
  * License: GPLv2 or later
@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
  */
 class AvailabilityHeartbeatMonitor
 {
-    public const VERSION = '3.6.1';
+    public const VERSION = '3.7.1';
     public const MAX_LOG_ENTRIES = 1000;
     public const MAX_STATUS_HISTORY_PER_URL = 43200;
     public const MAX_STATUS_HISTORY_DAYS = 30;
@@ -723,6 +723,14 @@ class AvailabilityHeartbeatMonitor
         );
         add_submenu_page(
             'qndrs-availability-heartbeat-monitor',
+            __('Overview', 'qndrs-availability-heartbeat-monitor'),
+            __('Overview', 'qndrs-availability-heartbeat-monitor'),
+            'manage_options',
+            'qndrs-availability-heartbeat-monitor',
+            [$this, 'render_urls_page']
+        );
+        add_submenu_page(
+            'qndrs-availability-heartbeat-monitor',
             __('Settings', 'qndrs-availability-heartbeat-monitor'),
             __('Settings', 'qndrs-availability-heartbeat-monitor'),
             'manage_options',
@@ -774,6 +782,7 @@ class AvailabilityHeartbeatMonitor
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('qndrs_ahm_nonce'),
                 'refresh_interval_ms' => 30000,
+                'view_storage_key' => 'qndrsAhmView:v1:' . get_current_blog_id() . ':' . get_current_user_id(),
             ]);
             // Localize script for translations
             wp_localize_script('qndrs-ahm-scripts', 'qndrsAhmL10n', [
@@ -818,6 +827,7 @@ class AvailabilityHeartbeatMonitor
                 'refreshing' => __('Refreshing...', 'qndrs-availability-heartbeat-monitor'),
                 'refreshed' => __('Updated just now.', 'qndrs-availability-heartbeat-monitor'),
                 'auto_refresh' => __('Auto-refresh', 'qndrs-availability-heartbeat-monitor'),
+                'no_data' => __('No data', 'qndrs-availability-heartbeat-monitor'),
                 'heartbeat' => __('Heartbeat', 'qndrs-availability-heartbeat-monitor'),
                 'http_check' => __('HTTP check', 'qndrs-availability-heartbeat-monitor'),
                 /* translators: %d: Expected heartbeat interval in seconds. */
@@ -2239,6 +2249,16 @@ class AvailabilityHeartbeatMonitor
 
     private function render_url_dashboard_rows(array $urls): void
     {
+        echo '<div class="uptime-url-list-scroll' . (empty($urls) ? ' is-empty' : '') . '" tabindex="0" role="region" aria-label="' . esc_attr__('Monitored URLs', 'qndrs-availability-heartbeat-monitor') . '">';
+        echo '<div class="uptime-url-column-head" aria-hidden="true">';
+        echo '<span>' . esc_html__('Status', 'qndrs-availability-heartbeat-monitor') . '</span>';
+        echo '<span>' . esc_html__('Monitor', 'qndrs-availability-heartbeat-monitor') . '</span>';
+        echo '<span data-view-column="check">' . esc_html__('Last check', 'qndrs-availability-heartbeat-monitor') . '</span>';
+        echo '<span data-view-column="response">' . esc_html__('Response time', 'qndrs-availability-heartbeat-monitor') . '</span>';
+        echo '<span data-view-column="uptime">' . esc_html__('Uptime', 'qndrs-availability-heartbeat-monitor') . '</span>';
+        echo '<span data-view-column="alerts">' . esc_html__('Notifications', 'qndrs-availability-heartbeat-monitor') . '</span>';
+        echo '<span data-view-column="incident">' . esc_html__('Incidents', 'qndrs-availability-heartbeat-monitor') . '</span>';
+        echo '<span>' . esc_html__('Actions', 'qndrs-availability-heartbeat-monitor') . '</span></div>';
         echo '<section class="uptime-url-list" aria-label="' . esc_attr__('Monitored URLs', 'qndrs-availability-heartbeat-monitor') . '">';
         if (empty($urls)) {
             echo '<div class="uptime-empty-state">' . esc_html__('No URLs available. Add one!', 'qndrs-availability-heartbeat-monitor') . '</div>';
@@ -2248,6 +2268,7 @@ class AvailabilityHeartbeatMonitor
             }
         }
         echo '</section>';
+        echo '</div>';
     }
 
     private function render_url_dashboard_row(array $url_data): void
@@ -2284,29 +2305,24 @@ class AvailabilityHeartbeatMonitor
 
         echo '<div class="uptime-url-identity">';
         echo '<strong>' . esc_html($title) . '</strong>';
-        echo '<span class="uptime-chip uptime-chip-muted">' . esc_html($type === 'heartbeat' ? __('Heartbeat', 'qndrs-availability-heartbeat-monitor') : __('HTTP check', 'qndrs-availability-heartbeat-monitor')) . '</span>';
+        echo '<span class="uptime-chip uptime-chip-muted" data-view-column="type">' . esc_html($type === 'heartbeat' ? __('Heartbeat', 'qndrs-availability-heartbeat-monitor') : __('HTTP check', 'qndrs-availability-heartbeat-monitor')) . '</span>';
         if ($type !== 'heartbeat' && $url !== '') {
-            echo '<a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer">' . esc_html($url) . '</a>';
+            echo '<a data-view-column="address" href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer">' . esc_html($url) . '</a>';
         } elseif ($type === 'heartbeat' && !empty($url_data['expected_interval'])) {
             /* translators: %d: Expected heartbeat interval in seconds. */
-            echo '<span>' . esc_html(sprintf(__('Expected every %d seconds', 'qndrs-availability-heartbeat-monitor'), absint($url_data['expected_interval']))) . '</span>';
+            echo '<span data-view-column="address">' . esc_html(sprintf(__('Expected every %d seconds', 'qndrs-availability-heartbeat-monitor'), absint($url_data['expected_interval']))) . '</span>';
         }
         echo '</div>';
 
-        echo '<div class="uptime-url-current">';
+        echo '<div class="uptime-url-current" data-view-column="check">';
         if ($latest !== null) {
             $status_code = isset($latest['status_code']) && $latest['status_code'] !== null ? absint($latest['status_code']) : 0;
-            $response_time_ms = isset($latest['response_time_ms']) && $latest['response_time_ms'] !== null ? absint($latest['response_time_ms']) : null;
             $timestamp = isset($latest['timestamp']) ? (string)$latest['timestamp'] : '';
             $display_timestamp = isset($latest['display_timestamp']) ? (string)$latest['display_timestamp'] : $timestamp;
 
             if ($status_code > 0) {
                 /* translators: %d: HTTP status code. */
                 echo '<span class="uptime-chip">' . esc_html(sprintf(__('HTTP %d', 'qndrs-availability-heartbeat-monitor'), $status_code)) . '</span>';
-            }
-            if ($response_time_ms !== null) {
-                /* translators: %d: Response time in milliseconds. */
-                echo '<span class="uptime-chip">' . esc_html(sprintf(__('%d ms', 'qndrs-availability-heartbeat-monitor'), $response_time_ms)) . '</span>';
             }
             if ($timestamp !== '') {
                 echo '<time class="uptime-chip uptime-chip-muted" datetime="' . esc_attr($timestamp) . '">' . esc_html($display_timestamp) . '</time>';
@@ -2316,15 +2332,26 @@ class AvailabilityHeartbeatMonitor
         }
         echo '</div>';
 
-        echo '<div class="uptime-url-metrics">';
-        $this->render_uptime_summary($uptime);
+        echo '<div class="uptime-url-response" data-view-column="response">';
+        if ($latest !== null && isset($latest['response_time_ms'])) {
+            /* translators: %d: Response time in milliseconds. */
+            echo '<span class="uptime-chip">' . esc_html(sprintf(__('%d ms', 'qndrs-availability-heartbeat-monitor'), absint($latest['response_time_ms']))) . '</span>';
+        } elseif (empty($dashboard['average_response_time_display'])) {
+            echo '<span class="uptime-chip uptime-chip-muted">' . esc_html__('No data', 'qndrs-availability-heartbeat-monitor') . '</span>';
+        }
         if (!empty($dashboard['average_response_time_display'])) {
             echo '<span class="uptime-response-average">' . esc_html($dashboard['average_response_time_display']) . '</span>';
         }
         echo '</div>';
 
-        echo '<div class="uptime-url-alerts">';
+        echo '<div class="uptime-url-metrics" data-view-column="uptime">';
+        $this->render_uptime_summary($uptime);
+        echo '</div>';
+
+        echo '<div class="uptime-url-alerts" data-view-column="alerts">';
         echo '<span class="uptime-chip' . ($notifications_label === __('No alerts', 'qndrs-availability-heartbeat-monitor') ? ' is-warning' : '') . '">' . esc_html($notifications_label) . '</span>';
+        echo '</div>';
+        echo '<div class="uptime-url-incident" data-view-column="incident">';
         echo '<span class="uptime-chip' . ($incident_open ? ' is-danger' : ' uptime-chip-muted') . '">' . esc_html($incident_label) . '</span>';
         if ($incident_duration_display !== '') {
             echo '<span class="uptime-chip is-danger">' . esc_html($incident_duration_display) . '</span>';
@@ -2343,9 +2370,35 @@ class AvailabilityHeartbeatMonitor
         echo '</article>';
     }
 
-    /**
-     * Renders the admin page for managing monitored URLs.
-     */
+    /** Renders browser-local overview preferences; no configuration is submitted. */
+    private function render_view_controls(): void
+    {
+        echo '<div class="uptime-view-controls" hidden>';
+        echo '<div class="uptime-theme-switch" role="group" aria-label="' . esc_attr__('Color theme', 'qndrs-availability-heartbeat-monitor') . '">';
+        echo '<button type="button" data-theme-choice="light" aria-pressed="true">' . esc_html__('Light', 'qndrs-availability-heartbeat-monitor') . '</button>';
+        echo '<button type="button" data-theme-choice="dark" aria-pressed="false">' . esc_html__('Dark', 'qndrs-availability-heartbeat-monitor') . '</button>';
+        echo '<button type="button" data-theme-choice="system" aria-pressed="false">' . esc_html__('System', 'qndrs-availability-heartbeat-monitor') . '</button></div>';
+        echo '<details class="uptime-column-settings"><summary class="button">' . esc_html__('Columns', 'qndrs-availability-heartbeat-monitor') . ' <span class="uptime-column-count" aria-live="polite" aria-atomic="true">7/7</span></summary>';
+        echo '<div class="uptime-column-panel"><p>' . esc_html__('Status and monitor name always remain visible.', 'qndrs-availability-heartbeat-monitor') . '</p>';
+        echo '<fieldset><legend class="screen-reader-text">' . esc_html__('Columns', 'qndrs-availability-heartbeat-monitor') . '</legend>';
+        $columns = [
+            'check' => __('Last check & HTTP status', 'qndrs-availability-heartbeat-monitor'),
+            'response' => __('Response time & average', 'qndrs-availability-heartbeat-monitor'),
+            'uptime' => __('Uptime (24h, 7d, 30d)', 'qndrs-availability-heartbeat-monitor'),
+            'alerts' => __('Notifications', 'qndrs-availability-heartbeat-monitor'),
+            'incident' => __('Incidents', 'qndrs-availability-heartbeat-monitor'),
+            'type' => __('Monitor type', 'qndrs-availability-heartbeat-monitor'),
+            'address' => __('URL / heartbeat interval', 'qndrs-availability-heartbeat-monitor'),
+        ];
+        foreach ($columns as $key => $label) {
+            echo '<label><input type="checkbox" data-view-toggle="' . esc_attr($key) . '" checked> ' . esc_html($label) . '</label>';
+        }
+        echo '</fieldset><div class="uptime-column-panel-actions">';
+        echo '<button type="button" class="button uptime-view-compact">' . esc_html__('Compact overview', 'qndrs-availability-heartbeat-monitor') . '</button>';
+        echo '<button type="button" class="button uptime-view-reset">' . esc_html__('Restore defaults', 'qndrs-availability-heartbeat-monitor') . '</button></div></div></details></div>';
+    }
+
+    /** Renders the admin page for managing monitored URLs. */
     public function render_urls_page(): void
     {
         $urls = $this->normalize_stored_urls();
@@ -2412,7 +2465,7 @@ class AvailabilityHeartbeatMonitor
         $dashboard = $this->get_dashboard_summary($urls);
         $urls = $dashboard['urls'];
 
-        echo '<div class="wrap uptime-monitor-admin uptime-monitor-dashboard">';
+        echo '<div class="wrap uptime-monitor-admin uptime-monitor-dashboard uptime-monitor-overview">';
         echo '<div class="uptime-dashboard-header">';
         echo '<h1>' . esc_html__('Qndrs Monitor', 'qndrs-availability-heartbeat-monitor') . '</h1>';
         echo '<div class="uptime-dashboard-actions">';
@@ -2421,6 +2474,7 @@ class AvailabilityHeartbeatMonitor
         echo '<span class="uptime-refresh-state" aria-live="polite"></span>';
         echo '</div>';
         echo '</div>';
+        $this->render_view_controls();
         echo '<div class="uptime-monitor-notices" aria-live="polite" aria-atomic="true"></div>';
 
         $this->render_dashboard_overview($dashboard);
